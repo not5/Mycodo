@@ -1,10 +1,20 @@
+os: linux
 language: python
+
+python:
+  - "3.6"
+
 services:
   - docker
+
 before_install:
   - docker -v
+
 install:
   - docker-compose up -d
+
+script:
+  - docker exec -it flask pytest /home/mycodo/mycodo/tests/software_tests
 
 #language: python
 #os: linux
