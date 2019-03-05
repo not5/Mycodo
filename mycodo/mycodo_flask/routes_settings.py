@@ -154,7 +154,7 @@ def settings_input():
     # Get list of custom inputs
     excluded_files = ['__init__.py', '__pycache__']
     install_dir = os.path.abspath(INSTALL_DIRECTORY)
-    path_custom_inputs = os.path.join(install_dir, 'mycodo/inputs/custom_inputs')
+    path_custom_inputs = os.path.join(install_dir, 'inputs/custom_inputs')
 
     if request.method == 'POST':
         if not utils_general.user_has_permission('edit_controllers'):

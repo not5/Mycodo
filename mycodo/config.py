@@ -719,7 +719,7 @@ LOCK_FILE_STREAM = os.path.join(LOCK_PATH, 'mycodo-camera-stream.pid')
 
 # Remote admin
 STORED_SSL_CERTIFICATE_PATH = os.path.join(
-    INSTALL_DIRECTORY, 'mycodo/mycodo_flask/ssl_certs/remote_admin')
+    INSTALL_DIRECTORY, 'mycodo_flask/ssl_certs/remote_admin')
 
 # Camera
 CAMERA_LIBRARIES = [
