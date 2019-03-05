@@ -98,9 +98,6 @@ def add_update_csv(csv_file, key, value):
             writer.writerow(header)
             writer.writerows(temp_dict.items())
 
-        uid_gid = pwd.getpwnam('mycodo').pw_uid
-        os.chown(csv_file, uid_gid, uid_gid)
-        os.chmod(csv_file, 0o664)
         os.remove(temp_file_name)  # delete backed-up original
     except Exception as except_msg:
         logger.exception("Could not update stat csv: {}".format(except_msg))
@@ -169,14 +166,11 @@ def recreate_stat_file():
     if anonymous_id is not provided, generate one
 
     """
-    uid_gid = pwd.getpwnam('mycodo').pw_uid
     if not os.path.isfile(ID_FILE):
         anonymous_id = ''.join([random.choice(
             string.ascii_letters + string.digits) for _ in range(12)])
         with open(ID_FILE, 'w') as write_file:
             write_file.write('{}'.format(anonymous_id))
-        os.chown(ID_FILE, uid_gid, uid_gid)
-        os.chmod(ID_FILE, 0o664)
 
     with open(ID_FILE, 'r') as read_file:
         stat_id = read_file.readline().strip()
@@ -213,8 +207,6 @@ def recreate_stat_file():
         write_csv = csv.writer(csv_stat_file)
         for row in new_stat_data:
             write_csv.writerow(row)
-    os.chown(STATS_CSV, uid_gid, uid_gid)
-    os.chmod(STATS_CSV, 0o664)
 
 
 def send_anonymous_stats(start_time):

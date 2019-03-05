@@ -3129,7 +3129,7 @@ power
 a</code></pre>
 <p>From here, you can create any Python code to react to button presses on your remote. You can also set up the Mycodo Function Trigger: Infrared Remote Input and trigger events in response to Mycodo detecting specific button presses. See <a href="#infrared-remote-input-options">Infrared Remote Input Options</a> for configuring this trigger.</p>
 <p>In order to send an IR signal to your IR LED, connect your LED to the GPIO defined with <code>gpio_out_pin=17</code> in <code>/boot/config.txt</code>. You can test if your LED is working by creating a file, <code>LED_blink.py</code>, replacing <code>17</code> with the pin connected to your LED:</p>
-<pre><code>import RPi.GPIO as GPIO
+<pre><code>from RPi import GPIO
 import time
 
 pin = 17

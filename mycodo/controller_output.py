@@ -28,7 +28,6 @@ import threading
 import time
 import timeit
 
-import RPi.GPIO as GPIO
 from io import StringIO
 from sqlalchemy import and_
 from sqlalchemy import or_
@@ -557,6 +556,7 @@ class OutputController(threading.Thread):
     def output_switch(self, output_id, state, duty_cycle=None):
         """Conduct the actual execution of GPIO state change, PWM, or command execution"""
         if self.output_type[output_id] == 'wired':
+            from RPi import GPIO
             if state == 'on':
                 GPIO.output(self.output_pin[output_id],
                             self.output_on_state[output_id])
@@ -920,8 +920,10 @@ output_id = '{}'
                     trigger_conditionals=False)
 
     def cleanup_gpio(self):
-        for each_output_pin in self.output_pin:
-            GPIO.cleanup(each_output_pin)
+        for output_id, each_output_pin in self.output_pin.items():
+            if self.output_type[output_id] == 'wired':
+                from RPi import GPIO
+                GPIO.cleanup(each_output_pin)
 
     def add_mod_output(self, output_id):
         """
@@ -1120,6 +1122,7 @@ output_id = '{}'
         """
         if self.output_type[output_id] == 'wired':
             try:
+                from RPi import GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setwarnings(True)
                 GPIO.setup(self.output_pin[output_id], GPIO.OUT)
@@ -1182,6 +1185,7 @@ output_id = '{}'
         """
         if output_id in self.output_type:
             if self.output_type[output_id] == 'wired':
+                from RPi import GPIO
                 if (self.output_pin[output_id] is not None and
                         self.output_on_state[output_id] == GPIO.input(self.output_pin[output_id])):
                     return 'on'
@@ -1208,6 +1212,7 @@ output_id = '{}'
         """
         if (self.output_type[output_id] == 'wired' and
                 self._is_setup(output_id)):
+            from RPi import GPIO
             return self.output_on_state[output_id] == GPIO.input(self.output_pin[output_id])
         elif self.output_type[output_id] in ['command',
                                              'command_pwm',
@@ -1232,7 +1237,9 @@ output_id = '{}'
         :return: Is it safe to manipulate this output?
         :rtype: bool
         """
-        if self.output_type[output_id] == 'wired' and self.output_pin[output_id]:
+        if (self.output_type[output_id] == 'wired' and
+                self.output_pin[output_id]):
+            from RPi import GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self.output_pin[output_id], GPIO.OUT)
             return True

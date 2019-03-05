@@ -23,27 +23,20 @@
 #
 #  Contact at kylegabriel.com
 
-import sys
-
-import os
-
-sys.path.append(
-    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
-
 import argparse
 import logging
+import os
 import resource
+import rpyc
+import signal
+import sys
 import threading
 import time
 import timeit
-
-import rpyc
-from daemonize import Daemonize
 from pkg_resources import parse_version
 from rpyc.utils.server import ThreadedServer
 
 from mycodo.config import DAEMON_LOG_FILE
-from mycodo.config import DAEMON_PID_FILE
 from mycodo.config import MYCODO_VERSION
 from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.config import STATS_CSV
@@ -66,8 +59,10 @@ from mycodo.databases.models import Misc
 from mycodo.databases.models import PID
 from mycodo.databases.models import Trigger
 from mycodo.databases.utils import session_scope
-from mycodo.devices.camera import camera_record
 from mycodo.utils.database import db_retrieve_table_daemon
+from mycodo.utils.function_actions import get_condition_measurement
+from mycodo.utils.function_actions import trigger_action
+from mycodo.utils.function_actions import trigger_function_actions
 from mycodo.utils.github_release_info import github_releases
 from mycodo.utils.inputs import parse_input_information
 from mycodo.utils.statistics import add_update_csv
@@ -76,10 +71,8 @@ from mycodo.utils.statistics import return_stat_file_dict
 from mycodo.utils.statistics import send_anonymous_stats
 from mycodo.utils.tools import generate_output_usage_report
 from mycodo.utils.tools import next_schedule
-from mycodo.utils.function_actions import get_condition_measurement
-from mycodo.utils.function_actions import trigger_function_actions
-from mycodo.utils.function_actions import trigger_action
 
+logger = logging.getLogger("mycodo")
 
 MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 
@@ -354,6 +347,17 @@ def monitor_rpyc(logger_rpyc):
         time.sleep(1)
 
 
+class GracefulKill:
+    kill_now = False
+
+    def __init__(self):
+        signal.signal(signal.SIGINT, self.exit_gracefully)
+        signal.signal(signal.SIGTERM, self.exit_gracefully)
+
+    def exit_gracefully(self, signum, frame):
+        self.kill_now = True
+
+
 class DaemonController:
     """
     Mycodo daemon
@@ -434,14 +438,19 @@ class DaemonController:
         self.logger.info("Anonymous statistics {state}".format(state=state))
 
     def run(self):
-        self.start_all_controllers()
-        self.daemon_startup_time = timeit.default_timer() - self.startup_timer
-        self.logger.info("Mycodo daemon started in {sec:.3f} seconds".format(
-            sec=self.daemon_startup_time))
-        self.startup_stats()
+        killer = GracefulKill()
+        try:
+            self.start_all_controllers()
+            self.daemon_startup_time = timeit.default_timer() - self.startup_timer
+            self.logger.info("Mycodo daemon started in {sec:.3f} seconds".format(
+                sec=self.daemon_startup_time))
+            self.startup_stats()
+        except:
+            self.logger.exception(1)
+
         try:
             # loop until daemon is instructed to shut down
-            while self.daemon_run:
+            while self.daemon_run and not killer.kill_now:
                 now = time.time()
 
                 # Log ram usage every 5 days
@@ -475,6 +484,8 @@ class DaemonController:
                         self.check_mycodo_upgrade_exists(now)
 
                 time.sleep(1)
+
+            self.thread_shutdown_timer = timeit.default_timer()
         except Exception as except_msg:
             self.logger.exception("Unexpected error: {msg}".format(
                 msg=except_msg))
@@ -482,11 +493,13 @@ class DaemonController:
 
         # If the daemon errors or finishes, shut it down
         finally:
-            self.logger.debug("Stopping all running controllers")
+            self.logger.info("Shutting down")
             self.stop_all_controllers()
 
-        self.logger.info("Mycodo terminated in {:.3f} seconds\n\n".format(
-            timeit.default_timer() - self.thread_shutdown_timer))
+        if self.thread_shutdown_timer:
+            self.logger.info("Mycodo terminated in {:.3f} seconds\n\n".format(
+                timeit.default_timer() - self.thread_shutdown_timer))
+
         self.terminated = True
 
         # Wait for the client to receive the response before it disconnects
@@ -1102,7 +1115,6 @@ class DaemonController:
 
     def terminate_daemon(self):
         """Instruct the daemon to shut down"""
-        self.thread_shutdown_timer = timeit.default_timer()
         self.logger.info("Received command to terminate daemon")
         self.daemon_run = False
         while not self.terminated:
@@ -1184,6 +1196,7 @@ class DaemonController:
                     "Camera {id}: End of time-lapse.".format(id=camera.id))
             elif ((camera.timelapse_started and not camera.timelapse_paused) and
                           now > camera.timelapse_next_capture):
+                from mycodo.devices.camera import camera_record
                 # Ensure next capture is greater than now (in case of power failure/reboot)
                 next_capture = camera.timelapse_next_capture
                 capture_number = camera.timelapse_capture_number
@@ -1244,7 +1257,7 @@ class MycodoDaemon:
     def start_daemon(self):
         """Start communication and daemon threads"""
         try:
-            self.logger.info("Starting rpyc server")
+            self.logger.error("Starting rpyc server")
             ct = ComThread(self.mycodo)
             ct.daemon = True
             # Start communication thread for receiving commands from mycodo_client.py
@@ -1271,39 +1284,30 @@ if __name__ == '__main__':
     if not os.geteuid() == 0:
         sys.exit("Script must be executed as root")
 
-    # Check if lock file already exists
-    if os.path.isfile(DAEMON_PID_FILE):
-        sys.exit(
-            "Lock file present. Ensure the daemon isn't already running and "
-            "delete {file}".format(file=DAEMON_PID_FILE))
-
     # Parse commandline arguments
     args = parse_args()
 
-    # Set up logger
-    logger = logging.getLogger("mycodo")
-    fh = logging.FileHandler(DAEMON_LOG_FILE, 'a')
+    try:
+        # Set up logger
+        fh = logging.FileHandler(DAEMON_LOG_FILE, 'a')
 
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-        fh.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-        fh.setLevel(logging.INFO)
+        if args.debug:
+            logger.setLevel(logging.DEBUG)
+            fh.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
+            fh.setLevel(logging.INFO)
 
-    formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    fh.setFormatter(formatter)
-    logger.propagate = False
-    logger.addHandler(fh)
-    keep_fds = [fh.stream.fileno()]
+        formatter = logging.Formatter(
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+        keep_fds = [fh.stream.fileno()]
 
-    daemon_controller = DaemonController()
-    mycodo_daemon = MycodoDaemon(daemon_controller)
+        daemon_controller = DaemonController()
 
-    # Set up daemon and start it
-    daemon = Daemonize(app="mycodo_daemon",
-                       pid=DAEMON_PID_FILE,
-                       action=mycodo_daemon.start_daemon,
-                       keep_fds=keep_fds)
-    daemon.start()
+        mycodo_daemon = MycodoDaemon(daemon_controller)
+
+        mycodo_daemon.start_daemon()
+    except:
+        logger.exception(1)

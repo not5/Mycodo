@@ -1,6 +1,4 @@
 # coding=utf-8
-from RPi import GPIO
-
 from mycodo.databases import CRUDMixin
 from mycodo.databases import set_uuid
 from mycodo.mycodo_flask.extensions import db
@@ -69,6 +67,7 @@ class Output(CRUDMixin, db.Model):
 
         :rtype: None
         """
+        from RPi import GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(True)
         GPIO.setup(self.pin, GPIO.OUT)
@@ -78,5 +77,6 @@ class Output(CRUDMixin, db.Model):
         :return: Whether the output is currently "ON"
         :rtype: bool
         """
+        from RPi import GPIO
         if self.output_type == 'wired' and self._is_setup():
             return self.on_state == GPIO.input(self.pin)

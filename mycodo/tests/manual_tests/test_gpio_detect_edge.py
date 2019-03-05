@@ -2,7 +2,7 @@
 # coding=utf-8
 
 import argparse
-import RPi.GPIO as GPIO
+from RPi import GPIO
 import os
 import sys
 import time

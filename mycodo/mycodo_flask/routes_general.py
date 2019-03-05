@@ -1,14 +1,11 @@
 # coding=utf-8
 import calendar
 import datetime
+import flask_login
 import logging
+import os
 import subprocess
 import time
-from importlib import import_module
-
-import flask_login
-import os
-from RPi import GPIO
 from dateutil.parser import parse as date_parse
 from flask import Response
 from flask import current_app
@@ -23,9 +20,11 @@ from flask_babel import gettext
 from flask_csv import send_csv
 from flask_influxdb import InfluxDB
 from flask_limiter import Limiter
+from importlib import import_module
 from sqlalchemy import and_
 
 from mycodo.config import INFLUXDB_DATABASE
+from mycodo.config import INFLUXDB_HOST
 from mycodo.config import INFLUXDB_PASSWORD
 from mycodo.config import INFLUXDB_USER
 from mycodo.config import INSTALL_DIRECTORY
@@ -41,7 +40,6 @@ from mycodo.databases.models import NoteTags
 from mycodo.databases.models import Notes
 from mycodo.databases.models import Output
 from mycodo.databases.models import PID
-from mycodo.devices.camera import camera_record
 from mycodo.mycodo_client import DaemonControl
 from mycodo.mycodo_flask.routes_authentication import clear_cookie_auth
 from mycodo.mycodo_flask.utils import utils_general
@@ -120,6 +118,7 @@ def camera_img_return_path(camera_unique_id, img_type, filename):
 @flask_login.login_required
 def camera_img_acquire(image_type, camera_unique_id, max_age):
     """Capture an image and resturn the filename"""
+    from mycodo.devices.camera import camera_record
     if image_type == 'new':
         tmp_filename = None
     elif image_type == 'tmp':
@@ -189,10 +188,11 @@ def gpio_state():
     output = Output.query.all()
     daemon_control = DaemonControl()
     state = {}
-    GPIO.setmode(GPIO.BCM)
-    GPIO.setwarnings(False)
     for each_output in output:
         if each_output.output_type == 'wired' and each_output.pin and -1 < each_output.pin < 40:
+            from RPi import GPIO
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
             GPIO.setup(each_output.pin, GPIO.OUT)
             if GPIO.input(each_output.pin) == each_output.on_state:
                 state[each_output.unique_id] = 'on'
@@ -268,6 +268,7 @@ def last_data(unique_id, measure_type, measurement_id, period):
         return '', 204
 
     if measure_type in ['input', 'math', 'output', 'pid']:
+        current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
         current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
         current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
         current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE
@@ -360,6 +361,7 @@ def past_data(unique_id, measure_type, measurement_id, past_seconds):
             return '', 204
 
     elif measure_type in ['input', 'math', 'output', 'pid']:
+        current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
         current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
         current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
         current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE
@@ -434,6 +436,7 @@ def generate_thermal_image_from_timestamp(unique_id, timestamp):
     assure_path_exists(save_path)
     path_file = os.path.join(save_path, filename)
 
+    current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
     current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
     current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
     current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE
@@ -483,6 +486,7 @@ def export_data(unique_id, measurement_id, start_seconds, end_seconds):
     Return data from start_seconds to end_seconds from influxdb.
     Used for exporting data.
     """
+    current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
     current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
     current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
     current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE
@@ -578,6 +582,7 @@ def async_data(device_id, device_type, measurement_id, start_seconds, end_second
         else:
             return '', 204
 
+    current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
     current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
     current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
     current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE
@@ -769,6 +774,7 @@ def async_usage_data(device_id, unit, channel, start_seconds, end_seconds):
     Return data from start_seconds to end_seconds from influxdb.
     Used for asynchronous graph display of many points (up to millions).
     """
+    current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
     current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
     current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
     current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE
@@ -993,6 +999,7 @@ def computer_command(action):
 #
 
 def return_point_timestamp(dev_id, unit, period, measurement=None, channel=None):
+    current_app.config['INFLUXDB_HOST'] = INFLUXDB_HOST
     current_app.config['INFLUXDB_USER'] = INFLUXDB_USER
     current_app.config['INFLUXDB_PASSWORD'] = INFLUXDB_PASSWORD
     current_app.config['INFLUXDB_DATABASE'] = INFLUXDB_DATABASE

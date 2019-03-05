@@ -26,6 +26,7 @@ geocoder == 1.38.1
 gunicorn == 19.9.0
 influxdb == 5.0.0
 locket == 0.2.0
+pylint
 pyserial
 python-dateutil == 2.7.5
 requests
@@ -34,6 +35,6 @@ SQLAlchemy == 1.2.15
 WTForms == 2.2.1
 
 # Devices and Sensors
-picamera == 1.13
+# picamera == 1.13
 RPi.GPIO
 smbus2 == 0.2.2

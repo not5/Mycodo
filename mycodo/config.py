@@ -684,11 +684,11 @@ THEMES = [
 THEMES_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero']
 
 # Install path, the parent directory this script resides
-INSTALL_DIRECTORY = os.path.dirname(os.path.realpath(__file__)) + '/..'
+INSTALL_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
 # SQLite3 databases that stores users and settings
 DATABASE_PATH = os.path.join(INSTALL_DIRECTORY, 'databases')
-SQL_DATABASE_MYCODO = os.path.join(DATABASE_PATH, 'mycodo.db')
+SQL_DATABASE_MYCODO = '/var/mycodo/database/mycodo.db'
 MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 
 # File paths/logging
@@ -697,7 +697,7 @@ USAGE_REPORTS_PATH = os.path.join(INSTALL_DIRECTORY, 'output_usage_reports')
 DEPENDENCY_INIT_FILE = os.path.join(INSTALL_DIRECTORY, '.dependency')
 UPGRADE_INIT_FILE = os.path.join(INSTALL_DIRECTORY, '.upgrade')
 BACKUP_PATH = '/var/Mycodo-backups'  # Where Mycodo backups are stored
-LOG_PATH = '/var/log/mycodo'  # Where generated logs are stored
+LOG_PATH = '/var/mycodo/log'  # Where generated logs are stored
 LOGIN_LOG_FILE = os.path.join(LOG_PATH, 'login.log')
 DAEMON_LOG_FILE = os.path.join(LOG_PATH, 'mycodo.log')
 KEEPUP_LOG_FILE = os.path.join(LOG_PATH, 'mycodokeepup.log')
@@ -730,7 +730,7 @@ PATH_CAMERAS = os.path.join(INSTALL_DIRECTORY, 'cameras')
 PATH_NOTE_ATTACHMENTS = os.path.join(INSTALL_DIRECTORY, 'note_attachments')
 
 # Influx sensor/device measurement database
-INFLUXDB_HOST = 'localhost'
+INFLUXDB_HOST = 'influxdb'
 INFLUXDB_PORT = 8086
 INFLUXDB_USER = 'mycodo'
 INFLUXDB_PASSWORD = 'mmdu77sj3nIoiajjs'
@@ -756,7 +756,7 @@ UPGRADE_CHECK_INTERVAL = 172800
 
 class ProdConfig(object):
     """ Production Configuration """
-    SQL_DATABASE_MYCODO = os.path.join(DATABASE_PATH, 'mycodo.db')
+    SQL_DATABASE_MYCODO = '/var/mycodo/database/mycodo.db'
     MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + SQL_DATABASE_MYCODO
     SQLALCHEMY_TRACK_MODIFICATIONS = False

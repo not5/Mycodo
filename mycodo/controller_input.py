@@ -28,7 +28,6 @@ import threading
 import time
 import timeit
 
-import RPi.GPIO as GPIO
 import locket
 import os
 import requests
@@ -155,6 +154,7 @@ class InputController(threading.Thread):
 
         # Set up edge detection of a GPIO pin
         if self.device == 'EDGE':
+            from RPi import GPIO
             if self.switch_edge == 'rising':
                 self.switch_edge_gpio = GPIO.RISING
             elif self.switch_edge == 'falling':
@@ -194,6 +194,7 @@ class InputController(threading.Thread):
 
             # Set up edge detection
             if self.device == 'EDGE':
+                from RPi import GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setup(int(self.gpio_location), GPIO.IN)
                 GPIO.add_event_detect(int(self.gpio_location),
@@ -310,6 +311,7 @@ class InputController(threading.Thread):
             self.running = False
 
             if self.device == 'EDGE':
+                from RPi import GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.cleanup(int(self.gpio_location))
 
@@ -376,6 +378,7 @@ class InputController(threading.Thread):
         :param bcm_pin: BMC pin of rising/falling edge (required parameter)
         :return: None
         """
+        from RPi import GPIO
         gpio_state = GPIO.input(int(self.gpio_location))
         if time.time() > self.edge_reset_timer:
             self.edge_reset_timer = time.time()+self.switch_reset_period

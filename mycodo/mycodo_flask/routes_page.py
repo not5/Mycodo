@@ -74,7 +74,6 @@ from mycodo.databases.models import PID
 from mycodo.databases.models import Trigger
 from mycodo.databases.models import Unit
 from mycodo.databases.models import User
-from mycodo.devices.camera import camera_record
 from mycodo.mycodo_client import DaemonControl
 from mycodo.mycodo_client import daemon_active
 from mycodo.mycodo_flask.extensions import db
@@ -174,6 +173,7 @@ def page_camera():
         mod_camera = Camera.query.filter(
             Camera.unique_id == form_camera.camera_id.data).first()
         if form_camera.capture_still.data:
+            from mycodo.devices.camera import camera_record
             # If a stream is active, stop the stream to take a photo
             if mod_camera.stream_started:
                 camera_stream = import_module(

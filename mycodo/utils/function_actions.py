@@ -3,7 +3,6 @@ import logging
 import threading
 import time
 
-import RPi.GPIO as GPIO
 import os
 
 from mycodo.config import SQL_DATABASE_MYCODO
@@ -22,7 +21,6 @@ from mycodo.databases.models import PID
 from mycodo.databases.models import SMTP
 from mycodo.databases.models import Trigger
 from mycodo.databases.utils import session_scope
-from mycodo.devices.camera import camera_record
 from mycodo.mycodo_client import DaemonControl
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.influx import read_last_influxdb
@@ -70,6 +68,7 @@ def get_condition_measurement(sql_condition):
     # message based on the edge detection settings.
     elif sql_condition.condition_type == 'gpio_state':
         try:
+            from RPi import GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(int(sql_condition.gpio_pin), GPIO.IN)
             gpio_state = GPIO.input(int(sql_condition.gpio_pin))
@@ -310,6 +309,7 @@ def trigger_action(
         # Capture photo
         # If emailing later, store location of photo as attachment_file
         if cond_action.action_type in ['photo', 'photo_email']:
+            from mycodo.devices.camera import camera_record
             this_camera = db_retrieve_table_daemon(
                 Camera, unique_id=cond_action.do_unique_id, entry='first')
             message += "  Capturing photo with camera {unique_id} ({id}, {name}).".format(
@@ -323,6 +323,7 @@ def trigger_action(
 
         # Capture video
         if cond_action.action_type in ['video', 'video_email']:
+            from mycodo.devices.camera import camera_record
             this_camera = db_retrieve_table_daemon(
                 Camera, unique_id=cond_action.do_unique_id, entry='first')
             message += "  Capturing video with camera {unique_id} ({id}, {name}).".format(

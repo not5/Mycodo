@@ -3,6 +3,7 @@ import logging
 import time
 from sqlite3 import OperationalError
 
+import os
 import sqlalchemy
 
 from mycodo.config import SQL_DATABASE_MYCODO
@@ -46,6 +47,10 @@ def db_retrieve_table_daemon(table, entry=None, device_id=None, unique_id=None):
     If device_id is set, the first entry with that device ID is returned.
     Otherwise, the table object is returned.
     """
+    if not os.path.exists(SQL_DATABASE_MYCODO):
+        from mycodo.utils.system_pi import cmd_output
+        cmd_output('wget --quiet --no-check-certificate -p http://localhost/ -O /dev/null')
+
     tries = 5
     while tries > 0:
         try:

@@ -6,7 +6,7 @@ import logging
 import sys
 import time
 
-import RPi.GPIO as GPIO
+from RPi import GPIO
 import os
 from MCP342x import MCP342x
 from smbus2 import SMBus

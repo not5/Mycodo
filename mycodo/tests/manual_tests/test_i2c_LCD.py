@@ -7,7 +7,7 @@
 import sys
 import time
 
-import RPi.GPIO as GPIO
+from RPi import GPIO
 import os
 from smbus2 import SMBus
 

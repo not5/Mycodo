@@ -55,8 +55,6 @@ import threading
 import time
 import timeit
 
-import RPi.GPIO as GPIO
-
 from mycodo.config import MYCODO_VERSION
 from mycodo.databases.models import Conversion
 from mycodo.databases.models import DeviceMeasurements
@@ -68,6 +66,7 @@ from mycodo.databases.models import Measurement
 from mycodo.databases.models import Output
 from mycodo.databases.models import PID
 from mycodo.databases.models import Unit
+from mycodo.mycodo_client import DaemonControl
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.influx import read_last_influxdb
 from mycodo.utils.system_pi import add_custom_measurements
@@ -320,7 +319,8 @@ class LCDController(threading.Thread):
                 self.lcd_line[display_id][i]['measure_val'] = ip_out.rstrip().decode("utf-8")
                 return True
             elif self.lcd_line[display_id][i]['measure'] == 'output_state':
-                self.lcd_line[display_id][i]['measure_val'] = self.output_state(
+                control = DaemonControl()
+                self.lcd_line[display_id][i]['measure_val'] = control.output_state(
                     self.lcd_line[display_id][i]['id'])
                 return True
             else:
@@ -458,16 +458,6 @@ class LCDController(threading.Thread):
                                          message_line_6=line_6,
                                          message_line_7=line_7,
                                          message_line_8=line_8)
-
-    @staticmethod
-    def output_state(output_id):
-        output = db_retrieve_table_daemon(Output, unique_id=output_id)
-        GPIO.setmode(GPIO.BCM)
-        if GPIO.input(output.pin) == output.on_state:
-            gpio_state = 'On'
-        else:
-            gpio_state = 'Off'
-        return gpio_state
 
     def setup_lcd_line(self, display_id, line, device_id, measurement_id):
         if measurement_id == 'output':

@@ -125,7 +125,7 @@ class max31865_sen(object):
     """
 
     def __init__(self, csPin=8, misoPin=9, mosiPin=10, clkPin=11):
-        import RPi.GPIO as GPIO
+        from RPi import GPIO
         self.GPIO = GPIO
         self.csPin = csPin
         self.misoPin = misoPin

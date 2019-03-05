@@ -51,7 +51,7 @@ class DaemonControl:
     """
     def __init__(self):
         try:
-            self.rpyc_client = rpyc.connect("localhost", 18813)
+            self.rpyc_client = rpyc.connect("daemon", 18813)
         except socket.error:
             raise Exception("Connection refused. Is the daemon running?")
 
