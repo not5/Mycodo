@@ -251,7 +251,9 @@ METHODS = [
 OUTPUT_INFO = {
     'wired': {
         'name': lazy_gettext('On/Off (GPIO)'),
-        'dependencies_module': [],
+        'dependencies_module': [
+            ('pip-pypi', 'RPi', 'RPi.GPIO')
+        ],
         'measure': {
             'duration_time': {'s': {0: {}}}
         }},
