@@ -1,11 +1,10 @@
 # coding=utf-8
 """ Tests for input classes """
 import inspect
-from collections import Iterator
-
 import mock
 import os
 import pytest
+from collections import Iterator
 from testfixtures import LogCapture
 
 from mycodo.inputs.am2315 import InputModule as AM2315Sensor
@@ -22,12 +21,12 @@ from mycodo.inputs.ds18b20 import InputModule as DS18B20Sensor
 from mycodo.inputs.htu21d import InputModule as HTU21DSensor
 from mycodo.inputs.k30 import InputModule as K30Sensor
 from mycodo.inputs.linux_command import InputModule as LinuxCommand
+from mycodo.inputs.linux_cpu_load import InputModule as LinuxCPULoad
+from mycodo.inputs.linux_freespace import InputModule as LinuxFreeSpace
 from mycodo.inputs.mh_z16 import InputModule as MHZ16Sensor
 from mycodo.inputs.mh_z19 import InputModule as MHZ19Sensor
 from mycodo.inputs.mycodo_ram import InputModule as MycodoRam
-from mycodo.inputs.raspi import InputModule as RaspberryPiCPUTemp
-from mycodo.inputs.raspi_cpuload import InputModule as RaspberryPiCPULoad
-from mycodo.inputs.raspi_freespace import InputModule as RaspberryPiFreeSpace
+from mycodo.inputs.raspberry_pi_cpu_gpu_temperature import InputModule as RaspberryPiCPUTemp
 from mycodo.inputs.sht1x_7x import InputModule as SHT1x7xSensor
 from mycodo.inputs.sht2x import InputModule as SHT2xSensor
 from mycodo.inputs.signal_pwm import InputModule as SignalPWMInput
@@ -55,8 +54,8 @@ input_classes = [
     MHZ19Sensor(None, testing=True),
     MycodoRam(None, testing=True),
     RaspberryPiCPUTemp(None, testing=True),
-    RaspberryPiCPULoad(None, testing=True),
-    RaspberryPiFreeSpace(None, testing=True),
+    LinuxCPULoad(None, testing=True),
+    LinuxFreeSpace(None, testing=True),
     SHT1x7xSensor(None, testing=True),
     SHT2xSensor(None, testing=True),
     SignalPWMInput(None, testing=True),
