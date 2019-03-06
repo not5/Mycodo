@@ -24,9 +24,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'SIGNAL_PWM',
-    'input_manufacturer': 'Mycodo',
-    'input_name': 'Signal (PWM)',
+    'input_name_unique': 'RPI_SIGNAL_PWM',
+    'input_manufacturer': 'Raspberry Pi',
+    'input_name': 'RPi Signal (PWM)',
     'measurements_name': 'Frequency/Pulse Width/Duty Cycle',
     'measurements_dict': measurements_dict,
 
@@ -55,7 +55,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.signal_pwm")
+        self.logger = logging.getLogger("mycodo.inputs.raspberry_pi_signal_pwm")
 
         if not testing:
             import pigpio

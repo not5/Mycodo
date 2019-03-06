@@ -27,10 +27,10 @@ from mycodo.inputs.mh_z16 import InputModule as MHZ16Sensor
 from mycodo.inputs.mh_z19 import InputModule as MHZ19Sensor
 from mycodo.inputs.mycodo_ram import InputModule as MycodoRam
 from mycodo.inputs.raspberry_pi_cpu_gpu_temp import InputModule as RaspberryPiCPUTemp
+from mycodo.inputs.raspberry_pi_signal_pwm import InputModule as SignalPWMInput
+from mycodo.inputs.raspberry_pi_signal_revolutions import InputModule as SignalRPMInput
 from mycodo.inputs.sht1x_7x import InputModule as SHT1x7xSensor
 from mycodo.inputs.sht2x import InputModule as SHT2xSensor
-from mycodo.inputs.signal_pwm import InputModule as SignalPWMInput
-from mycodo.inputs.signal_revolutions import InputModule as SignalRPMInput
 from mycodo.inputs.tmp006 import InputModule as TMP006Sensor
 from mycodo.inputs.tsl2561 import InputModule as TSL2561Sensor
 from mycodo.inputs.tsl2591_sensor import InputModule as TSL2591Sensor
