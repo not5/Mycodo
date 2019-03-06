@@ -32,20 +32,12 @@ Options:
   backup-create                 Create a backup of the ~/Mycodo directory
   backup-restore [backup]       Restore [backup] location, which must be the full path to the backup.
                                 Ex.: '/var/Mycodo-backups/Mycodo-backup-2018-03-11_21-19-15-5.6.4/'
-  compile-mycodo-wrapper        Compile mycodo_wrapper.c
   compile-translations          Compile language translations for web interface
   create-files-directories      Create required directories
-  create-symlinks               Create required symlinks
-  create-user                   Create 'mycodo' user and add to appropriate groups
-  initialize                    Issues several commands to set up directories/files/permissions
   restart-daemon                Restart the Mycodo daemon
-  setup-virtualenv              Create a Python virtual environment
   ssl-certs-generate            Generate SSL certificates for the web user interface
-  ssl-certs-regenerate          Regenerate SSL certificates
-  uninstall-apt-pip             Uninstall the apt version of pip
   update-alembic                Use alembic to upgrade the mycodo.db settings database
   update-apt                    Update apt sources
-  update-cron                   Update cron entries
   install-bcm2835               Install bcm2835
   install-pigpiod               Install pigpiod
   install-wiringpi              Install wiringpi
@@ -55,12 +47,8 @@ Options:
   enable-pigpiod-high           Enable pigpiod with 5 ms sample rate
   enable-pigpiod-disabled       Create empty service to indicate pigpiod is disabled
   update-pigpiod                Update to latest version of pigpiod service file
-  update-influxdb               Update influxdb to the latest version
-  update-influxdb-db-user       Create the influxdb database and user
   update-logrotate              Install logrotate script
-  update-mycodo-startup-script  Install the Mycodo daemon startup script
   update-packages               Install required apt packages are installed/up-to-date
-  update-permissions            Set permissions for Mycodo directories/files
   update-pip3                   Update pip
   update-pip3-packages          Update required pip packages
   update-swap-size              Ensure sqap size is sufficiently large (512 MB)
@@ -68,10 +56,6 @@ Options:
   upgrade-major-release         Upgrade Mycodo to a major version release
   upgrade-master                Upgrade Mycodo to the master branch of the Mycodo github repository
   upgrade-post                  Post-Upgrade commands
-  web-server-connect            Attampt to connect to the web server
-  web-server-reload             Reload the web server
-  web-server-restart            Restart the web server
-  web-server-update             Update the web server configuration files
 "
 
 case "${1:-''}" in
@@ -81,43 +65,37 @@ case "${1:-''}" in
     'backup-restore')
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/mycodo_backup_restore.sh ${2}
     ;;
-    'compile-mycodo-wrapper')
-        printf "\n#### Compiling mycodo_wrapper\n"
-        gcc ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper.c -o ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper
-        chown root:mycodo ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper
-        chmod 4770 ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper
-    ;;
     'compile-translations')
         printf "\n#### Compiling Translations\n"
         cd ${MYCODO_PATH}/mycodo
-        ${MYCODO_PATH}/env/bin/pybabel compile -d mycodo_flask/translations
+        pybabel compile -d mycodo_flask/translations
     ;;
     'create-files-directories')
         printf "\n#### Creating files and directories\n"
-        mkdir -p /var/log/mycodo
+        mkdir -p /var/mycodo/log
         mkdir -p /var/Mycodo-backups
         mkdir -p ${MYCODO_PATH}/note_attachments
 
-        if [ ! -e /var/log/mycodo/mycodo.log ]; then
-            touch /var/log/mycodo/mycodo.log
+        if [ ! -e /var/mycodo/log/mycodo.log ]; then
+            touch /var/mycodo/log/mycodo.log
         fi
-        if [ ! -e /var/log/mycodo/mycodobackup.log ]; then
-            touch /var/log/mycodo/mycodobackup.log
+        if [ ! -e /var/mycodo/log/mycodobackup.log ]; then
+            touch /var/mycodo/log/mycodobackup.log
         fi
-        if [ ! -e /var/log/mycodo/mycodokeepup.log ]; then
-            touch /var/log/mycodo/mycodokeepup.log
+        if [ ! -e /var/mycodo/log/mycodokeepup.log ]; then
+            touch /var/mycodo/log/mycodokeepup.log
         fi
-        if [ ! -e /var/log/mycodo/mycododependency.log ]; then
-            touch /var/log/mycodo/mycododependency.log
+        if [ ! -e /var/mycodo/log/mycododependency.log ]; then
+            touch /var/mycodo/log/mycododependency.log
         fi
-        if [ ! -e /var/log/mycodo/mycodoupgrade.log ]; then
-            touch /var/log/mycodo/mycodoupgrade.log
+        if [ ! -e /var/mycodo/log/mycodoupgrade.log ]; then
+            touch /var/mycodo/log/mycodoupgrade.log
         fi
-        if [ ! -e /var/log/mycodo/mycodorestore.log ]; then
-            touch /var/log/mycodo/mycodorestore.log
+        if [ ! -e /var/mycodo/log/mycodorestore.log ]; then
+            touch /var/mycodo/log/mycodorestore.log
         fi
-        if [ ! -e /var/log/mycodo/login.log ]; then
-            touch /var/log/mycodo/login.log
+        if [ ! -e /var/mycodo/log/login.log ]; then
+            touch /var/mycodo/log/login.log
         fi
 
         # Create empty mycodo database file if it doesn't exist
@@ -126,98 +104,38 @@ case "${1:-''}" in
         fi
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh update-permissions
     ;;
-    'create-symlinks')
-        printf "\n#### Creating symlinks to Mycodo executables\n"
-        ln -sfn ${MYCODO_PATH} /var/mycodo-root
-        ln -sfn ${MYCODO_PATH}/mycodo/mycodo_daemon.py /usr/bin/mycodo-daemon
-        ln -sfn ${MYCODO_PATH}/mycodo/mycodo_client.py /usr/bin/mycodo-client
-        ln -sfn ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh /usr/bin/mycodo-commands
-        ln -sfn ${MYCODO_PATH}/mycodo/scripts/mycodo_backup_create.sh /usr/bin/mycodo-backup
-        ln -sfn ${MYCODO_PATH}/mycodo/scripts/mycodo_backup_restore.sh /usr/bin/mycodo-restore
-        ln -sfn ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper /usr/bin/mycodo-wrapper
-        ln -sfn ${MYCODO_PATH}/env/bin/pip3 /usr/bin/mycodo-pip
-        ln -sfn ${MYCODO_PATH}/env/bin/python3 /usr/bin/mycodo-python
-    ;;
-    'create-user')
-        printf "\n#### Creating mycodo user\n"
-        useradd -M mycodo
-        adduser mycodo adm
-        adduser mycodo dialout
-        adduser mycodo gpio
-        adduser mycodo i2c
-        adduser mycodo kmem
-        adduser mycodo video
-        adduser pi mycodo
-        adduser mycodo pi
-    ;;
-    'initialize')
-        printf "\n#### Running initialization\n"
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh create-user
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh compile-mycodo-wrapper
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh create-symlinks
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh create-files-directories
-        systemctl daemon-reload
-    ;;
     'restart-daemon')
         printf "\n#### Restarting the Mycodo daemon\n"
-        service mycodo stop
-        sleep 2
-        ${MYCODO_PATH}/env/bin/python ${MYCODO_PATH}/mycodo/scripts/restart_daemon.py
-        service mycodo start
-    ;;
-    'setup-virtualenv')
-        printf "\n#### Checking python 3 virtualenv\n"
-        if [ ! -e ${MYCODO_PATH}/env/bin/python3 ]; then
-            printf "#### Virtualenv doesn't exist. Creating...\n"
-            pip install virtualenv --upgrade
-            rm -rf ${MYCODO_PATH}/env
-            virtualenv --system-site-packages -p ${PYTHON_BINARY_SYS_LOC} ${MYCODO_PATH}/env
-        else
-            printf "#### Virtualenv already exists, skipping creation\n"
-        fi
+        python ${MYCODO_PATH}/mycodo/mycodo_client.py -t
     ;;
     'ssl-certs-generate')
         printf "\n#### Generating SSL certificates at ${MYCODO_PATH}/mycodo/mycodo_flask/ssl_certs (replace with your own if desired)\n"
-        mkdir -p ${MYCODO_PATH}/mycodo/mycodo_flask/ssl_certs
-        cd ${MYCODO_PATH}/mycodo/mycodo_flask/ssl_certs/
+        cd /var/mycodo/ssl_certs/
         rm -f ./*.pem ./*.csr ./*.crt ./*.key
-
-        openssl genrsa -out server.pass.key 4096
-        openssl rsa -in server.pass.key -out server.key
-        rm -f server.pass.key
-        openssl req -new -key server.key -out server.csr \
+        openssl genrsa \
+            -out /var/mycodo/ssl_certs/server.pass.key 4096
+        openssl rsa \
+            -in /var/mycodo/ssl_certs/server.pass.key \
+            -out /var/mycodo/ssl_certs/server.key
+        rm -f /var/mycodo/ssl_certs/server.pass.key
+        openssl req -new \
+            -key /var/mycodo/ssl_certs/server.key \
+            -out /var/mycodo/ssl_certs/server.csr \
             -subj "/O=mycodo/OU=mycodo/CN=mycodo"
         openssl x509 -req \
             -days 3653 \
-            -in server.csr \
-            -signkey server.key \
-            -out server.crt
-    ;;
-    'ssl-certs-regenerate')
-        printf "\n#### Regenerating SSL certificates at ${MYCODO_PATH}/mycodo/mycodo_flask/ssl_certs\n"
-        rm -rf ${MYCODO_PATH}/mycodo/mycodo_flask/ssl_certs/*.pem
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh ssl-certs-generate
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh initialize
-        sudo service nginx restart
-        sudo service mycodoflask restart
-    ;;
-    'uninstall-apt-pip')
-        printf "\n#### Uninstalling apt version of pip (if installed)\n"
-        apt-get purge -y python-pip
+            -in /var/mycodo/ssl_certs/server.csr \
+            -signkey /var/mycodo/ssl_certs/server.key \
+            -out /var/mycodo/ssl_certs/server.crt
     ;;
     'update-alembic')
         printf "\n#### Upgrading Mycodo database with alembic (if needed)\n"
-        cd ${MYCODO_PATH}/databases
+        cd ${MYCODO_PATH}/mycodo/database_version
         ${MYCODO_PATH}/env/bin/alembic upgrade head
     ;;
     'update-apt')
         printf "\n\n#### Updating apt repositories\n"
         apt-get update
-    ;;
-    'update-cron')
-        printf "\n#### Updating Mycodo restart monitor crontab entry\n"
-        /bin/bash ${MYCODO_PATH}/install/crontab.sh restart_daemon --remove
-        /bin/bash ${MYCODO_PATH}/install/crontab.sh restart_daemon
     ;;
     'install-bcm2835')
         printf "\n#### Installing bcm2835\n"
@@ -323,39 +241,6 @@ case "${1:-''}" in
             /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh enable-pigpiod-low
         fi
     ;;
-    'update-influxdb')
-        printf "\n#### Ensuring compatible version of influxdb is installed ####\n"
-        INSTALL_ADDRESS="https://dl.influxdata.com/influxdb/releases/"
-        INSTALL_FILE="influxdb_1.7.2_armhf.deb"
-        CORRECT_VERSION="1.7.2-1"
-        CURRENT_VERSION=$(apt-cache policy influxdb | grep 'Installed' | gawk '{print $2}')
-        if [ "${CURRENT_VERSION}" != "${CORRECT_VERSION}" ]; then
-            echo "#### Incorrect InfluxDB version (v${CURRENT_VERSION}) installed. Installing v${CORRECT_VERSION}..."
-            wget --quiet ${INSTALL_ADDRESS}${INSTALL_FILE}
-            dpkg -i ${INSTALL_FILE}
-            rm -rf ${INSTALL_FILE}
-            service influxdb restart
-        else
-            printf "Correct version of InfluxDB currently installed\n"
-        fi
-    ;;
-    'update-influxdb-db-user')
-        printf "\n#### Creating InfluxDB database and user\n"
-        # Attempt to connect to influxdb 3 times, sleeping 60 seconds every fail
-        for _ in {1..3}; do
-            # Check if influxdb has successfully started and be connected to
-            printf "#### Attempting to connect...\n" &&
-            curl -sL -I localhost:8086/ping > /dev/null &&
-            influx -execute "CREATE DATABASE mycodo_db" &&
-            influx -database mycodo_db -execute "CREATE USER mycodo WITH PASSWORD 'mmdu77sj3nIoiajjs'" &&
-            printf "#### Influxdb database and user successfully created\n" &&
-            break ||
-            # Else wait 30 seconds if the influxd port is not accepting connections
-            # Everything below will begin executing if an error occurs before the break
-            printf "#### Could not connect to Influxdb. Waiting 30 seconds then trying again...\n" &&
-            sleep 30
-        done
-    ;;
     'update-logrotate')
         printf "\n#### Installing logrotate scripts\n"
         if [ -e /etc/cron.daily/logrotate ]; then
@@ -365,13 +250,6 @@ case "${1:-''}" in
         cp -f ${MYCODO_PATH}/install/logrotate_mycodo /etc/logrotate.d/mycodo
         printf "#### Mycodo logrotate script installed\n"
     ;;
-    'update-mycodo-startup-script')
-        printf "\n#### Disabling installed mycodo startup script\n"
-        systemctl disable mycodo.service
-        rm -rf /etc/systemd/system/mycodo.service
-        printf "#### Enabling current mycodo startup script\n"
-        systemctl enable ${MYCODO_PATH}/install/mycodo.service
-    ;;
     'update-packages')
         printf "\n#### Installing prerequisite apt packages and update pip\n"
         apt-get update -y
@@ -380,42 +258,14 @@ case "${1:-''}" in
         easy_install pip
         pip install --upgrade pip
     ;;
-    'update-permissions')
-        printf "\n#### Setting permissions\n"
-        chown -LR mycodo.mycodo ${MYCODO_PATH}
-        chown -R mycodo.mycodo /var/log/mycodo
-        chown -R mycodo.mycodo /var/Mycodo-backups
-        chown -R influxdb.influxdb /var/lib/influxdb/data/
-
-        find ${MYCODO_PATH} -type d -exec chmod u+wx,g+wx {} +
-        find ${MYCODO_PATH} -type f -exec chmod u+w,g+w,o+r {} +
-
-        chown root:mycodo ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper
-        chmod 4770 ${MYCODO_PATH}/mycodo/scripts/mycodo_wrapper
-    ;;
     'update-pip3')
         printf "\n#### Updating pip\n"
-        ${MYCODO_PATH}/env/bin/pip3 install --upgrade pip
+        pip install --upgrade pip
     ;;
     'update-pip3-packages')
         printf "\n#### Installing pip requirements from requirements.txt\n"
-        if [ ! -d ${MYCODO_PATH}/env ]; then
-            printf "\n## Error: Virtualenv doesn't exist. Create with $0 setup-virtualenv\n"
-        else
-            ${MYCODO_PATH}/env/bin/pip3 install --upgrade pip setuptools
-            ${MYCODO_PATH}/env/bin/pip3 install --upgrade -r ${MYCODO_PATH}/install/requirements.txt
-        fi
-    ;;
-    'update-swap-size')
-        printf "\n#### Checking if swap size is 100 MB and needs to be changed to 512 MB\n"
-        if grep -q "CONF_SWAPSIZE=100" "/etc/dphys-swapfile"; then
-            printf "#### Swap currently set to 100 MB. Changing to 512 MB and restarting\n"
-            sed -i 's/CONF_SWAPSIZE=100/CONF_SWAPSIZE=512/g' /etc/dphys-swapfile
-            /etc/init.d/dphys-swapfile stop
-            /etc/init.d/dphys-swapfile start
-        else
-            printf "#### Swap not currently set to 100 MB. Not changing.\n"
-        fi
+        pip install --upgrade pip setuptools
+        pip install --upgrade -r ${MYCODO_PATH}/install/requirements.txt
     ;;
     'upgrade')
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_mycodo_release.sh
@@ -428,42 +278,6 @@ case "${1:-''}" in
     ;;
     'upgrade-post')
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_post.sh
-    ;;
-    'web-server-connect')
-        printf "\n#### Connecting to http://localhost (creates Mycodo database if it doesn't exist)\n"
-        # Attempt to connect to localhost 5 times, sleeping 60 seconds every fail
-        for _ in {1..5}; do
-            wget --quiet --no-check-certificate -p http://localhost/ -O /dev/null &&
-            printf "#### Successfully connected to http://localhost\n" &&
-            break ||
-            # Else wait 60 seconds if localhost is not accepting connections
-            # Everything below will begin executing if an error occurs before the break
-            printf "#### Could not connect to http://localhost. Waiting 60 seconds then trying again (up to 5 times)...\n" &&
-            sleep 60 &&
-            printf "#### Trying again...\n"
-        done
-    ;;
-    'web-server-reload')
-        printf "\n#### Restarting nginx\n"
-        service nginx restart
-        sleep 5
-        printf "#### Reloading mycodoflask\n"
-        service mycodoflask reload
-    ;;
-    'web-server-restart')
-        printf "\n#### Restarting nginx\n"
-        service nginx restart
-        sleep 5
-        printf "#### Restarting mycodoflask\n"
-        service mycodoflask restart
-    ;;
-    'web-server-update')
-        printf "\n#### Installing and configuring nginx web server\n"
-        systemctl disable mycodoflask.service
-        rm -rf /etc/systemd/system/mycodoflask.service
-        ln -sf ${MYCODO_PATH}/install/mycodoflask_nginx.conf /etc/nginx/sites-enabled/default
-        systemctl enable nginx
-        systemctl enable ${MYCODO_PATH}/install/mycodoflask.service
     ;;
     *)
         printf "Error: Unrecognized command: ${1}\n${HELP_OPTIONS}"
