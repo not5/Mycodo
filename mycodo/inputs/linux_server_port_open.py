@@ -47,7 +47,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.server_port_open")
+        self.logger = logging.getLogger("mycodo.inputs.linux_server_port_open")
         self._measurement = None
 
         if not testing:

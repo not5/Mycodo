@@ -43,7 +43,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.raspi")
+        self.logger = logging.getLogger("mycodo.inputs.raspberry_pi_cpu_gpu_temp")
 
         if not testing:
             self.logger = logging.getLogger(

@@ -39,7 +39,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.gpio_state")
+        self.logger = logging.getLogger("mycodo.inputs.raspberry_pi_gpio_state")
 
         if not testing:
             import RPi.GPIO as GPIO

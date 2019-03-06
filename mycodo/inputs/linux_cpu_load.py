@@ -51,7 +51,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.raspi_cpuload")
+        self.logger = logging.getLogger("mycodo.inputs.linux_cpu_load")
         self._cpu_load_1m = None
         self._cpu_load_5m = None
         self._cpu_load_15m = None

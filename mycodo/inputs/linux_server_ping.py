@@ -49,7 +49,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.server_ping")
+        self.logger = logging.getLogger("mycodo.inputs.linux_server_ping")
 
         if not testing:
             self.logger = logging.getLogger(

@@ -22,11 +22,11 @@ from mycodo.inputs.htu21d import InputModule as HTU21DSensor
 from mycodo.inputs.k30 import InputModule as K30Sensor
 from mycodo.inputs.linux_command import InputModule as LinuxCommand
 from mycodo.inputs.linux_cpu_load import InputModule as LinuxCPULoad
-from mycodo.inputs.linux_freespace import InputModule as LinuxFreeSpace
+from mycodo.inputs.linux_free_space import InputModule as LinuxFreeSpace
 from mycodo.inputs.mh_z16 import InputModule as MHZ16Sensor
 from mycodo.inputs.mh_z19 import InputModule as MHZ19Sensor
 from mycodo.inputs.mycodo_ram import InputModule as MycodoRam
-from mycodo.inputs.raspberry_pi_cpu_gpu_temperature import InputModule as RaspberryPiCPUTemp
+from mycodo.inputs.raspberry_pi_cpu_gpu_temp import InputModule as RaspberryPiCPUTemp
 from mycodo.inputs.sht1x_7x import InputModule as SHT1x7xSensor
 from mycodo.inputs.sht2x import InputModule as SHT2xSensor
 from mycodo.inputs.signal_pwm import InputModule as SignalPWMInput

@@ -41,7 +41,7 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.raspi_freespace")
+        self.logger = logging.getLogger("mycodo.inputs.linux_free_space")
         self._disk_space = None
 
         if not testing:
