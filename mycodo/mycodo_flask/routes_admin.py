@@ -150,7 +150,6 @@ def install_dependencies(dependencies):
                 pth=INSTALL_DIRECTORY,
                 log=DEPENDENCY_LOG_FILE,
                 dep=each_dep[1])
-        logger.error("TEST00: {}".format(cmd))
         dep = subprocess.Popen(cmd, shell=True)
         dep.wait()
         with open(DEPENDENCY_LOG_FILE, 'a') as f:
@@ -184,8 +183,6 @@ def admin_dependencies_main():
 def admin_dependencies(device):
     """ Display Dependency page """
     form_dependencies = forms_dependencies.Dependencies()
-
-    logger.error("TEST02: {}".format(device))
 
     if device != '0':
         # Only loading a single dependency page
@@ -254,13 +251,10 @@ def admin_dependencies(device):
                             unmet_list[each_dep].append(each_device)
 
     if request.method == 'POST':
-        logger.error("TEST03: {}".format(device))
         if not utils_general.user_has_permission('edit_controllers'):
-            logger.error("TEST04: {}".format(device))
             return redirect(url_for('routes_admin.admin_dependencies', device=device))
 
         if form_dependencies.install.data:
-            logger.error("TEST05: {}".format(device_unmet_dependencies))
             install_in_progress = True
             with open(DEPENDENCY_INIT_FILE, 'w') as f:
                 f.write('1')
@@ -270,8 +264,6 @@ def admin_dependencies(device):
             install_deps.start()
 
         return redirect(url_for('routes_admin.admin_dependencies', device=device))
-
-    logger.error("TEST05: {}".format(install_in_progress))
 
     return render_template('admin/dependencies.html',
                            measurements=parse_input_information(),
