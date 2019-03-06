@@ -240,7 +240,7 @@ def create_user(mycodo_db, role_id, name, password):
     return new_user
 
 
-def add_data(testapp, data_type='input', input_type='RPi'):
+def add_data(testapp, data_type='input', input_type='LINUX_CPU_LOAD'):
     """ Go to the data page and create one or more inputs """
     response = None
     if data_type == 'input':

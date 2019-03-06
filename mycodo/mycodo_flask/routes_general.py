@@ -189,8 +189,8 @@ def gpio_state():
     daemon_control = DaemonControl()
     state = {}
     for each_output in output:
-        if each_output.output_type == 'wired' and each_output.pin and -1 < each_output.pin < 40:
-            from RPi import GPIO
+        if each_output.output_type == 'raspberry_pi_gpio' and each_output.pin and -1 < each_output.pin < 40:
+            import RPi.GPIO as GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
             GPIO.setup(each_output.pin, GPIO.OUT)
@@ -203,7 +203,7 @@ def gpio_state():
                                           'python',
                                           'python_pwm',
                                           'atlas_ezo_pmp'] or
-                (each_output.output_type in ['pwm', 'wireless_rpi_rf'] and
+                (each_output.output_type in ['raspberry_pi_pwm', 'wireless_rpi_rf'] and
                  each_output.pin and
                  -1 < each_output.pin < 40)):
             state[each_output.unique_id] = daemon_control.output_state(each_output.unique_id)
@@ -223,7 +223,7 @@ def gpio_state_unique_id(unique_id):
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
 
-    if output.output_type == 'wired' and output.pin and -1 < output.pin < 40:
+    if output.output_type == 'raspberry_pi_gpio' and output.pin and -1 < output.pin < 40:
         GPIO.setup(output.pin, GPIO.OUT)
         if GPIO.input(output.pin) == output.on_state:
             state = 'on'
@@ -234,7 +234,7 @@ def gpio_state_unique_id(unique_id):
                                  'python',
                                  'python_pwm',
                                  'atlas_ezo_pmp'] or
-            (output.output_type in ['pwm', 'wireless_rpi_rf'] and
+            (output.output_type in ['raspberry_pi_pwm', 'wireless_rpi_rf'] and
              output.pin and -1 < output.pin < 40)):
         state = daemon_control.output_state(output.unique_id)
     else:
@@ -944,7 +944,7 @@ def output_mod(output_id, state, out_type, amount):
     if (state in ['on', 'off'] and out_type == 'sec' and
             (str_is_float(amount) and float(amount) >= 0)):
         return daemon.output_on_off(output_id, state, float(amount))
-    elif (state == 'on' and out_type in ['pwm', 'command_pwm'] and
+    elif (state == 'on' and out_type in ['raspberry_pi_pwm', 'command_pwm'] and
               (str_is_float(amount) and float(amount) >= 0)):
         return daemon.output_on(output_id, duty_cycle=float(amount))
 

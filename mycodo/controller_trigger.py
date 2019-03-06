@@ -411,7 +411,7 @@ class TriggerController(threading.Thread):
         # message based on the edge detection settings.
         elif trigger.trigger_type == 'trigger_edge':
             try:
-                from RPi import GPIO
+                import RPi.GPIO as GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setup(int(input_dev.pin), GPIO.IN)
                 gpio_state = GPIO.input(int(input_dev.pin))

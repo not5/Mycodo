@@ -25,10 +25,10 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'RPiCPULoad',
-    'input_manufacturer': 'Raspberry Pi',
-    'input_name': 'RPi CPU Load',
-    'measurements_name': 'CPULoad',
+    'input_name_unique': 'LINUX_CPU_LOAD',
+    'input_manufacturer': 'Linux',
+    'input_name': 'Linux CPU Load',
+    'measurements_name': 'CPU Load',
     'measurements_dict': measurements_dict,
 
     'options_enabled': [
@@ -37,7 +37,7 @@ INPUT_INFORMATION = {
     ],
     'options_disabled': ['interface'],
 
-    'interfaces': ['RPi'],
+    'interfaces': ['Mycodo'],
     'location': {
         'title': 'Directory',
         'phrase': 'Directory to report the free space of',

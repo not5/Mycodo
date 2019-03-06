@@ -10,7 +10,7 @@ class Output(CRUDMixin, db.Model):
 
     id = db.Column(db.Integer, unique=True, primary_key=True)
     unique_id = db.Column(db.String, nullable=False, unique=True, default=set_uuid)  # ID for influxdb entries
-    output_type = db.Column(db.Text, default='wired')  # Options: 'command', 'wired', 'wireless_rpi_rf', 'pwm'
+    output_type = db.Column(db.Text, default='raspberry_pi_gpio')  # Options: 'command', 'raspberry_pi_gpio', 'wireless_rpi_rf', 'raspberry_pi_pwm'
     interface = db.Column(db.Text, default='')
     location = db.Column(db.Text, default='')
     i2c_bus = db.Column(db.Integer, default=None)
@@ -57,7 +57,7 @@ class Output(CRUDMixin, db.Model):
         :return: Is it safe to manipulate this output?
         :rtype: bool
         """
-        if self.output_type == 'wired' and self.pin:
+        if self.output_type == 'raspberry_pi_gpio' and self.pin:
             self.setup_pin()
             return True
 
@@ -67,7 +67,7 @@ class Output(CRUDMixin, db.Model):
 
         :rtype: None
         """
-        from RPi import GPIO
+        import RPi.GPIO as GPIO
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(True)
         GPIO.setup(self.pin, GPIO.OUT)
@@ -77,6 +77,6 @@ class Output(CRUDMixin, db.Model):
         :return: Whether the output is currently "ON"
         :rtype: bool
         """
-        from RPi import GPIO
-        if self.output_type == 'wired' and self._is_setup():
+        import RPi.GPIO as GPIO
+        if self.output_type == 'raspberry_pi_gpio' and self._is_setup():
             return self.on_state == GPIO.input(self.pin)

@@ -93,7 +93,7 @@ def return_output_usage(table_misc, table_outputs):
     output_stats = OrderedDict()
 
     for each_output in table_outputs:
-        if each_output.output_type != 'pwm':
+        if each_output.output_type != 'raspberry_pi_pwm':
             output_stats[each_output.unique_id] = None
 
     # Calculate output on duration for different time periods
@@ -103,7 +103,7 @@ def return_output_usage(table_misc, table_outputs):
     output_stats['total_cost'] = dict.fromkeys(['1d', '1w', '1m', '1m_date', '1y'], 0)
 
     for each_output in table_outputs:
-        if each_output.output_type != 'pwm':
+        if each_output.output_type != 'raspberry_pi_pwm':
             past_1d_hours = output_sec_on(each_output.unique_id, 86400) / 3600
             past_1w_hours = output_sec_on(each_output.unique_id, 604800) / 3600
             past_1m_hours = output_sec_on(each_output.unique_id, 2629743) / 3600

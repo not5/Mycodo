@@ -148,7 +148,7 @@ class max31856(object):
     """
 
     def __init__(self, logger, csPin=8, misoPin=9, mosiPin=10, clkPin=11):
-        from RPi import GPIO
+        import RPi.GPIO as GPIO
         self.logger = logger
         self.GPIO = GPIO
         self.csPin = csPin

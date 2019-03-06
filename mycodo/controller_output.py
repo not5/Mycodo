@@ -244,7 +244,7 @@ class OutputController(threading.Thread):
 
             # Check if pin is valid
             if (self.output_type[output_id] in [
-                    'pwm', 'wired', 'wireless_rpi_rf'] and
+                    'raspberry_pi_pwm', 'raspberry_pi_gpio', 'wireless_rpi_rf'] and
                     self.output_pin[output_id] is None):
                 self.logger.warning(
                     "Invalid pin for output {id} ({name}): {pin}.".format(
@@ -256,7 +256,7 @@ class OutputController(threading.Thread):
             # Check if max amperage will be exceeded
             if self.output_type[output_id] in ['command',
                                                'python',
-                                               'wired',
+                                               'raspberry_pi_gpio',
                                                'wireless_rpi_rf']:
                 current_amps = self.current_amp_load()
                 max_amps = db_retrieve_table_daemon(Misc, entry='first').max_amps
@@ -294,7 +294,7 @@ class OutputController(threading.Thread):
             # Turn output on for a duration
             if (self.output_type[output_id] in ['command',
                                                 'python',
-                                                'wired',
+                                                'raspberry_pi_gpio',
                                                 'wireless_rpi_rf'] and
                     duration != 0):
                 time_now = datetime.datetime.now()
@@ -382,7 +382,7 @@ class OutputController(threading.Thread):
             # Just turn output on
             elif self.output_type[output_id] in ['command',
                                                  'python',
-                                                 'wired',
+                                                 'raspberry_pi_gpio',
                                                  'wireless_rpi_rf']:
                 # Don't turn on if already on, except if it's a radio frequency output
                 if self.is_on(output_id) and self.output_type[output_id] != 'wireless_rpi_rf':
@@ -433,7 +433,7 @@ class OutputController(threading.Thread):
                 write_db.start()
 
             # PWM output
-            elif self.output_type[output_id] == 'pwm':
+            elif self.output_type[output_id] == 'raspberry_pi_pwm':
                 if self.pwm_hertz[output_id] <= 0:
                     self.logger.warning("PWM Hertz must be a positive value")
                     return 1
@@ -473,8 +473,8 @@ class OutputController(threading.Thread):
                                   "set up properly.".format(id=output_id))
                 return
 
-            if (self.output_type[output_id] in ['pwm',
-                                                'wired',
+            if (self.output_type[output_id] in ['raspberry_pi_pwm',
+                                                'raspberry_pi_gpio',
                                                 'wireless_rpi_rf'] and
                     self.output_pin[output_id] is None):
                 return
@@ -486,7 +486,7 @@ class OutputController(threading.Thread):
                     name=self.output_name[output_id]))
 
             # Write PWM duty cycle to database
-            if self.output_type[output_id] in ['pwm',
+            if self.output_type[output_id] in ['raspberry_pi_pwm',
                                                'command_pwm',
                                                'python_pwm']:
                 if self.pwm_invert_signal[output_id]:
@@ -555,8 +555,8 @@ class OutputController(threading.Thread):
 
     def output_switch(self, output_id, state, duty_cycle=None):
         """Conduct the actual execution of GPIO state change, PWM, or command execution"""
-        if self.output_type[output_id] == 'wired':
-            from RPi import GPIO
+        if self.output_type[output_id] == 'raspberry_pi_gpio':
+            import RPi.GPIO as GPIO
             if state == 'on':
                 GPIO.output(self.output_pin[output_id],
                             self.output_on_state[output_id])
@@ -607,7 +607,7 @@ class OutputController(threading.Thread):
                         stat=cmd_status,
                         ret=cmd_return))
 
-        elif self.output_type[output_id] == 'pwm':
+        elif self.output_type[output_id] == 'raspberry_pi_pwm':
             if state == 'on':
                 if self.pwm_library[output_id] == 'pigpio_hardware':
                     self.pwm_output[output_id].hardware_PWM(
@@ -906,7 +906,7 @@ output_id = '{}'
         """Turn all outputs on that are set to be on at startup"""
         for each_output_id in self.output_id:
             if (self.output_state_at_startup[each_output_id] is None or
-                    self.output_type[each_output_id] == 'pwm'):
+                    self.output_type[each_output_id] == 'raspberry_pi_pwm'):
                 pass  # Don't turn on or off
             elif self.output_state_at_startup[each_output_id]:
                 self.output_on_off(
@@ -921,8 +921,8 @@ output_id = '{}'
 
     def cleanup_gpio(self):
         for output_id, each_output_pin in self.output_pin.items():
-            if self.output_type[output_id] == 'wired':
-                from RPi import GPIO
+            if self.output_type[output_id] == 'raspberry_pi_gpio':
+                import RPi.GPIO as GPIO
                 GPIO.cleanup(each_output_pin)
 
     def add_mod_output(self, output_id):
@@ -1120,9 +1120,9 @@ output_id = '{}'
 
         :rtype: None
         """
-        if self.output_type[output_id] == 'wired':
+        if self.output_type[output_id] == 'raspberry_pi_gpio':
             try:
-                from RPi import GPIO
+                import RPi.GPIO as GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setwarnings(True)
                 GPIO.setup(self.output_pin[output_id], GPIO.OUT)
@@ -1150,7 +1150,7 @@ output_id = '{}'
                 protocol=int(self.output_protocol[output_id]),
                 pulse_length=int(self.output_pulse_length[output_id]))
 
-        elif self.output_type[output_id] == 'pwm':
+        elif self.output_type[output_id] == 'raspberry_pi_pwm':
             try:
                 import pigpio
                 self.pwm_output[output_id] = pigpio.pi()
@@ -1184,8 +1184,8 @@ output_id = '{}'
         :rtype: str
         """
         if output_id in self.output_type:
-            if self.output_type[output_id] == 'wired':
-                from RPi import GPIO
+            if self.output_type[output_id] == 'raspberry_pi_gpio':
+                import RPi.GPIO as GPIO
                 if (self.output_pin[output_id] is not None and
                         self.output_on_state[output_id] == GPIO.input(self.output_pin[output_id])):
                     return 'on'
@@ -1195,7 +1195,7 @@ output_id = '{}'
                 if (self.output_time_turned_on[output_id] or
                         self.output_on_until[output_id] > datetime.datetime.now()):
                     return 'on'
-            elif self.output_type[output_id] in ['pwm',
+            elif self.output_type[output_id] in ['raspberry_pi_pwm',
                                                  'command_pwm',
                                                  'python_pwm']:
                 if output_id in self.pwm_state and self.pwm_state[output_id]:
@@ -1210,9 +1210,9 @@ output_id = '{}'
         :return: Whether the output is currently "ON"
         :rtype: bool
         """
-        if (self.output_type[output_id] == 'wired' and
+        if (self.output_type[output_id] == 'raspberry_pi_gpio' and
                 self._is_setup(output_id)):
-            from RPi import GPIO
+            import RPi.GPIO as GPIO
             return self.output_on_state[output_id] == GPIO.input(self.output_pin[output_id])
         elif self.output_type[output_id] in ['command',
                                              'command_pwm',
@@ -1221,7 +1221,7 @@ output_id = '{}'
                                              'wireless_rpi_rf']:
             if self.output_time_turned_on[output_id] or self.output_on_duration[output_id]:
                 return True
-        elif self.output_type[output_id] == 'pwm':
+        elif self.output_type[output_id] == 'raspberry_pi_pwm':
             if self.pwm_time_turned_on[output_id]:
                 return True
         return False
@@ -1237,9 +1237,9 @@ output_id = '{}'
         :return: Is it safe to manipulate this output?
         :rtype: bool
         """
-        if (self.output_type[output_id] == 'wired' and
+        if (self.output_type[output_id] == 'raspberry_pi_gpio' and
                 self.output_pin[output_id]):
-            from RPi import GPIO
+            import RPi.GPIO as GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(self.output_pin[output_id], GPIO.OUT)
             return True
@@ -1250,7 +1250,7 @@ output_id = '{}'
                                              'wireless_rpi_rf',
                                              'atlas_ezo_pmp']:
             return True
-        elif self.output_type[output_id] == 'pwm':
+        elif self.output_type[output_id] == 'raspberry_pi_pwm':
             if output_id in self.pwm_output:
                 return True
         return False

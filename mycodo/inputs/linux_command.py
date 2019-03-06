@@ -17,8 +17,8 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'LinuxCommand',
-    'input_manufacturer': 'Mycodo',
+    'input_name_unique': 'LINUX_COMMAND',
+    'input_manufacturer': 'Linux',
     'input_name': 'Linux Command',
     'measurements_name': 'Return Value',
     'measurements_dict': measurements_dict,

@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
-import uuid
-
 import os
 import sqlalchemy
+import uuid
 from flask import Markup
 from flask import flash
 from flask import url_for
@@ -20,6 +19,7 @@ from mycodo.mycodo_flask.utils.utils_function import check_actions
 from mycodo.mycodo_flask.utils.utils_general import controller_activate_deactivate
 from mycodo.mycodo_flask.utils.utils_general import delete_entry_with_id
 from mycodo.mycodo_flask.utils.utils_general import flash_success_errors
+from mycodo.mycodo_flask.utils.utils_general import return_dependencies
 from mycodo.utils.system_pi import cmd_output
 from mycodo.utils.system_pi import csv_to_list_of_str
 from mycodo.utils.system_pi import list_to_csv
@@ -193,6 +193,16 @@ def conditional_condition_add(form):
         controller='{} {}'.format(TRANSLATIONS['conditional']['title'],
                                   gettext("Condition")))
 
+    dep_unmet, _ = return_dependencies(form.condition_type.data)
+    if dep_unmet:
+        list_unmet_deps = []
+        for each_dep in dep_unmet:
+            list_unmet_deps.append(each_dep[0])
+        error.append(
+            "The {dev} device you're trying to add has unmet dependencies: "
+            "{dep}".format(dev=form.condition_type.data,
+                           dep=', '.join(list_unmet_deps)))
+
     cond = Conditional.query.filter(
         Conditional.unique_id == form.function_id.data).first()
     if cond.is_activated:
@@ -219,6 +229,9 @@ def conditional_condition_add(form):
         error.append(except_msg)
 
     flash_success_errors(error, action, url_for('routes_page.page_function'))
+
+    if dep_unmet:
+        return 1
 
 
 def conditional_condition_mod(form):

@@ -74,6 +74,21 @@ from mycodo.utils.tools import next_schedule
 
 logger = logging.getLogger("mycodo")
 
+fh = logging.FileHandler(DAEMON_LOG_FILE, 'a')
+
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+
+formatter = logging.Formatter(
+    "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+fh.setFormatter(formatter)
+ch.setFormatter(formatter)
+
+logger.addHandler(fh)
+logger.addHandler(ch)
+
+logger.propagate = False
+
 MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 
 
@@ -1257,7 +1272,7 @@ class MycodoDaemon:
     def start_daemon(self):
         """Start communication and daemon threads"""
         try:
-            self.logger.error("Starting rpyc server")
+            self.logger.debug("Starting rpyc server")
             ct = ComThread(self.mycodo)
             ct.daemon = True
             # Start communication thread for receiving commands from mycodo_client.py
@@ -1288,21 +1303,12 @@ if __name__ == '__main__':
     args = parse_args()
 
     try:
-        # Set up logger
-        fh = logging.FileHandler(DAEMON_LOG_FILE, 'a')
-
         if args.debug:
             logger.setLevel(logging.DEBUG)
             fh.setLevel(logging.DEBUG)
         else:
             logger.setLevel(logging.INFO)
             fh.setLevel(logging.INFO)
-
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-        keep_fds = [fh.stream.fileno()]
 
         daemon_controller = DaemonController()
 

@@ -54,7 +54,7 @@ def lcd_add(form):
         new_lcd_data = LCDData()
 
         try:
-            from RPi import GPIO
+            import RPi.GPIO as GPIO
             if GPIO.RPI_REVISION == 2 or GPIO.RPI_REVISION == 3:
                 new_lcd.i2c_bus = 1
             else:

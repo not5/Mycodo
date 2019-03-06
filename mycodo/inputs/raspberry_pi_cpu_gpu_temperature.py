@@ -22,7 +22,7 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'RPi',
+    'input_name_unique': 'RPI_CPU_GPU_TEMPERATURE',
     'input_manufacturer': 'Raspberry Pi',
     'input_name': 'RPi CPU/GPU Temperature',
     'measurements_name': 'Temperature',

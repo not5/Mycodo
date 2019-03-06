@@ -677,7 +677,7 @@ class PIDController(threading.Thread):
 
                 if self.control_variable > 0:
                     # Determine if the output should be PWM or a duration
-                    if self.raise_output_type in ['pwm',
+                    if self.raise_output_type in ['raspberry_pi_pwm',
                                                   'command_pwm',
                                                   'python_pwm']:
                         self.raise_duty_cycle = float("{0:.1f}".format(
@@ -709,7 +709,7 @@ class PIDController(threading.Thread):
 
                     elif self.raise_output_type in ['command',
                                                     'python',
-                                                    'wired',
+                                                    'raspberry_pi_gpio',
                                                     'wireless_rpi_rf']:
                         # Ensure the output on duration doesn't exceed the set maximum
                         if (self.raise_max_duration and
@@ -737,7 +737,7 @@ class PIDController(threading.Thread):
                             self.control_variable)
 
                 else:
-                    if self.raise_output_type in ['pwm',
+                    if self.raise_output_type in ['raspberry_pi_pwm',
                                                   'command_pwm',
                                                   'python_pwm']:
                         self.control.output_on(self.raise_output_id,
@@ -751,7 +751,7 @@ class PIDController(threading.Thread):
 
                 if self.control_variable < 0:
                     # Determine if the output should be PWM or a duration
-                    if self.lower_output_type in ['pwm',
+                    if self.lower_output_type in ['raspberry_pi_pwm',
                                                   'command_pwm',
                                                   'python_pwm']:
                         self.lower_duty_cycle = float("{0:.1f}".format(
@@ -791,7 +791,7 @@ class PIDController(threading.Thread):
 
                     elif self.lower_output_type in ['command',
                                                     'python',
-                                                    'wired',
+                                                    'raspberry_pi_gpio',
                                                     'wireless_rpi_rf']:
                         # Ensure the output on duration doesn't exceed the set maximum
                         if (self.lower_max_duration and
@@ -826,7 +826,7 @@ class PIDController(threading.Thread):
                             stored_control_variable)
 
                 else:
-                    if self.lower_output_type in ['pwm',
+                    if self.lower_output_type in ['raspberry_pi_pwm',
                                                   'command_pwm',
                                                   'python_pwm']:
                         self.control.output_on(self.lower_output_id,

@@ -1,13 +1,13 @@
 # coding=utf-8
 """ collection of Admin endpoints """
 import datetime
+import flask_login
 import logging
+import os
 import subprocess
 import threading
+import time
 from collections import OrderedDict
-
-import flask_login
-import os
 from flask import Blueprint
 from flask import flash
 from flask import make_response
@@ -139,55 +139,43 @@ def admin_backup():
 
 
 def install_dependencies(dependencies):
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    time.sleep(1)
     dependency_list = []
     for each_dependency in dependencies:
         if each_dependency[0] not in dependency_list:
             dependency_list.append(each_dependency[0])
     with open(DEPENDENCY_LOG_FILE, 'a') as f:
         f.write("\n[{time}] Dependency installation beginning. Installing: {deps}\n\n".format(
-            time=now, deps=",".join(dependency_list)))
+            time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            deps=",".join(dependency_list)))
 
     for each_dep in dependencies:
-        cmd = "{pth}/mycodo/scripts/mycodo_wrapper install_dependency {dep}" \
+        cmd = "{pth}/scripts/dependencies.sh {dep}" \
               " | ts '[%Y-%m-%d %H:%M:%S]' >> {log} 2>&1".format(
-            pth=INSTALL_DIRECTORY,
-            log=DEPENDENCY_LOG_FILE,
-            dep=each_dep[1])
+                pth=INSTALL_DIRECTORY,
+                log=DEPENDENCY_LOG_FILE,
+                dep=each_dep[1])
+        logger.error("TEST00: {}".format(cmd))
         dep = subprocess.Popen(cmd, shell=True)
         dep.wait()
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with open(DEPENDENCY_LOG_FILE, 'a') as f:
             f.write("\n[{time}] End install of {dep}\n\n".format(
-                time=now, dep=each_dep[0]))
-
-    cmd = "{pth}/mycodo/scripts/mycodo_wrapper update_permissions" \
-          " | ts '[%Y-%m-%d %H:%M:%S]' >> {log}  2>&1".format(
-        pth=INSTALL_DIRECTORY,
-        log=DEPENDENCY_LOG_FILE)
-    init = subprocess.Popen(cmd, shell=True)
-    init.wait()
-
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    with open(DEPENDENCY_LOG_FILE, 'a') as f:
-        f.write("\n[{time}] #### All Dependencies have been installed.\n\n".format(time=now))
+                time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                dep=each_dep[0]))
 
     with open(DEPENDENCY_INIT_FILE, 'w') as f:
         f.write('0')
 
-    cmd = "{pth}/mycodo/scripts/mycodo_wrapper daemon_restart" \
+    cmd = "python {pth}/mycodo_client.py -t" \
           " | ts '[%Y-%m-%d %H:%M:%S]' >> {log}  2>&1".format(
-        pth=INSTALL_DIRECTORY,
-        log=DEPENDENCY_LOG_FILE)
+            pth=INSTALL_DIRECTORY,
+            log=DEPENDENCY_LOG_FILE)
     init = subprocess.Popen(cmd, shell=True)
     init.wait()
 
-    cmd = "{pth}/mycodo/scripts/mycodo_wrapper frontend_restart" \
-          " | ts '[%Y-%m-%d %H:%M:%S]' >> {log}  2>&1".format(
-        pth=INSTALL_DIRECTORY,
-        log=DEPENDENCY_LOG_FILE)
-    init = subprocess.Popen(cmd, shell=True)
-    init.wait()
+    with open(DEPENDENCY_LOG_FILE, 'a') as f:
+        f.write("\n\n[{time}] #### All Dependencies have been installed.\n\n".format(
+            time=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
 
 
 @blueprint.route('/admin/dependencies', methods=('GET', 'POST'))
@@ -201,6 +189,8 @@ def admin_dependencies_main():
 def admin_dependencies(device):
     """ Display Dependency page """
     form_dependencies = forms_dependencies.Dependencies()
+
+    logger.error("TEST02: {}".format(device))
 
     if device != '0':
         # Only loading a single dependency page
@@ -279,10 +269,13 @@ def admin_dependencies(device):
                             unmet_list[each_dep].append(each_device)
 
     if request.method == 'POST':
+        logger.error("TEST03: {}".format(device))
         if not utils_general.user_has_permission('edit_controllers'):
+            logger.error("TEST04: {}".format(device))
             return redirect(url_for('routes_admin.admin_dependencies', device=device))
 
         if form_dependencies.install.data:
+            logger.error("TEST05: {}".format(device_unmet_dependencies))
             install_in_progress = True
             with open(DEPENDENCY_INIT_FILE, 'w') as f:
                 f.write('1')
@@ -292,6 +285,8 @@ def admin_dependencies(device):
             install_deps.start()
 
         return redirect(url_for('routes_admin.admin_dependencies', device=device))
+
+    logger.error("TEST05: {}".format(install_in_progress))
 
     return render_template('admin/dependencies.html',
                            measurements=parse_input_information(),

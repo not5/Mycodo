@@ -12,6 +12,12 @@ before_install:
 
 install:
   - docker-compose up -d
+  # Install testing modules
+  - docker exec -ti flask /usr/local/bin/pip install --upgrade testfixtures==6.4.1
+  - docker exec -ti flask /usr/local/bin/pip install --upgrade mock==2.0.0
+  - docker exec -ti flask /usr/local/bin/pip install --upgrade pytest==4.0.2
+  - docker exec -ti flask /usr/local/bin/pip install --upgrade factory_boy==2.11.1
+  - docker exec -ti flask /usr/local/bin/pip install --upgrade webtest==2.0.32
 
 script:
   - docker exec -it flask pytest /home/mycodo/mycodo/tests/software_tests

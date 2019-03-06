@@ -10,7 +10,7 @@ import os
 import sys
 import time
 import Adafruit_ADS1x15
-from RPi import GPIO
+import RPi.GPIO as GPIO
 
 if not os.geteuid() == 0:
     print("Error: Script must be executed as root.\n")

@@ -15,9 +15,10 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name': 'Mycodo RAM',
+
     'input_name_unique': 'MYCODO_RAM',
     'input_manufacturer': 'Mycodo',
+    'input_name': 'Mycodo RAM',
     'measurements_name': 'Size RAM in Use',
     'measurements_dict': measurements_dict,
 

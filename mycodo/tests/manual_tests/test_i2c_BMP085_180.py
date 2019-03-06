@@ -26,7 +26,7 @@ import os
 import sys
 
 import Adafruit_BMP.BMP085 as BMP085
-from RPi import GPIO
+import RPi.GPIO as GPIO
 
 if not os.geteuid() == 0:
     print("Error: Script must be executed as root.\n")

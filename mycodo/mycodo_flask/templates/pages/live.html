@@ -95,7 +95,7 @@
       <div class="row">
         <div class="col-12 col-sm-6 text-left">
           {{each_input.name}} (Input {{each_input.unique_id[:8]}})
-          {%- if each_input.device != 'EDGE' -%}
+          {%- if each_input.device != 'RPI_EDGE' -%}
             <div>
                {{_('Input (%(type)s), %(sec)s second interval', type=each_input.device, sec=each_input.period)}}
             </div>

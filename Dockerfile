@@ -20,7 +20,8 @@ RUN touch /var/mycodo/log/mycodorestore.log
 RUN touch /var/mycodo/log/login.log
 
 RUN apt-get update
-RUN apt-get install -y fswebcam gawk gcc libffi-dev libi2c-dev logrotate moreutils sqlite3 wget
+# RUN apt-get install -y fswebcam gawk gcc libffi-dev libi2c-dev logrotate moreutils wget
+RUN apt-get install -y gcc moreutils wget
 
 RUN pip install --no-cache-dir -r /home/mycodo/requirements.txt
 

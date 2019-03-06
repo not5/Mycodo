@@ -42,335 +42,6 @@ LANGUAGES = {
     'zh': '中文 (Chinese)'
 }
 
-# LCD info
-LCD_INFO = {
-    '16x2_generic': {
-        'name': '16x2 LCD',
-        'dependencies_module': []
-    },
-    '20x4_generic': {
-        'name': '20x4 LCD',
-        'dependencies_module': []
-    },
-    '128x32_pioled': {
-        'name': '128x32 OLED',
-        'dependencies_module': [
-            ('apt', 'libjpeg-dev', 'libjpeg-dev'),
-            ('pip-pypi', 'PIL', 'Pillow'),
-            ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO'),
-            ('pip-pypi', 'Adafruit_PureIO', 'Adafruit_PureIO'),
-            ('pip-git', 'Adafruit_SSD1306', 'git://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=adafruit-ssd1306')
-        ]
-    },
-    '128x64_pioled': {
-        'name': '128x64 OLED',
-        'dependencies_module': [
-            ('apt', 'libjpeg-dev', 'libjpeg-dev'),
-            ('pip-pypi', 'PIL', 'Pillow'),
-            ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO'),
-            ('pip-pypi', 'Adafruit_PureIO', 'Adafruit_PureIO'),
-            ('pip-git', 'Adafruit_SSD1306', 'git://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=adafruit-ssd1306')
-        ]
-    }
-}
-
-# Math form dropdown
-LCDS = [
-    ('16x2_generic', LCD_INFO['16x2_generic']['name']),
-    ('20x4_generic', LCD_INFO['20x4_generic']['name']),
-    ('128x32_pioled', LCD_INFO['128x32_pioled']['name']),
-    ('128x64_pioled', LCD_INFO['128x64_pioled']['name'])
-]
-
-# Math info
-MATH_INFO = {
-    'average': {
-        'name': lazy_gettext('Average (Multiple Inputs)'),
-        'dependencies_module': [],
-        'enable_measurements_select': True,
-        'measure': {}
-    },
-    'average_single': {
-        'name': lazy_gettext('Average (Single Input)'),
-        'dependencies_module': [],
-        'enable_measurements_select': False,
-        'enable_measurements_convert': True,
-        'measure': {}
-    },
-    'difference': {
-        'name': lazy_gettext('Difference'),
-        'dependencies_module': [],
-        'enable_measurements_select': True,
-        'measure': {}
-    },
-    'equation': {
-        'name': lazy_gettext('Equation'),
-        'dependencies_module': [],
-        'enable_measurements_select': True,
-        'measure': {}
-    },
-    'humidity': {
-        'name': lazy_gettext('Humidity (Wet/Dry-Bulb)'),
-        'dependencies_module': [],
-        'enable_measurements_convert': True,
-        'measure': {
-            0: {
-                'measurement': 'humidity',
-                'unit': 'percent'
-            },
-            1: {
-                'measurement': 'humidity_ratio',
-                'unit': 'kg_kg'
-            },
-            2: {
-                'measurement': 'specific_enthalpy',
-                'unit': 'kJ_kg'
-            },
-            3: {
-                'measurement': 'specific_volume',
-                'unit': 'm3_kg'
-            }
-        }
-    },
-    'redundancy': {
-        'name': lazy_gettext('Redundancy'),
-        'dependencies_module': [],
-        'enable_measurements_select': True,
-        'measure': {}
-    },
-    'statistics': {
-        'name': lazy_gettext('Statistics'),
-        'dependencies_module': [],
-        'enable_single_measurement_select': True,
-        'measure': {
-            0: {
-                'measurement': '',
-                'unit': '',
-                'name': 'Mean'
-            },
-            1: {
-                'measurement': '',
-                'unit': '',
-                'name': 'Median'
-            },
-            2: {
-                'measurement': '',
-                'unit': '',
-                'name': 'Minimum'
-            },
-            3: {
-                'measurement': '',
-                'unit': '',
-                'name': 'Maximum'
-            },
-            4: {
-                'measurement': '',
-                'unit': '',
-                'name': 'Standard Deviation'
-            },
-            5: {
-                'measurement': '',
-                'unit': '',
-                'name': 'St. Dev. of Mean (upper)'
-            },
-            6: {
-                'measurement': '',
-                'unit': '',
-                'name': 'St. Dev. of Mean (lower)'
-            }
-        }
-    },
-    'verification': {
-        'name': lazy_gettext('Verification'),
-        'dependencies_module': [],
-        'enable_measurements_select': True,
-        'measure': {}
-    },
-    'vapor_pressure_deficit': {
-        'name': lazy_gettext('Vapor Pressure Deficit'),
-        'dependencies_module': [],
-        'enable_measurements_select': False,
-        'measure': {
-            0: {
-                'measurement': 'vapor_pressure_deficit',
-                'unit': 'Pa'
-            }
-        }
-    }
-}
-
-# Math form dropdown
-MATHS = [
-    ('average', MATH_INFO['average']['name']),
-    ('average_single', MATH_INFO['average_single']['name']),
-    ('difference', MATH_INFO['difference']['name']),
-    ('equation', MATH_INFO['equation']['name']),
-    ('redundancy', MATH_INFO['redundancy']['name']),
-    ('verification', MATH_INFO['verification']['name']),
-    ('statistics', MATH_INFO['statistics']['name']),
-    ('humidity', MATH_INFO['humidity']['name']),
-    ('vapor_pressure_deficit', MATH_INFO['vapor_pressure_deficit']['name'])
-]
-
-# Method info
-METHOD_INFO = {
-    'Date': {
-        'name': lazy_gettext('Time/Date'),
-        'dependencies_module': []
-    },
-    'Duration': {
-        'name': lazy_gettext('Duration'),
-        'dependencies_module': []
-    },
-    'Daily': {
-        'name': lazy_gettext('Daily (Time-Based)'),
-        'dependencies_module': []
-    },
-    'DailySine': {
-        'name': lazy_gettext('Daily (Sine Wave)'),
-        'dependencies_module': []
-    },
-    'DailyBezier': {
-        'name': lazy_gettext('Daily (Bezier Curve)'),
-        'dependencies_module': [
-            ('apt', 'python3-numpy', 'python3-numpy')
-        ]
-    }
-}
-
-# Method form dropdown
-METHODS = [
-    ('Date', METHOD_INFO['Date']['name']),
-    ('Duration', METHOD_INFO['Duration']['name']),
-    ('Daily', METHOD_INFO['Daily']['name']),
-    ('DailySine', METHOD_INFO['DailySine']['name']),
-    ('DailyBezier', METHOD_INFO['DailyBezier']['name'])
-]
-
-# Outputs
-OUTPUT_INFO = {
-    'wired': {
-        'name': lazy_gettext('On/Off (GPIO)'),
-        'dependencies_module': [
-            ('pip-pypi', 'RPi', 'RPi.GPIO')
-        ],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'pwm': {
-        'name': lazy_gettext('PWM (GPIO)'),
-        'dependencies_module': [
-            ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpio')
-        ],
-        'measure': {
-            'duty_cycle': {'percent': {0: {}}}
-        }},
-    'wireless_rpi_rf': {
-        'name': lazy_gettext('Wireless 315/433MHz LPD/SRD (rpi-rf)'),
-        'dependencies_module': [
-            ('pip-pypi', 'rpi_rf', 'rpi_rf')
-        ],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'command': {
-        'name': lazy_gettext('On/Off (Linux Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'command_pwm': {
-        'name': lazy_gettext('PWM (Linux Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duty_cycle': {'percent': {0: {}}}
-        }},
-    'python': {
-        'name': lazy_gettext('On/Off (Python Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'python_pwm': {
-        'name': lazy_gettext('PWM (Python Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duty_cycle': {'percent': {0: {}}}
-        }},
-    'atlas_ezo_pmp': {
-        'name': lazy_gettext('Atlas EZO-PMP'),
-        'dependencies_module': [],
-        'measure': {
-            'volume': {'ml': {0: {}}}
-        }}
-}
-
-# Output form dropdown
-OUTPUTS = [
-    ('wired,GPIO', OUTPUT_INFO['wired']['name']),
-    ('pwm,GPIO', OUTPUT_INFO['pwm']['name']),
-    ('command,GPIO', OUTPUT_INFO['command']['name']),
-    ('command_pwm,GPIO', OUTPUT_INFO['command_pwm']['name']),
-    ('python,GPIO', OUTPUT_INFO['python']['name']),
-    ('python_pwm,GPIO', OUTPUT_INFO['python_pwm']['name']),
-    ('wireless_rpi_rf,GPIO', OUTPUT_INFO['wireless_rpi_rf']['name']),
-    ('atlas_ezo_pmp,I2C', '{} ({})'.format(
-        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('I2C'))),
-    ('atlas_ezo_pmp,UART', '{} ({})'.format(
-        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('UART')))
-]
-
-PID_INFO = {
-    'measure': {
-        0: {
-            'measurement': '',
-            'unit': '',
-            'name': '{}'.format(TRANSLATIONS['setpoint']['title']),
-            'measurement_type': 'setpoint'
-        },
-        1: {
-            'measurement': '',
-            'unit': '',
-            'name': '{} (Band Min)'.format(TRANSLATIONS['setpoint']['title']),
-            'measurement_type': 'setpoint'
-        },
-        2: {
-            'measurement': '',
-            'unit': '',
-            'name': '{} (Band Max)'.format(TRANSLATIONS['setpoint']['title']),
-            'measurement_type': 'setpoint'
-        },
-        3: {
-            'measurement': 'pid_p_value',
-            'unit': 'pid_value',
-            'name': 'P-value'
-        },
-        4: {
-            'measurement': 'pid_i_value',
-            'unit': 'pid_value',
-            'name': 'I-value'
-        },
-        5: {
-            'measurement': 'pid_d_value',
-            'unit': 'pid_value',
-            'name': 'D-value'
-        },
-        6: {
-            'measurement': 'duration_time',
-            'unit': 's',
-            'name': '{} ({})'.format(
-                TRANSLATIONS['output']['title'],
-                TRANSLATIONS['duration']['title'])
-        },
-        7: {
-            'measurement': 'duty_cycle',
-            'unit': 'percent',
-            'name': '{} ({})'.format(
-                TRANSLATIONS['output']['title'],
-                TRANSLATIONS['duty_cycle']['title'])
-        }
-    }
-}
 
 # Calibration
 CALIBRATION_INFO = {
@@ -383,11 +54,25 @@ CALIBRATION_INFO = {
 }
 
 # Conditional controllers
+CONDITIONAL_CONDITION_INFO = {
+    'gpio_state': {
+        'name': '{}'.format(lazy_gettext('GPIO State')),
+        'dependencies_module': [
+            ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
+        ]
+    },
+    'measurement': {
+        'name': '{}'.format(TRANSLATIONS['measurement']['title']),
+        'dependencies_module': []
+    }
+}
+
 CONDITIONAL_CONDITIONS = [
-    ('measurement', TRANSLATIONS['measurement']['title']),
-    ('gpio_state', lazy_gettext('GPIO State'))
+    ('measurement', CONDITIONAL_CONDITION_INFO['measurement']['name']),
+    ('gpio_state', CONDITIONAL_CONDITION_INFO['gpio_state']['name'])
 ]
 
+# Functions
 FUNCTION_INFO = {
     'function_spacer': {
         'name': '{}: {}'.format(
@@ -417,7 +102,9 @@ FUNCTION_INFO = {
         'name': '{}: {}'.format(
             TRANSLATIONS['trigger']['title'],
             TRANSLATIONS['edge']['title']),
-        'dependencies_module': []
+        'dependencies_module': [
+            ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
+        ]
     },
     'trigger_output': {
         'name': '{}: {} ({}/{})'.format(
@@ -633,6 +320,336 @@ FUNCTION_ACTIONS = [
     ('method_pid', FUNCTION_ACTION_INFO['method_pid']['name']),
     ('setpoint_pid', FUNCTION_ACTION_INFO['setpoint_pid']['name']),
 ]
+
+# LCD info
+LCD_INFO = {
+    '16x2_generic': {
+        'name': '16x2 LCD',
+        'dependencies_module': []
+    },
+    '20x4_generic': {
+        'name': '20x4 LCD',
+        'dependencies_module': []
+    },
+    '128x32_pioled': {
+        'name': '128x32 OLED',
+        'dependencies_module': [
+            ('apt', 'libjpeg-dev', 'libjpeg-dev'),
+            ('pip-pypi', 'PIL', 'Pillow'),
+            ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO'),
+            ('pip-pypi', 'Adafruit_PureIO', 'Adafruit_PureIO'),
+            ('pip-git', 'Adafruit_SSD1306', 'git://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=adafruit-ssd1306')
+        ]
+    },
+    '128x64_pioled': {
+        'name': '128x64 OLED',
+        'dependencies_module': [
+            ('apt', 'libjpeg-dev', 'libjpeg-dev'),
+            ('pip-pypi', 'PIL', 'Pillow'),
+            ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO'),
+            ('pip-pypi', 'Adafruit_PureIO', 'Adafruit_PureIO'),
+            ('pip-git', 'Adafruit_SSD1306', 'git://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=adafruit-ssd1306')
+        ]
+    }
+}
+
+# Math form dropdown
+LCDS = [
+    ('16x2_generic', LCD_INFO['16x2_generic']['name']),
+    ('20x4_generic', LCD_INFO['20x4_generic']['name']),
+    ('128x32_pioled', LCD_INFO['128x32_pioled']['name']),
+    ('128x64_pioled', LCD_INFO['128x64_pioled']['name'])
+]
+
+# Math info
+MATH_INFO = {
+    'average': {
+        'name': lazy_gettext('Average (Multiple Inputs)'),
+        'dependencies_module': [],
+        'enable_measurements_select': True,
+        'measure': {}
+    },
+    'average_single': {
+        'name': lazy_gettext('Average (Single Input)'),
+        'dependencies_module': [],
+        'enable_measurements_select': False,
+        'enable_measurements_convert': True,
+        'measure': {}
+    },
+    'difference': {
+        'name': lazy_gettext('Difference'),
+        'dependencies_module': [],
+        'enable_measurements_select': True,
+        'measure': {}
+    },
+    'equation': {
+        'name': lazy_gettext('Equation'),
+        'dependencies_module': [],
+        'enable_measurements_select': True,
+        'measure': {}
+    },
+    'humidity': {
+        'name': lazy_gettext('Humidity (Wet/Dry-Bulb)'),
+        'dependencies_module': [],
+        'enable_measurements_convert': True,
+        'measure': {
+            0: {
+                'measurement': 'humidity',
+                'unit': 'percent'
+            },
+            1: {
+                'measurement': 'humidity_ratio',
+                'unit': 'kg_kg'
+            },
+            2: {
+                'measurement': 'specific_enthalpy',
+                'unit': 'kJ_kg'
+            },
+            3: {
+                'measurement': 'specific_volume',
+                'unit': 'm3_kg'
+            }
+        }
+    },
+    'redundancy': {
+        'name': lazy_gettext('Redundancy'),
+        'dependencies_module': [],
+        'enable_measurements_select': True,
+        'measure': {}
+    },
+    'statistics': {
+        'name': lazy_gettext('Statistics'),
+        'dependencies_module': [],
+        'enable_single_measurement_select': True,
+        'measure': {
+            0: {
+                'measurement': '',
+                'unit': '',
+                'name': 'Mean'
+            },
+            1: {
+                'measurement': '',
+                'unit': '',
+                'name': 'Median'
+            },
+            2: {
+                'measurement': '',
+                'unit': '',
+                'name': 'Minimum'
+            },
+            3: {
+                'measurement': '',
+                'unit': '',
+                'name': 'Maximum'
+            },
+            4: {
+                'measurement': '',
+                'unit': '',
+                'name': 'Standard Deviation'
+            },
+            5: {
+                'measurement': '',
+                'unit': '',
+                'name': 'St. Dev. of Mean (upper)'
+            },
+            6: {
+                'measurement': '',
+                'unit': '',
+                'name': 'St. Dev. of Mean (lower)'
+            }
+        }
+    },
+    'verification': {
+        'name': lazy_gettext('Verification'),
+        'dependencies_module': [],
+        'enable_measurements_select': True,
+        'measure': {}
+    },
+    'vapor_pressure_deficit': {
+        'name': lazy_gettext('Vapor Pressure Deficit'),
+        'dependencies_module': [],
+        'enable_measurements_select': False,
+        'measure': {
+            0: {
+                'measurement': 'vapor_pressure_deficit',
+                'unit': 'Pa'
+            }
+        }
+    }
+}
+
+# Math form dropdown
+MATHS = [
+    ('average', MATH_INFO['average']['name']),
+    ('average_single', MATH_INFO['average_single']['name']),
+    ('difference', MATH_INFO['difference']['name']),
+    ('equation', MATH_INFO['equation']['name']),
+    ('redundancy', MATH_INFO['redundancy']['name']),
+    ('verification', MATH_INFO['verification']['name']),
+    ('statistics', MATH_INFO['statistics']['name']),
+    ('humidity', MATH_INFO['humidity']['name']),
+    ('vapor_pressure_deficit', MATH_INFO['vapor_pressure_deficit']['name'])
+]
+
+# Method info
+METHOD_INFO = {
+    'Date': {
+        'name': lazy_gettext('Time/Date'),
+        'dependencies_module': []
+    },
+    'Duration': {
+        'name': lazy_gettext('Duration'),
+        'dependencies_module': []
+    },
+    'Daily': {
+        'name': lazy_gettext('Daily (Time-Based)'),
+        'dependencies_module': []
+    },
+    'DailySine': {
+        'name': lazy_gettext('Daily (Sine Wave)'),
+        'dependencies_module': []
+    },
+    'DailyBezier': {
+        'name': lazy_gettext('Daily (Bezier Curve)'),
+        'dependencies_module': [
+            ('apt', 'python3-numpy', 'python3-numpy')
+        ]
+    }
+}
+
+# Method form dropdown
+METHODS = [
+    ('Date', METHOD_INFO['Date']['name']),
+    ('Duration', METHOD_INFO['Duration']['name']),
+    ('Daily', METHOD_INFO['Daily']['name']),
+    ('DailySine', METHOD_INFO['DailySine']['name']),
+    ('DailyBezier', METHOD_INFO['DailyBezier']['name'])
+]
+
+# Outputs
+OUTPUT_INFO = {
+    'raspberry_pi_gpio': {
+        'name': lazy_gettext('Raspberry Pi: On/Off (GPIO)'),
+        'dependencies_module': [
+            ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
+        ],
+        'measure': {
+            'duration_time': {'s': {0: {}}}
+        }},
+    'raspberry_pi_pwm': {
+        'name': lazy_gettext('Raspberry Pi: PWM (GPIO)'),
+        'dependencies_module': [
+            ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpio')
+        ],
+        'measure': {
+            'duty_cycle': {'percent': {0: {}}}
+        }},
+    'wireless_rpi_rf': {
+        'name': lazy_gettext('Raspberry Pi: Wireless 315/433MHz LPD/SRD (rpi-rf)'),
+        'dependencies_module': [
+            ('pip-pypi', 'rpi_rf', 'rpi_rf')
+        ],
+        'measure': {
+            'duration_time': {'s': {0: {}}}
+        }},
+    'command': {
+        'name': lazy_gettext('Linux Command (subprocess): On/Off'),
+        'dependencies_module': [],
+        'measure': {
+            'duration_time': {'s': {0: {}}}
+        }},
+    'command_pwm': {
+        'name': lazy_gettext('Linux Command (subprocess): PWM'),
+        'dependencies_module': [],
+        'measure': {
+            'duty_cycle': {'percent': {0: {}}}
+        }},
+    'python': {
+        'name': lazy_gettext('Python 3 Code: On/Off'),
+        'dependencies_module': [],
+        'measure': {
+            'duration_time': {'s': {0: {}}}
+        }},
+    'python_pwm': {
+        'name': lazy_gettext('Python 3 Code: PWM'),
+        'dependencies_module': [],
+        'measure': {
+            'duty_cycle': {'percent': {0: {}}}
+        }},
+    'atlas_ezo_pmp': {
+        'name': lazy_gettext('Atlas EZO-PMP'),
+        'dependencies_module': [],
+        'measure': {
+            'volume': {'ml': {0: {}}}
+        }}
+}
+
+# Output form dropdown
+OUTPUTS = [
+    ('raspberry_pi_gpio,GPIO', OUTPUT_INFO['raspberry_pi_gpio']['name']),
+    ('raspberry_pi_pwm,GPIO', OUTPUT_INFO['raspberry_pi_pwm']['name']),
+    ('wireless_rpi_rf,GPIO', OUTPUT_INFO['wireless_rpi_rf']['name']),
+    ('command,GPIO', OUTPUT_INFO['command']['name']),
+    ('command_pwm,GPIO', OUTPUT_INFO['command_pwm']['name']),
+    ('python,GPIO', OUTPUT_INFO['python']['name']),
+    ('python_pwm,GPIO', OUTPUT_INFO['python_pwm']['name']),
+    ('atlas_ezo_pmp,I2C', '{} ({})'.format(
+        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('I2C'))),
+    ('atlas_ezo_pmp,UART', '{} ({})'.format(
+        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('UART')))
+]
+
+PID_INFO = {
+    'measure': {
+        0: {
+            'measurement': '',
+            'unit': '',
+            'name': '{}'.format(TRANSLATIONS['setpoint']['title']),
+            'measurement_type': 'setpoint'
+        },
+        1: {
+            'measurement': '',
+            'unit': '',
+            'name': '{} (Band Min)'.format(TRANSLATIONS['setpoint']['title']),
+            'measurement_type': 'setpoint'
+        },
+        2: {
+            'measurement': '',
+            'unit': '',
+            'name': '{} (Band Max)'.format(TRANSLATIONS['setpoint']['title']),
+            'measurement_type': 'setpoint'
+        },
+        3: {
+            'measurement': 'pid_p_value',
+            'unit': 'pid_value',
+            'name': 'P-value'
+        },
+        4: {
+            'measurement': 'pid_i_value',
+            'unit': 'pid_value',
+            'name': 'I-value'
+        },
+        5: {
+            'measurement': 'pid_d_value',
+            'unit': 'pid_value',
+            'name': 'D-value'
+        },
+        6: {
+            'measurement': 'duration_time',
+            'unit': 's',
+            'name': '{} ({})'.format(
+                TRANSLATIONS['output']['title'],
+                TRANSLATIONS['duration']['title'])
+        },
+        7: {
+            'measurement': 'duty_cycle',
+            'unit': 'percent',
+            'name': '{} ({})'.format(
+                TRANSLATIONS['output']['title'],
+                TRANSLATIONS['duty_cycle']['title'])
+        }
+    }
+}
 
 # Calibration
 CALIBRATION_DEVICES = [

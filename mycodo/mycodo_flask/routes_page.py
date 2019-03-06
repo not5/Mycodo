@@ -1308,7 +1308,7 @@ def page_function():
                 form_conditional.function_id.data,
                 display_order_function, 'down')
         elif form_conditional.add_condition.data:
-            utils_conditional.conditional_condition_add(form_conditional)
+            unmet_dependencies = utils_conditional.conditional_condition_add(form_conditional)
         elif form_conditional.add_action.data:
             unmet_dependencies = utils_function.action_add(form_conditional)
         elif form_conditional.test_all_actions.data:
@@ -1554,7 +1554,7 @@ def page_output():
     output_templates = []
     output_path = os.path.join(
         INSTALL_DIRECTORY,
-        'mycodo/mycodo_flask/templates/pages/output_options')
+        'mycodo_flask/templates/pages/output_options')
     for (_, _, file_names) in os.walk(output_path):
         output_templates.extend(file_names)
         break
@@ -1737,7 +1737,7 @@ def page_data():
     math_templates = []
     math_path = os.path.join(
         INSTALL_DIRECTORY,
-        'mycodo/mycodo_flask/templates/pages/data_options/math_options')
+        'mycodo_flask/templates/pages/data_options/math_options')
     for (_, _, file_names) in os.walk(math_path):
         math_templates.extend(file_names)
         break
@@ -1747,7 +1747,7 @@ def page_data():
     input_templates = []
     input_path = os.path.join(
         INSTALL_DIRECTORY,
-        'mycodo/mycodo_flask/templates/pages/data_options/input_options')
+        'mycodo_flask/templates/pages/data_options/input_options')
     for (_, _, file_names) in os.walk(input_path):
         input_templates.extend(file_names)
         break

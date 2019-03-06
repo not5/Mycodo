@@ -77,7 +77,7 @@ def input_add(form_add):
             new_input.interface = input_interface
 
         try:
-            from RPi import GPIO
+            import RPi.GPIO as GPIO
             if GPIO.RPI_INFO['P1_REVISION'] in [2, 3]:
                 new_input.i2c_bus = 1
             else:
@@ -296,7 +296,7 @@ def input_mod(form_mod, request_form):
                 "AM2315 may become unresponsive if the period is "
                 "below 7."))
 
-        if (mod_input.device != 'EDGE' and
+        if (mod_input.device != 'RPI_EDGE' and
                 (mod_input.pre_output_duration and
                  form_mod.period.data < mod_input.pre_output_duration)):
             error.append(gettext(
@@ -570,7 +570,7 @@ def input_reorder(input_id, display_order, direction):
 def input_activate(form_mod):
     input_id = form_mod.input_id.data
     input_dev = Input.query.filter(Input.unique_id == input_id).first()
-    if input_dev.device == 'LinuxCommand':
+    if input_dev.device == 'LINUX_COMMAND':
         if input_dev.cmd_command is '':
             flash("Cannot activate Input without Command set.", "error")
             return redirect(url_for('routes_page.page_data'))

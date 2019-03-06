@@ -64,14 +64,14 @@ def output_add(form_add):
                 new_output.output_type = output_type
                 new_output.interface = interface
 
-                if output_type in ['wired',
+                if output_type in ['raspberry_pi_gpio',
                                    'wireless_rpi_rf',
                                    'command',
                                    'python']:
                     new_output.measurement = 'duration_time'
                     new_output.unit = 's'
                 elif output_type in ['command_pwm',
-                                     'pwm',
+                                     'raspberry_pi_pwm',
                                      'python_pwm']:
                     new_output.measurement = 'duty_cycle'
                     new_output.unit = 'percent'
@@ -81,7 +81,7 @@ def output_add(form_add):
 
                 new_output.channel = 0
 
-                if output_type == 'wired':
+                if output_type == 'raspberry_pi_gpio':
                     new_output.state_at_startup = 0
                     new_output.state_at_shutdown = 0
                 elif output_type == 'wireless_rpi_rf':
@@ -95,7 +95,7 @@ def output_add(form_add):
                     new_output.off_command = '/home/pi/script_off.sh'
                 elif output_type == 'command_pwm':
                     new_output.pwm_command = '/home/pi/script_pwm.sh ((duty_cycle))'
-                elif output_type == 'pwm':
+                elif output_type == 'raspberry_pi_pwm':
                     new_output.pwm_hertz = 22000
                     new_output.pwm_library = 'pigpio_any'
                 elif output_type == 'python':
@@ -159,7 +159,7 @@ def output_mod(form_output):
         if form_output.trigger_functions_at_start.data:
             mod_output.trigger_functions_at_start = form_output.trigger_functions_at_start.data
 
-        if mod_output.output_type == 'wired':
+        if mod_output.output_type == 'raspberry_pi_gpio':
             if not is_int(form_output.gpio_location.data):
                 error.append("BCM GPIO Pin must be an integer")
             mod_output.pin = form_output.gpio_location.data
@@ -188,7 +188,7 @@ def output_mod(form_output):
                                         'python_pwm']:
             mod_output.pwm_command = form_output.pwm_command.data
             mod_output.pwm_invert_signal = form_output.pwm_invert_signal.data
-        elif mod_output.output_type == 'pwm':
+        elif mod_output.output_type == 'raspberry_pi_pwm':
             mod_output.pin = form_output.gpio_location.data
             mod_output.pwm_hertz = form_output.pwm_hertz.data
             mod_output.pwm_library = form_output.pwm_library.data
@@ -205,7 +205,7 @@ def output_mod(form_output):
                 mod_output.baud_rate = form_output.baud_rate.data
 
         if (form_output.state_at_startup.data == '-1' or
-                mod_output.output_type in ['pwm', 'command_pwm']):
+                mod_output.output_type in ['raspberry_pi_pwm', 'command_pwm']):
             mod_output.state_at_startup = None
         elif form_output.state_at_startup.data is not None:
             try:
@@ -216,7 +216,7 @@ def output_mod(form_output):
                     "{}".format(form_output.state_at_startup.data))
 
         if (form_output.state_at_shutdown.data == '-1' or
-                mod_output.output_type in ['pwm', 'command_pwm']):
+                mod_output.output_type in ['raspberry_pi_pwm', 'command_pwm']):
             mod_output.state_at_shutdown = None
         elif form_output.state_at_shutdown.data is not None:
             try:
@@ -322,10 +322,10 @@ def output_on_off(form_output):
     try:
         control = DaemonControl()
         output = Output.query.filter_by(unique_id=form_output.output_id.data).first()
-        if output.output_type == 'wired' and int(form_output.output_pin.data) == 0:
+        if output.output_type == 'raspberry_pi_gpio' and int(form_output.output_pin.data) == 0:
             error.append(gettext("Cannot modulate output with a GPIO of 0"))
         elif form_output.on_submit.data:
-            if output.output_type in ['wired',
+            if output.output_type in ['raspberry_pi_gpio',
                                       'wireless_rpi_rf',
                                       'command']:
                 if float(form_output.sec_on.data) <= 0:
@@ -337,7 +337,7 @@ def output_on_off(form_output):
                                   sec=form_output.sec_on.data,
                                   rvalue=return_value),
                           "success")
-            if output.output_type == 'pwm':
+            if output.output_type == 'raspberry_pi_pwm':
                 if int(form_output.output_pin.data) == 0:
                     error.append(gettext("Invalid pin"))
                 if output.pwm_hertz <= 0:

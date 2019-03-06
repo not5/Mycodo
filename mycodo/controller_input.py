@@ -153,8 +153,8 @@ class InputController(threading.Thread):
             self.i2c_address = int(str(self.input_dev.i2c_location), 16)
 
         # Set up edge detection of a GPIO pin
-        if self.device == 'EDGE':
-            from RPi import GPIO
+        if self.device == 'RPI_EDGE':
+            import RPi.GPIO as GPIO
             if self.switch_edge == 'rising':
                 self.switch_edge_gpio = GPIO.RISING
             elif self.switch_edge == 'falling':
@@ -167,7 +167,7 @@ class InputController(threading.Thread):
         if self.device in self.dict_inputs:
             input_loaded = load_module_from_file(self.dict_inputs[self.device]['file_path'])
 
-            if self.device == 'EDGE':
+            if self.device == 'RPI_EDGE':
                 # Edge detection handled internally, no module to load
                 self.measure_input = None
             else:
@@ -193,8 +193,8 @@ class InputController(threading.Thread):
             self.ready.set()
 
             # Set up edge detection
-            if self.device == 'EDGE':
-                from RPi import GPIO
+            if self.device == 'RPI_EDGE':
+                import RPi.GPIO as GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.setup(int(self.gpio_location), GPIO.IN)
                 GPIO.add_event_detect(int(self.gpio_location),
@@ -215,7 +215,7 @@ class InputController(threading.Thread):
                     self.acquire_measurements_now()
                     self.force_measurements_trigger = False
 
-                if self.device not in ['EDGE']:
+                if self.device not in ['RPI_EDGE']:
                     now = time.time()
                     # Signal that a measurement needs to be obtained
                     if now > self.next_measurement and not self.get_new_measurement:
@@ -310,8 +310,8 @@ class InputController(threading.Thread):
 
             self.running = False
 
-            if self.device == 'EDGE':
-                from RPi import GPIO
+            if self.device == 'RPI_EDGE':
+                import RPi.GPIO as GPIO
                 GPIO.setmode(GPIO.BCM)
                 GPIO.cleanup(int(self.gpio_location))
 
@@ -378,7 +378,7 @@ class InputController(threading.Thread):
         :param bcm_pin: BMC pin of rising/falling edge (required parameter)
         :return: None
         """
-        from RPi import GPIO
+        import RPi.GPIO as GPIO
         gpio_state = GPIO.input(int(self.gpio_location))
         if time.time() > self.edge_reset_timer:
             self.edge_reset_timer = time.time()+self.switch_reset_period
@@ -460,8 +460,8 @@ class InputController(threading.Thread):
     def stop_controller(self):
         self.thread_shutdown_timer = timeit.default_timer()
 
-        # Execute stop_sensor() if not EDGE or ADC
-        if self.device != 'EDGE':
+        # Execute stop_sensor() if not RPI_EDGE or ADC
+        if self.device != 'RPI_EDGE':
             self.measure_input.stop_sensor()
 
         # Ensure pre-output is off

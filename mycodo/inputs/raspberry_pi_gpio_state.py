@@ -13,9 +13,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'GPIO_STATE',
+    'input_name_unique': 'RPI_GPIO_STATE',
     'input_manufacturer': 'Raspberry Pi',
-    'input_name': 'GPIO State',
+    'input_name': 'RPi GPIO State',
     'measurements_name': 'GPIO State',
     'measurements_dict': measurements_dict,
 
@@ -42,7 +42,7 @@ class InputModule(AbstractInput):
         self.logger = logging.getLogger("mycodo.inputs.gpio_state")
 
         if not testing:
-            from RPi import GPIO
+            import RPi.GPIO as GPIO
             self.logger = logging.getLogger(
                 "mycodo.gpio_state_{id}".format(id=input_dev.unique_id.split('-')[0]))
 

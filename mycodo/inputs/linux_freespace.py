@@ -15,9 +15,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'RPiFreeSpace',
-    'input_manufacturer': 'Mycodo',
-    'input_name': 'Free Space',
+    'input_name_unique': 'LINUX_FREE_SPACE',
+    'input_manufacturer': 'Linux',
+    'input_name': 'Linux Free Space',
     'measurements_name': 'Unallocated Disk Space',
     'measurements_dict': measurements_dict,
 

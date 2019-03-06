@@ -7,7 +7,7 @@
 
 import sys
 import time
-from RPi import GPIO
+import RPi.GPIO as GPIO
 
 location = 26
 

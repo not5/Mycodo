@@ -857,7 +857,7 @@ def use_unit_generate(device_measurements, input_dev, output, math):
 
     for each_output in output:
         use_unit[each_output.unique_id] = {}
-        if each_output.output_type == 'wired':
+        if each_output.output_type == 'raspberry_pi_gpio':
             use_unit[each_output.unique_id]['duration_time'] = 'second'
 
     return use_unit

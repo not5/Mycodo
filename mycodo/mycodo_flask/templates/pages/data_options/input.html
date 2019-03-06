@@ -53,7 +53,7 @@
 
   <div class="collapse" id="collapseContainer-input-{{each_input.id}}">
 
-    {% if each_input.device in ['RPiCPULoad', 'RPiFreeSpace'] -%}
+    {% if each_input.device in ['LINUX_CPU_LOAD', 'LINUX_FREE_SPACE'] -%}
       <input id="pre_output_id" name="pre_output_id" type="hidden" value="0">
       <input id="pre_output_duration" name="pre_output_duration" type="hidden" value="0">
     {% endif -%}
@@ -87,7 +87,7 @@
 
         {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Location.html' %}
 
-        {% if each_input.device != 'EDGE' -%}
+        {% if each_input.device != 'RPI_EDGE' -%}
           {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Period.html' %}
           {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Pre_Output.html' %}
         {% endif %}
@@ -95,7 +95,7 @@
         {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Custom_Options.html' %}
 
         {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Single_Input_Math.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_EDGE.html' %}
+        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_RPI_EDGE.html' %}
 
         {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Times_Check.html' %}
         {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Deadline.html' %}

@@ -68,7 +68,7 @@ def get_condition_measurement(sql_condition):
     # message based on the edge detection settings.
     elif sql_condition.condition_type == 'gpio_state':
         try:
-            from RPi import GPIO
+            import RPi.GPIO as GPIO
             GPIO.setmode(GPIO.BCM)
             GPIO.setup(int(sql_condition.gpio_pin), GPIO.IN)
             gpio_state = GPIO.input(int(sql_condition.gpio_pin))
