@@ -17,12 +17,17 @@ if [ -d ~/Mycodo ]; then
     exit 1
 fi
 
-sudo apt-get install -y jq whiptail
-cd ~
-curl -s https://api.github.com/repos/kizniche/Mycodo/releases/latest | \
-jq -r '.tarball_url' | wget -i - -O mycodo-latest.tar.gz
-mkdir Mycodo
-tar xzf mycodo-latest.tar.gz -C Mycodo --strip-components=1
-rm -f mycodo-latest.tar.gz
-cd Mycodo/install
-sudo /bin/bash ./setup.sh
+do_install() {
+    sudo apt-get install -y jq whiptail
+    cd ~
+    curl -s https://api.github.com/repos/kizniche/Mycodo/releases/latest | \
+    jq -r '.tarball_url' | wget -i - -O mycodo-latest.tar.gz
+    mkdir Mycodo
+    tar xzf mycodo-latest.tar.gz -C Mycodo --strip-components=1
+    rm -f mycodo-latest.tar.gz
+    cd Mycodo/install
+    sudo /bin/bash ./setup.sh
+}
+
+# wrapped up in a function for protection against only getting half the file
+do_install

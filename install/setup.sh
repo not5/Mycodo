@@ -80,28 +80,24 @@ SECONDS=0
 NOW=$(date)
 printf "#### Mycodo installation began $NOW\n" 2>&1 | tee -a ${LOG_LOCATION}
 
-${INSTALL_CMD} update-swap-size 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-apt 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} uninstall-apt-pip 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-packages 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} setup-virtualenv 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-pip3 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-pip3-packages 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} install-wiringpi 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-influxdb 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-influxdb-db-user 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} initialize 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-logrotate 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} ssl-certs-generate 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-mycodo-startup-script 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} compile-translations 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-cron 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} initialize 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} web-server-update 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} web-server-restart 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} web-server-connect 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} update-permissions 2>&1 | tee -a ${LOG_LOCATION}
-${INSTALL_CMD} restart-daemon 2>&1 | tee -a ${LOG_LOCATION}
+cd ${INSTALL_DIRECTORY}
+
+if [ -x "$(command -v docker)" ]; then
+    echo "docker not found, installing..."
+    echo "docker already installed"
+else
+    make install-docker
+fi
+
+if [ -x "$(command -v docker-compose)" ]; then
+    echo "docker-compose already installed"
+else
+    echo "docker-compose not found, installing..."
+    make install-docker-compose
+fi
+
+make dependencies
+make build
 
 trap : 0
 

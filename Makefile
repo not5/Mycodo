@@ -1,5 +1,7 @@
 install-docker:
     curl -sSL https://get.docker.com | sh
+
+install-docker-compose
     sudo pip install docker-compose
 
 dependencies:
