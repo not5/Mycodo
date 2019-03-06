@@ -99,10 +99,9 @@ case "${1:-''}" in
         fi
 
         # Create empty mycodo database file if it doesn't exist
-        if [ ! -e ${MYCODO_PATH}/databases/mycodo.db ]; then
-            touch ${MYCODO_PATH}/databases/mycodo.db
+        if [ ! -e /var/mycodo/database/mycodo.db ]; then
+            touch /var/mycodo/database/mycodo.db
         fi
-        /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh update-permissions
     ;;
     'restart-daemon')
         printf "\n#### Restarting the Mycodo daemon\n"
