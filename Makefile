@@ -1,3 +1,7 @@
+install-docker:
+    curl -sSL https://get.docker.com | sh
+    sudo pip install docker-compose
+
 dependencies:
     sudo apt install logrotate
     cp ./install/logrotate_docker /etc/logrotate.d/
