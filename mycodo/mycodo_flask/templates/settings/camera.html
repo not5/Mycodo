@@ -23,8 +23,8 @@
           {{form_camera.library.label(class_='control-label')}}
           <div>
             <select class="form-control" id="library" name="library" title="" data-original-title="Select the library used to communicate">
-              {%- for each_library in camera_libraries -%}
-                <option value="{{each_library}}">{{each_library}}</option>
+              {%- for each_library in cameras -%}
+                <option value="{{each_library[0]}}">{{each_library[1]}}</option>
               {%- endfor -%}
             </select>
           </div>
@@ -62,7 +62,7 @@
 
         <div class="row small-gutters">
 
-        {% if each_camera.library == 'picamera' %}
+        {% if each_camera.library == 'raspberry_pi_picamera' %}
           {% if not pi_camera_enabled %}
           <div class="col-12" style="color: red">
             {{_("Raspberry Pi Camera support doesn't appear to be enabled. Please enable it using the Raspberry Pi configuration or with the command 'sudo raspi-config'")}}

@@ -1,13 +1,14 @@
 # coding=utf-8
 """ collection of Admin endpoints """
 import datetime
-import flask_login
 import logging
-import os
 import subprocess
 import threading
 import time
 from collections import OrderedDict
+
+import flask_login
+import os
 from flask import Blueprint
 from flask import flash
 from flask import make_response
@@ -20,19 +21,13 @@ from pkg_resources import parse_version
 
 from mycodo.config import BACKUP_LOG_FILE
 from mycodo.config import BACKUP_PATH
-from mycodo.config import CALIBRATION_INFO
 from mycodo.config import DEPENDENCY_INIT_FILE
 from mycodo.config import DEPENDENCY_LOG_FILE
 from mycodo.config import FINAL_RELEASES
 from mycodo.config import FORCE_UPGRADE_MASTER
-from mycodo.config import FUNCTION_ACTION_INFO
-from mycodo.config import FUNCTION_INFO
 from mycodo.config import INSTALL_DIRECTORY
-from mycodo.config import LCD_INFO
-from mycodo.config import MATH_INFO
-from mycodo.config import METHOD_INFO
+from mycodo.config import LIST_DEPENDENCIES
 from mycodo.config import MYCODO_VERSION
-from mycodo.config import OUTPUT_INFO
 from mycodo.config import RESTORE_LOG_FILE
 from mycodo.config import STATS_CSV
 from mycodo.config import UPGRADE_INIT_FILE
@@ -223,18 +218,8 @@ def admin_dependencies(device):
     if dep:
         install_in_progress = True
 
-    dict_inputs = parse_input_information()
+    list_dependencies = [parse_input_information()] + LIST_DEPENDENCIES
 
-    list_dependencies = [
-        dict_inputs,
-        FUNCTION_ACTION_INFO,
-        FUNCTION_INFO,
-        LCD_INFO,
-        MATH_INFO,
-        METHOD_INFO,
-        OUTPUT_INFO,
-        CALIBRATION_INFO
-    ]
     for each_section in list_dependencies:
         for each_device in each_section:
 

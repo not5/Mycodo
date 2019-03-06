@@ -170,8 +170,8 @@ def dashboard_add(form_base, form_object, display_order):
         camera = Camera.query.filter(Camera.unique_id == form_object.camera_id.data).first()
         if not camera:
             error.append("Invalid Camera ID. Check your camera settings.")
-        elif form_object.camera_image_type.data == 'stream' and camera.library != 'picamera':
-            error.append("Only cameras that use the 'picamera' library may be used for streaming")
+        elif form_object.camera_image_type.data == 'stream' and camera.library != 'raspberry_pi_picamera':
+            error.append("Only cameras that use the 'raspberry_pi_picamera' library may be used for streaming")
 
         dashboard_type = 'Camera'
         new_graph.graph_type = form_base.dashboard_type.data

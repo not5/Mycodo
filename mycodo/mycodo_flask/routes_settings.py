@@ -11,7 +11,7 @@ from flask import request
 from flask import url_for
 from flask.blueprints import Blueprint
 
-from mycodo.config import CAMERA_LIBRARIES
+from mycodo.config import CAMERAS
 from mycodo.config import INSTALL_DIRECTORY
 from mycodo.config import LANGUAGES
 from mycodo.config import THEMES
@@ -92,20 +92,26 @@ def settings_camera():
                      "{err}".format(err=e))
 
     if request.method == 'POST':
+        unmet_dependencies = None
         if not utils_general.user_has_permission('edit_settings'):
             return redirect(url_for('routes_general.home'))
 
         if form_camera.camera_add.data:
-            utils_settings.camera_add(form_camera)
+            unmet_dependencies = utils_settings.camera_add(form_camera)
         elif form_camera.camera_mod.data:
             utils_settings.camera_mod(form_camera)
         elif form_camera.camera_del.data:
             utils_settings.camera_del(form_camera)
-        return redirect(url_for('routes_settings.settings_camera'))
+
+        if unmet_dependencies:
+            return redirect(url_for('routes_admin.admin_dependencies',
+                                    device=form_camera.library.data))
+        else:
+            return redirect(url_for('routes_settings.settings_camera'))
 
     return render_template('settings/camera.html',
                            camera=camera,
-                           camera_libraries=CAMERA_LIBRARIES,
+                           CAMERAS=CAMERAS,
                            form_camera=form_camera,
                            pi_camera_enabled=pi_camera_enabled,
                            output=output)

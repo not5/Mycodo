@@ -47,7 +47,7 @@
         {% endif %}
       {%- endif %}
 
-      {% if each_camera.library in ['picamera'] and
+      {% if each_camera.library in ['raspberry_pi_picamera'] and
             not each_camera.timelapse_started %}
         <div class="col-12 col-sm-3">
           {% if each_camera.stream_started -%}
@@ -85,7 +85,7 @@
 
     <div class="row small-gutters">
 
-    {%- if each_camera.library in ['picamera'] and
+    {%- if each_camera.library in ['raspberry_pi_picamera'] and
            each_camera.stream_started -%}
       <div>
         {{_('Video Stream')}}:

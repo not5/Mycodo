@@ -454,7 +454,7 @@ def check_form_actions(form, error):
         if (action.action_type == 'video_email' and
                 Camera.query.filter(
                     and_(Camera.unique_id == form.do_unique_id.data,
-                         Camera.library != 'picamera')).count()):
+                         Camera.library != 'raspberry_pi_picamera')).count()):
             error.append('Only Pi Cameras can record video')
     elif action.action_type == 'flash_lcd_on' and not form.do_unique_id.data:
         error.append("LCD must be set")
@@ -492,7 +492,7 @@ def check_actions(action, error):
         if (action.action_type == 'video_email' and
                 Camera.query.filter(
                     and_(Camera.unique_id == action.do_unique_id,
-                         Camera.library != 'picamera')).count()):
+                         Camera.library != 'raspberry_pi_picamera')).count()):
             error.append('Only Pi Cameras can record video')
     elif action.action_type == 'flash_lcd_on' and not action.do_unique_id:
         error.append("LCD must be set")

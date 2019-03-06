@@ -53,6 +53,28 @@ CALIBRATION_INFO = {
     }
 }
 
+# Cameras
+CAMERA_INFO = {
+    'fswebcam': {
+        'name': '{} (fswebcam)'.format(lazy_gettext('USB camera')),
+        'dependencies_module': [
+            ('apt', 'fswebcam', 'fswebcam')
+        ]
+    },
+    'raspberry_pi_picamera': {
+        'name': '{} {} (picamera)'.format(lazy_gettext('Raspberry Pi'),
+                                          lazy_gettext('Camera')),
+        'dependencies_module': [
+            ('pip-pypi', 'picamera', 'picamera')
+        ]
+    },
+}
+
+CAMERAS = [
+    ('raspberry_pi_picamera', CAMERA_INFO['raspberry_pi_picamera']['name']),
+    ('fswebcam', CAMERA_INFO['fswebcam']['name'])
+]
+
 # Conditional controllers
 CONDITIONAL_CONDITION_INFO = {
     'gpio_state': {
@@ -657,6 +679,19 @@ CALIBRATION_DEVICES = [
     ('setup_ds_resolution', 'DS-Type Temperature Sensors (e.g. DS18B20)')
 ]
 
+# Dependency list (keys should be unique across all dictionaries)
+LIST_DEPENDENCIES = [
+    CALIBRATION_INFO,
+    CAMERA_INFO,
+    CONDITIONAL_CONDITION_INFO,
+    FUNCTION_ACTION_INFO,
+    FUNCTION_INFO,
+    LCD_INFO,
+    MATH_INFO,
+    METHOD_INFO,
+    OUTPUT_INFO
+]
+
 # User Roles
 USER_ROLES = [
     dict(id=1, name='Admin',
@@ -702,20 +737,22 @@ THEMES = [
 
 THEMES_DARK = ['cyborg', 'darkly', 'slate', 'solar', 'superhero']
 
-# Install path, the parent directory this script resides
+# Install path (directory config.py resides)
 INSTALL_DIRECTORY = os.path.dirname(os.path.realpath(__file__))
 
-# SQLite3 databases that stores users and settings
-DATABASE_PATH = os.path.join(INSTALL_DIRECTORY, 'databases')
-SQL_DATABASE_MYCODO = '/var/mycodo/database/mycodo.db'
+# Settings database
+DATABASE_PATH = '/var/mycodo/database'
+SQL_DATABASE_MYCODO = os.path.join(DATABASE_PATH, 'mycodo.db')
 MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 
-# File paths/logging
+# File paths
 PATH_1WIRE = '/sys/bus/w1/devices/'
 USAGE_REPORTS_PATH = os.path.join(INSTALL_DIRECTORY, 'output_usage_reports')
 DEPENDENCY_INIT_FILE = os.path.join(INSTALL_DIRECTORY, '.dependency')
 UPGRADE_INIT_FILE = os.path.join(INSTALL_DIRECTORY, '.upgrade')
 BACKUP_PATH = '/var/Mycodo-backups'  # Where Mycodo backups are stored
+
+# Log paths
 LOG_PATH = '/var/mycodo/log'  # Where generated logs are stored
 LOGIN_LOG_FILE = os.path.join(LOG_PATH, 'login.log')
 DAEMON_LOG_FILE = os.path.join(LOG_PATH, 'mycodo.log')
@@ -735,17 +772,12 @@ DAEMON_PID_FILE = os.path.join(LOCK_PATH, 'mycodo.pid')
 LOCK_FILE_STREAM = os.path.join(LOCK_PATH, 'mycodo-camera-stream.pid')
 
 # Remote admin
-STORED_SSL_CERTIFICATE_PATH = os.path.join(
-    INSTALL_DIRECTORY, 'mycodo_flask/ssl_certs/remote_admin')
+STORED_SSL_CERTIFICATE_PATH = '/var/mycodo/ssl_certs/remote_admin'
 
 # Camera
-CAMERA_LIBRARIES = [
-    'picamera',
-    'fswebcam'
-]
 PATH_CAMERAS = os.path.join(INSTALL_DIRECTORY, 'cameras')
 
-# Notes
+# Note
 PATH_NOTE_ATTACHMENTS = os.path.join(INSTALL_DIRECTORY, 'note_attachments')
 
 # Influx sensor/device measurement database
@@ -775,11 +807,10 @@ UPGRADE_CHECK_INTERVAL = 172800
 
 class ProdConfig(object):
     """ Production Configuration """
-    SQL_DATABASE_MYCODO = '/var/mycodo/database/mycodo.db'
+    SQL_DATABASE_MYCODO = os.path.join(DATABASE_PATH, 'mycodo.db')
     MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + SQL_DATABASE_MYCODO
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
     REMEMBER_COOKIE_DURATION = timedelta(days=90)
 
     # Ensure file containing the Flask secret_key exists
@@ -795,7 +826,6 @@ class TestConfig(object):
     """ Testing Configuration """
     SQLALCHEMY_DATABASE_URI = 'sqlite://'  # in-memory db only. tests drop the tables after they run
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-
     RATELIMIT_ENABLED = False
     SECRET_KEY = '1234'
     TESTING = True

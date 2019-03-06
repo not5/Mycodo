@@ -86,7 +86,7 @@ def camera_record(record_type, unique_id, duration_sec=None, tmp_filename=None):
     if settings.output_duration:
         time.sleep(settings.output_duration)
 
-    if settings.library == 'picamera':
+    if settings.library == 'raspberry_pi_picamera':
         # Try 5 times to access the pi camera (in case another process is accessing it)
         for _ in range(5):
             try:

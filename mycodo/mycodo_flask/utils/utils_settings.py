@@ -46,6 +46,7 @@ from mycodo.mycodo_flask.utils.utils_general import controller_activate_deactiva
 from mycodo.mycodo_flask.utils.utils_general import delete_entry_with_id
 from mycodo.mycodo_flask.utils.utils_general import flash_form_errors
 from mycodo.mycodo_flask.utils.utils_general import flash_success_errors
+from mycodo.mycodo_flask.utils.utils_general import return_dependencies
 from mycodo.mycodo_flask.utils.utils_input import input_deactivate_associated_controllers
 from mycodo.utils.database import db_retrieve_table
 from mycodo.utils.inputs import load_module_from_file
@@ -1013,6 +1014,16 @@ def camera_add(form_camera):
         controller=TRANSLATIONS['camera']['title'])
     error = []
 
+    dep_unmet, _ = return_dependencies(form_camera.library.data)
+    if dep_unmet:
+        list_unmet_deps = []
+        for each_dep in dep_unmet:
+            list_unmet_deps.append(each_dep[0])
+        error.append(
+            "The {dev} device you're trying to add has unmet dependencies: "
+            "{dep}".format(dev=form_camera.library.data,
+                           dep=', '.join(list_unmet_deps)))
+
     if form_camera.validate():
         new_camera = Camera()
         if Camera.query.filter(Camera.name == form_camera.name.data).count():
@@ -1023,7 +1034,7 @@ def camera_add(form_camera):
         if form_camera.library.data == 'fswebcam':
             new_camera.device = '/dev/video0'
             new_camera.brightness = 50
-        elif form_camera.library.data == 'picamera':
+        elif form_camera.library.data == 'raspberry_pi_picamera':
             new_camera.brightness = 50
             new_camera.contrast = 0.0
             new_camera.exposure = 0.0
@@ -1039,6 +1050,9 @@ def camera_add(form_camera):
         flash_success_errors(error, action, url_for('routes_settings.settings_camera'))
     else:
         flash_form_errors(form_camera)
+
+    if dep_unmet:
+        return 1
 
 
 def camera_mod(form_camera):
@@ -1070,7 +1084,7 @@ def camera_mod(form_camera):
             mod_camera.width = form_camera.width.data
             mod_camera.brightness = form_camera.brightness.data
             mod_camera.custom_options = form_camera.custom_options.data
-        elif mod_camera.library == 'picamera':
+        elif mod_camera.library == 'raspberry_pi_picamera':
             mod_camera.hflip = form_camera.hflip.data
             mod_camera.vflip = form_camera.vflip.data
             mod_camera.rotation = form_camera.rotation.data

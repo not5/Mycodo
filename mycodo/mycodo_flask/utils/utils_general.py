@@ -14,13 +14,7 @@ from flask import request
 from flask import url_for
 from flask_babel import gettext
 
-from mycodo.config import CALIBRATION_INFO
-from mycodo.config import FUNCTION_ACTION_INFO
-from mycodo.config import FUNCTION_INFO
-from mycodo.config import LCD_INFO
-from mycodo.config import MATH_INFO
-from mycodo.config import METHOD_INFO
-from mycodo.config import OUTPUT_INFO
+from mycodo.config import LIST_DEPENDENCIES
 from mycodo.config import PATH_CAMERAS
 from mycodo.config_devices_units import MEASUREMENTS
 from mycodo.config_devices_units import UNITS
@@ -763,18 +757,8 @@ def return_dependencies(device_type):
     unmet_deps = []
     met_deps = False
 
-    dict_inputs = parse_input_information()
+    list_dependencies = [parse_input_information()] + LIST_DEPENDENCIES
 
-    list_dependencies = [
-        dict_inputs,
-        FUNCTION_ACTION_INFO,
-        FUNCTION_INFO,
-        LCD_INFO,
-        MATH_INFO,
-        METHOD_INFO,
-        OUTPUT_INFO,
-        CALIBRATION_INFO
-    ]
     for each_section in list_dependencies:
         if device_type in each_section:
             for each_device, each_dict in each_section[device_type].items():
