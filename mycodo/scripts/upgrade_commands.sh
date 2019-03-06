@@ -281,5 +281,6 @@ case "${1:-''}" in
     ;;
     *)
         printf "Error: Unrecognized command: ${1}\n${HELP_OPTIONS}"
+        exit 1
     ;;
 esac

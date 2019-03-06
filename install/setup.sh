@@ -82,22 +82,7 @@ printf "#### Mycodo installation began $NOW\n" 2>&1 | tee -a ${LOG_LOCATION}
 
 cd ${INSTALL_DIRECTORY}
 
-if [ -x "$(command -v docker)" ]; then
-    printf "#### docker already installed, skipping.\n" 2>&1 | tee -a ${LOG_LOCATION}
-else
-    printf "#### docker not found, installing...\n" 2>&1 | tee -a ${LOG_LOCATION}
-    make install-docker 2>&1 | tee -a ${LOG_LOCATION}
-fi
-
-if [ -x "$(command -v docker-compose)" ]; then
-    printf "#### docker-compose already installed, skipping.\n" 2>&1 | tee -a ${LOG_LOCATION}
-else
-    printf "#### docker-compose not found, installing...\n" 2>&1 | tee -a ${LOG_LOCATION}
-    make install-docker-compose 2>&1 | tee -a ${LOG_LOCATION}
-fi
-
-make dependencies 2>&1 | tee -a ${LOG_LOCATION}
-make build 2>&1 | tee -a ${LOG_LOCATION}
+# do stuff here
 
 trap : 0
 
