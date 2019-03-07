@@ -19,10 +19,10 @@ case "${1}" in
         apt-get install -y ${2}
     ;;
     'pip-pypi')
-        /usr/local/bin/pip install --upgrade ${2}
+        pip install --upgrade ${2}
     ;;
     'pip-git')
-        /usr/local/bin/pip install --upgrade -e ${2}
+        pip install --upgrade -e ${2}
     ;;
     'pigpio')
         ${INSTALL_CMD} install-pigpiod

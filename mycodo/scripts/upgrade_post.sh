@@ -29,7 +29,7 @@ ${INSTALL_CMD} update-pip3-packages
 ${INSTALL_CMD} update-permissions
 
 printf "\n#### Checking for updates to dependencies\n"
-${INSTALL_DIRECTORY}/env/bin/python ${INSTALL_DIRECTORY}/mycodo/utils/update_installed_dependencies.py
+${INSTALL_DIRECTORY}/env/bin/python ${INSTALL_DIRECTORY}/mycodo/utils/check_dependencies_installed.py
 
 ${INSTALL_CMD} update-influxdb
 ${INSTALL_CMD} update-alembic

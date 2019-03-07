@@ -36,12 +36,12 @@ import timeit
 from pkg_resources import parse_version
 from rpyc.utils.server import ThreadedServer
 
-from mycodo.config import TESTING
 from mycodo.config import DAEMON_LOG_FILE
 from mycodo.config import MYCODO_VERSION
 from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.config import STATS_CSV
 from mycodo.config import STATS_INTERVAL
+from mycodo.config import TESTING
 from mycodo.config import UPGRADE_CHECK_INTERVAL
 from mycodo.controller_conditional import ConditionalController
 from mycodo.controller_input import InputController
@@ -60,6 +60,7 @@ from mycodo.databases.models import Misc
 from mycodo.databases.models import PID
 from mycodo.databases.models import Trigger
 from mycodo.databases.utils import session_scope
+from mycodo.utils.check_dependencies_installed import install_device_dependencies
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.function_actions import get_condition_measurement
 from mycodo.utils.function_actions import trigger_action
@@ -449,6 +450,11 @@ class DaemonController:
         self.opt_out_statistics = None
         self.enable_upgrade_check = None
         self.refresh_daemon_misc_settings()
+
+        try:
+            install_device_dependencies()
+        except Exception:
+            logger.exception("Issue installing dependencies")
 
         state = 'disabled' if self.opt_out_statistics else 'enabled'
         self.logger.info("Anonymous statistics {state}".format(state=state))
@@ -1304,18 +1310,16 @@ if __name__ == '__main__':
     # Parse commandline arguments
     args = parse_args()
 
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+        fh.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+        fh.setLevel(logging.INFO)
+
     try:
-        if args.debug:
-            logger.setLevel(logging.DEBUG)
-            fh.setLevel(logging.DEBUG)
-        else:
-            logger.setLevel(logging.INFO)
-            fh.setLevel(logging.INFO)
-
         daemon_controller = DaemonController()
-
         mycodo_daemon = MycodoDaemon(daemon_controller)
-
         mycodo_daemon.start_daemon()
     except:
         logger.exception(1)

@@ -80,6 +80,7 @@ CONDITIONAL_CONDITION_INFO = {
     'gpio_state': {
         'name': '{}'.format(lazy_gettext('GPIO State')),
         'dependencies_module': [
+            ('apt', 'gcc', 'gcc'),
             ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
         ]
     },
@@ -125,6 +126,7 @@ FUNCTION_INFO = {
             TRANSLATIONS['trigger']['title'],
             TRANSLATIONS['edge']['title']),
         'dependencies_module': [
+            ('apt', 'gcc', 'gcc'),
             ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
         ]
     },
@@ -347,11 +349,15 @@ FUNCTION_ACTIONS = [
 LCD_INFO = {
     '16x2_generic': {
         'name': '16x2 LCD',
-        'dependencies_module': []
+        'dependencies_module': [
+            ('pip-pypi', 'smbus2', 'smbus2')
+        ]
     },
     '20x4_generic': {
         'name': '20x4 LCD',
-        'dependencies_module': []
+        'dependencies_module': [
+            ('pip-pypi', 'smbus2', 'smbus2')
+        ]
     },
     '128x32_pioled': {
         'name': '128x32 OLED',
@@ -553,6 +559,7 @@ OUTPUT_INFO = {
     'raspberry_pi_gpio': {
         'name': lazy_gettext('Raspberry Pi: On/Off (GPIO)'),
         'dependencies_module': [
+            ('apt', 'gcc', 'gcc'),
             ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
         ],
         'measure': {

@@ -5,28 +5,31 @@ if [ "$EUID" -ne 0 ] ; then
   exit 1
 fi
 
+INSTALL_PATH="$( cd -P "$( dirname "${SOURCE}" )" && pwd )"
+cd ${INSTALL_PATH}
+
 case "${1:-''}" in
     "install-dependencies")
-        if [ -x "$(command -v docker)" ]; then
-            printf "#### docker already installed, skipping.\n" 2>&1 | tee -a ${LOG_LOCATION}
-        else
-            printf "#### docker not found, installing...\n" 2>&1 | tee -a ${LOG_LOCATION}
+        if ! [ -x "$(command -v docker)" ]; then
+            printf "#### Installing docker\n" 2>&1 | tee -a ${LOG_LOCATION}
             curl -sSL https://get.docker.com | sh
         fi
 
-        if [ -x "$(command -v docker-compose)" ]; then
-            printf "#### docker-compose already installed, skipping.\n" 2>&1 | tee -a ${LOG_LOCATION}
-        else
-            printf "#### docker-compose not found, installing...\n" 2>&1 | tee -a ${LOG_LOCATION}
+        if ! [ -x "$(command -v docker-compose)" ]; then
+            printf "#### Installing docker-compose\n" 2>&1 | tee -a ${LOG_LOCATION}
             pip install docker-compose
         fi
 
-        apt install logrotate
+        if ! [ -x "$(command -v docker-compose)" ]; then
+            printf "#### Installing logrotate\n" 2>&1 | tee -a ${LOG_LOCATION}
+            apt install logrotate
+        fi
+
         cp ./install/logrotate_docker /etc/logrotate.d/
-        service logrotate restart
+        printf "#### Dependencies installed\n" 2>&1 | tee -a ${LOG_LOCATION}
     ;;
     "test")
-        docker exec -ti flask /usr/local/bin/pip install --upgrade testfixtures==6.4.1 mock==2.0.0 pytest==4.0.2 factory_boy==2.11.1 webtest==2.0.32
+        docker exec -ti flask /usr/local/bin/pip install --upgrade -r /home/mycodo/mycodo/tests/software_tests/requirements.txt
         docker exec -ti flask pytest /home/mycodo/mycodo/tests/software_tests
     ;;
     "clean-all")

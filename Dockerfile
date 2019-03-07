@@ -10,9 +10,7 @@ RUN mkdir -pv /var/lock
 RUN mkdir -pv /var/mycodo/ssl_certs
 RUN mkdir -pv /var/mycodo/database
 
-RUN apt-get update
-# RUN apt-get install -y gawk gcc libffi-dev libi2c-dev logrotate moreutils wget
-RUN apt-get install -y gcc moreutils wget
+RUN apt-get update && apt-get install -y moreutils wget
 
 RUN pip install --no-cache-dir -r /home/mycodo/requirements.txt
 

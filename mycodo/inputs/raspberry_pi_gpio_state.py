@@ -27,6 +27,7 @@ INPUT_INFORMATION = {
     'options_disabled': ['interface'],
 
     'dependencies_module': [
+        ('apt', 'gcc', 'gcc'),
         ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
     ],
 

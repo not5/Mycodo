@@ -20,6 +20,5 @@ pyserial
 python-dateutil == 2.7.5
 requests
 rpyc == 4.0.2
-smbus2 == 0.2.2
 SQLAlchemy == 1.2.15
 WTForms == 2.2.1

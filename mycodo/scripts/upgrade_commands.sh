@@ -13,8 +13,6 @@ APT_PKGS="fswebcam gawk gcc git libffi-dev libi2c-dev logrotate \
           moreutils nginx python-setuptools sqlite3 wget \
           python3 python3-dev python3-smbus python3-pylint-common"
 
-PYTHON_BINARY_SYS_LOC="$(python3.5 -c "import os; print(os.environ['_'])")"
-
 # Get the Mycodo root directory
 SOURCE="${BASH_SOURCE[0]}"
 while [ -h "$SOURCE" ]; do # resolve $SOURCE until the file is no longer a symlink
@@ -108,7 +106,7 @@ case "${1:-''}" in
         python ${MYCODO_PATH}/mycodo/mycodo_client.py -t
     ;;
     'ssl-certs-generate')
-        printf "\n#### Generating SSL certificates at ${MYCODO_PATH}/mycodo/mycodo_flask/ssl_certs (replace with your own if desired)\n"
+        printf "\n#### Generating SSL certificates in /var/mycodo/ssl_certs/\n"
         cd /var/mycodo/ssl_certs/
         rm -f ./*.pem ./*.csr ./*.crt ./*.key
         openssl genrsa \
