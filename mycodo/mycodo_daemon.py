@@ -36,6 +36,7 @@ import timeit
 from pkg_resources import parse_version
 from rpyc.utils.server import ThreadedServer
 
+from mycodo.config import TESTING
 from mycodo.config import DAEMON_LOG_FILE
 from mycodo.config import MYCODO_VERSION
 from mycodo.config import SQL_DATABASE_MYCODO
@@ -489,7 +490,8 @@ class DaemonController:
                         now > self.timer_stats):
                     while now > self.timer_stats:
                         self.timer_stats += STATS_INTERVAL
-                    self.send_stats()
+                    if not TESTING:
+                        self.send_stats()
 
                 # Check if running the latest version (if enabled)
                 if now > self.timer_upgrade:
