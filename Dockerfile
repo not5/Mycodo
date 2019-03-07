@@ -10,7 +10,7 @@ RUN mkdir -pv /var/lock
 RUN mkdir -pv /var/mycodo/ssl_certs
 RUN mkdir -pv /var/mycodo/database
 
-RUN apt-get update && apt-get install -y moreutils wget
+RUN apt-get update && apt-get install -y moreutils wget gcc
 
 RUN pip install --no-cache-dir -r /home/mycodo/requirements.txt
 
