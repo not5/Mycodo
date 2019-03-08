@@ -106,24 +106,29 @@ case "${1:-''}" in
         python ${MYCODO_PATH}/mycodo/mycodo_client.py -t
     ;;
     'ssl-certs-generate')
-        printf "\n#### Generating SSL certificates in /var/mycodo/ssl_certs/\n"
-        cd /var/mycodo/ssl_certs/
-        rm -f ./*.pem ./*.csr ./*.crt ./*.key
-        openssl genrsa \
-            -out /var/mycodo/ssl_certs/server.pass.key 4096
-        openssl rsa \
-            -in /var/mycodo/ssl_certs/server.pass.key \
-            -out /var/mycodo/ssl_certs/server.key
-        rm -f /var/mycodo/ssl_certs/server.pass.key
-        openssl req -new \
-            -key /var/mycodo/ssl_certs/server.key \
-            -out /var/mycodo/ssl_certs/server.csr \
-            -subj "/O=mycodo/OU=mycodo/CN=mycodo"
-        openssl x509 -req \
-            -days 3653 \
-            -in /var/mycodo/ssl_certs/server.csr \
-            -signkey /var/mycodo/ssl_certs/server.key \
-            -out /var/mycodo/ssl_certs/server.crt
+        printf "\n#### Checking for SSL certificates in /var/mycodo/ssl_certs/\n"
+        if [ ! -e /var/mycodo/ssl_certs/server.crt ]; then
+            printf "\n#### Generating SSL certificates in /var/mycodo/ssl_certs/\n"
+            cd /var/mycodo/ssl_certs/
+            rm -f ./*.pem ./*.csr ./*.crt ./*.key
+            openssl genrsa \
+                -out /var/mycodo/ssl_certs/server.pass.key 4096
+            openssl rsa \
+                -in /var/mycodo/ssl_certs/server.pass.key \
+                -out /var/mycodo/ssl_certs/server.key
+            rm -f /var/mycodo/ssl_certs/server.pass.key
+            openssl req -new \
+                -key /var/mycodo/ssl_certs/server.key \
+                -out /var/mycodo/ssl_certs/server.csr \
+                -subj "/O=mycodo/OU=mycodo/CN=mycodo"
+            openssl x509 -req \
+                -days 3653 \
+                -in /var/mycodo/ssl_certs/server.csr \
+                -signkey /var/mycodo/ssl_certs/server.key \
+                -out /var/mycodo/ssl_certs/server.crt
+        else
+            printf "\n#### SSL certificates exist in /var/mycodo/ssl_certs/, skipping generation\n"
+        fi
     ;;
     'update-alembic')
         printf "\n#### Upgrading Mycodo database with alembic (if needed)\n"
@@ -161,15 +166,16 @@ case "${1:-''}" in
     ;;
     'install-pigpiod')
         printf "\n#### Installing pigpiod\n"
-        apt-get install -y python3-pigpio
-        cd ${MYCODO_PATH}/install
-        # wget --quiet -P ${MYCODO_PATH}/install abyz.co.uk/rpi/pigpio/pigpio.zip
-        tar xf pigpio.tar
-        cd ${MYCODO_PATH}/install/PIGPIO
+        cd ${MYCODO_PATH}
+        apt-get update
+        apt-get install -y unzip systemd
+        wget --quiet -P ${MYCODO_PATH} https://github.com/joan2937/pigpio/archive/master.zip
+        unzip master.zip
+        cd pigpio-master
         make -j4
         make install
-        cd ${MYCODO_PATH}/install
-        rm -rf ./PIGPIO
+        cd ..
+        rm -rf ./pigpio-master
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh disable-pigpiod
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_commands.sh enable-pigpiod-low
         mkdir -p /opt/mycodo

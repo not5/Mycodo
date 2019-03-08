@@ -568,7 +568,7 @@ OUTPUT_INFO = {
     'raspberry_pi_pwm': {
         'name': lazy_gettext('Raspberry Pi: PWM (GPIO)'),
         'dependencies_module': [
-            ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpio')
+            ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpiod')
         ],
         'measure': {
             'duty_cycle': {'percent': {0: {}}}

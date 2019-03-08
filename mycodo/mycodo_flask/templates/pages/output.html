@@ -226,8 +226,10 @@
               {{form_mod_output.delete(class_='form-control btn btn-sm btn-block', **{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
             </div>
 
-          {% for each_output_template in output_templates if each_output_template[:-5] == each_output.output_type %}
-            {% include 'pages/output_options/'+each_output_template %}
+          {% for each_output_template in output_templates %}
+            {%if each_output_template[:-5] == each_output.output_type %}
+              {% include 'pages/output_options/'+each_output_template %}
+            {% endif %}
           {% endfor %}
 
             <div class="col-6 col-sm-4 col-md-3">

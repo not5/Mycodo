@@ -24,11 +24,8 @@ case "${1}" in
     'pip-git')
         pip install --upgrade -e ${2}
     ;;
-    'pigpio')
-        ${INSTALL_CMD} install-pigpiod
-    ;;
-    'bcm2835')
-        ${INSTALL_CMD} install-bcm2835
+    'internal')
+        ${INSTALL_CMD} install-${2}
     ;;
     *)
         printf "\nUnrecognized dependency: ${1}"
