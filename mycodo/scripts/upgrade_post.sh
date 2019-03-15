@@ -13,30 +13,16 @@ INSTALL_CMD="/bin/bash ${INSTALL_DIRECTORY}/mycodo/scripts/upgrade_commands.sh"
 INSTALL_DEP="/bin/bash ${INSTALL_DIRECTORY}/mycodo/scripts/dependencies.sh"
 cd ${INSTALL_DIRECTORY}
 
-${INSTALL_CMD} initialize
-
 printf "\n#### Removing statistics file\n"
-rm ${INSTALL_DIRECTORY}/databases/statistics.csv
+rm /var/mycodo/database/statistics.csv
 
-${INSTALL_CMD} update-swap-size
-${INSTALL_CMD} setup-virtualenv
-${INSTALL_CMD} update-apt
-${INSTALL_CMD} update-packages
-${INSTALL_CMD} web-server-update
-${INSTALL_CMD} update-logrotate
-${INSTALL_CMD} update-pip3
-${INSTALL_CMD} update-pip3-packages
-${INSTALL_CMD} update-permissions
+${INSTALL_CMD} update-apt-packages
+${INSTALL_CMD} update-pip
+${INSTALL_CMD} update-pip-packages
 
 printf "\n#### Checking for updates to dependencies\n"
-${INSTALL_DIRECTORY}/env/bin/python ${INSTALL_DIRECTORY}/mycodo/utils/check_dependencies_installed.py
+python ${INSTALL_DIRECTORY}/mycodo/utils/check_dependencies_installed.py
 
-${INSTALL_CMD} update-influxdb
 ${INSTALL_CMD} update-alembic
-${INSTALL_CMD} update-mycodo-startup-script
 ${INSTALL_CMD} compile-translations
-${INSTALL_CMD} update-cron
-${INSTALL_CMD} update-permissions
 ${INSTALL_CMD} restart-daemon
-${INSTALL_CMD} web-server-reload
-${INSTALL_CMD} web-server-connect

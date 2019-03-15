@@ -36,7 +36,7 @@ def conditional_mod(form):
 
     try:
         pre_statement = """import os, random, sys
-sys.path.append(os.path.abspath('/var/mycodo-root'))
+sys.path.append(os.path.abspath('/home/mycodo'))
 from mycodo.mycodo_client import DaemonControl
 
 control = DaemonControl()
@@ -84,9 +84,9 @@ def run_action(action_id, message=message):
         with open(path_file, 'w') as out:
             out.write('{}\n'.format(cond_statement))
 
-        cmd_test = 'export PYTHONPATH=$PYTHONPATH:/var/mycodo-root && ' \
-                   'pylint3 -d I,W0621,C0103,C0111,C0301,C0327,C0410,C0413 {path}'.format(
-            path=path_file)
+        cmd_test = 'export PYTHONPATH=$PYTHONPATH:/home/mycodo && ' \
+                   'pylint -d I,W0621,C0103,C0111,C0301,C0327,C0410,C0413 {path}'.format(
+                       path=path_file)
         cmd_out, cmd_err, cmd_status = cmd_output(cmd_test)
 
         os.remove(path_file)

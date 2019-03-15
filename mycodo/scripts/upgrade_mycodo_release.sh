@@ -12,23 +12,23 @@ INSTALL_DIRECTORY=$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../.." && pwd -P )
 cd ${INSTALL_DIRECTORY}
 
 runSelfUpgrade() {
-  INSTALL_DIRECTORY=$( cd -P /var/mycodo-root/.. && pwd -P )
-  echo '1' > ${INSTALL_DIRECTORY}/Mycodo/.upgrade
+  INSTALL_DIRECTORY=$( cd -P /home/mycodo/.. && pwd -P )
+  echo '1' > /var/mycodo/.upgrade
 
   function error_found {
-    echo '2' > ${INSTALL_DIRECTORY}/Mycodo/.upgrade
+    echo '2' > /var/mycodo/.upgrade
     printf "\n\n"
     printf "#### ERROR ####\n"
-    printf "There was an error detected during the upgrade. Please review the log at /var/log/mycodo/mycodoupgrade.log"
+    printf "There was an error detected during the upgrade. Please review the log at /var/mycodo/log/upgrade.log"
     exit 1
   }
 
   NOW=$(date +"%Y-%m-%d_%H-%M-%S")
-  CURRENT_VERSION=$(${INSTALL_DIRECTORY}/Mycodo/env/bin/python3 ${INSTALL_DIRECTORY}/Mycodo/mycodo/utils/github_release_info.py -c 2>&1)
-  BACKUP_DIR="/var/Mycodo-backups/Mycodo-backup-${NOW}-${CURRENT_VERSION}"
-  UPDATE_VERSION=$(${INSTALL_DIRECTORY}/Mycodo/env/bin/python3 ${INSTALL_DIRECTORY}/Mycodo/mycodo/utils/github_release_info.py -m 7 -v 2>&1)
+  CURRENT_VERSION=$(python ${INSTALL_DIRECTORY}/mycodo/mycodo/utils/github_release_info.py -c 2>&1)
+  BACKUP_DIR="/var/mycodo/Mycodo-backups/Mycodo-backup-${NOW}-${CURRENT_VERSION}"
+  UPDATE_VERSION=$(python ${INSTALL_DIRECTORY}/mycodo/mycodo/utils/github_release_info.py -m 7 -v 2>&1)
   MYCODO_NEW_TMP_DIR="/tmp/Mycodo-${UPDATE_VERSION}"
-  UPDATE_URL=$(${INSTALL_DIRECTORY}/Mycodo/env/bin/python3 ${INSTALL_DIRECTORY}/Mycodo/mycodo/utils/github_release_info.py -m 7 2>&1)
+  UPDATE_URL=$(python ${INSTALL_DIRECTORY}/mycodo/mycodo/utils/github_release_info.py -m 7 2>&1)
   TARBALL_FILE="mycodo-${UPDATE_VERSION}"
 
   printf "\n"
@@ -96,98 +96,11 @@ runSelfUpgrade() {
   fi
   printf "Done.\n"
 
-  if [ -d "${MYCODO_NEW_TMP_DIR}/old" ] ; then
-    printf "The archive directory ${MYCODO_NEW_TMP_DIR}/old exists. Removing..."
-    if ! rm -Rf ${MYCODO_NEW_TMP_DIR}/old ; then
-      printf "Failed: Error while trying to delete archive directory ${MYCODO_NEW_TMP_DIR}/old.\n"
-      error_found
-    fi
-    printf "Done.\n"
-  fi
-
   printf "Removing ${INSTALL_DIRECTORY}/${TARBALL_FILE}.tar.gz..."
   if ! rm -rf ${INSTALL_DIRECTORY}/${TARBALL_FILE}.tar.gz ; then
     printf "Failed: Error while removing ${INSTALL_DIRECTORY}/${TARBALL_FILE}.tar.gz.\n"
   fi
   printf "Done.\n"
-
-  printf "Copying ${MYCODO_NEW_TMP_DIR}/.upgrade status file to ${MYCODO_NEW_TMP_DIR}..."
-  if ! cp ${INSTALL_DIRECTORY}/Mycodo/.upgrade ${MYCODO_NEW_TMP_DIR} ; then
-    printf "Failed: Error while trying to copy .upgrade status file.\n"
-  fi
-  printf "Done.\n"
-
-  if [ -d ${INSTALL_DIRECTORY}/Mycodo/env ] ; then
-    printf "Moving env directory..."
-    if ! mv ${INSTALL_DIRECTORY}/Mycodo/env ${MYCODO_NEW_TMP_DIR} ; then
-      printf "Failed: Error while trying to move env directory.\n"
-      error_found
-    fi
-    printf "Done.\n"
-  fi
-
-  printf "Copying databases from ${INSTALL_DIRECTORY}/Mycodo/databases/ to ${MYCODO_NEW_TMP_DIR}/databases..."
-  if ! cp ${INSTALL_DIRECTORY}/Mycodo/databases/*.db ${MYCODO_NEW_TMP_DIR}/databases ; then
-    printf "Failed: Error while trying to copy databases."
-    error_found
-  fi
-  printf "Done.\n"
-
-  printf "Copying flask_secret_key from ${INSTALL_DIRECTORY}/Mycodo/databases/ to ${MYCODO_NEW_TMP_DIR}/databases..."
-  if ! cp ${INSTALL_DIRECTORY}/Mycodo/databases/flask_secret_key ${MYCODO_NEW_TMP_DIR}/databases ; then
-    printf "Failed: Error while trying to copy flask_secret_key."
-  fi
-  printf "Done.\n"
-
-  if [ -e ${INSTALL_DIRECTORY}/Mycodo/databases/statistics.id ]; then
-    printf "Copying statistics ID..."
-    if ! cp ${INSTALL_DIRECTORY}/Mycodo/databases/statistics.id ${MYCODO_NEW_TMP_DIR}/databases ; then
-      printf "Failed: Error while trying to copy statistics ID."
-    fi
-    printf "Done.\n"
-  fi
-
-  if [ -d ${INSTALL_DIRECTORY}/Mycodo/mycodo/mycodo_flask/ssl_certs ] ; then
-    printf "Copying SSL certificates..."
-    if ! cp -R ${INSTALL_DIRECTORY}/Mycodo/mycodo/mycodo_flask/ssl_certs ${MYCODO_NEW_TMP_DIR}/mycodo/mycodo_flask/ssl_certs ; then
-      printf "Failed: Error while trying to copy SSL certificates."
-      error_found
-    fi
-    printf "Done.\n"
-  fi
-
-  if [ -d ${INSTALL_DIRECTORY}/Mycodo/mycodo/inputs/custom_inputs ] ; then
-    printf "Copying mycodo/inputs/custom_inputs..."
-    if ! cp -R ${INSTALL_DIRECTORY}/Mycodo/mycodo/inputs/custom_inputs ${MYCODO_NEW_TMP_DIR}/mycodo/inputs/custom_inputs ; then
-      printf "Failed: Error while trying to copy mycodo/inputs/custom_inputs"
-      error_found
-    fi
-    printf "Done.\n"
-  fi
-
-  if [ -d ${INSTALL_DIRECTORY}/Mycodo/output_usage_reports ] ; then
-    printf "Moving output_usage_reports directory..."
-    if ! mv ${INSTALL_DIRECTORY}/Mycodo/output_usage_reports ${MYCODO_NEW_TMP_DIR} ; then
-      printf "Failed: Error while trying to move output_usage_reports directory.\n"
-    fi
-    printf "Done.\n"
-  fi
-
-  if [ -d ${INSTALL_DIRECTORY}/Mycodo/cameras ] ; then
-    printf "Moving cameras directory..."
-    if ! mv ${INSTALL_DIRECTORY}/Mycodo/cameras ${MYCODO_NEW_TMP_DIR} ; then
-      printf "Failed: Error while trying to move cameras directory.\n"
-    fi
-    printf "Done.\n"
-  fi
-
-  if [ -d ${INSTALL_DIRECTORY}/Mycodo/.upgrade ] ; then
-    printf "Moving .upgrade file..."
-    if ! mv ${INSTALL_DIRECTORY}/Mycodo/.upgrade ${MYCODO_NEW_TMP_DIR} ; then
-      printf "Failed: Error while trying to move .upgrade file.\n"
-    fi
-    printf "Done.\n"
-  fi
 
   printf "#### Stage 1 of 2 Complete ####\n"
 
@@ -204,41 +117,36 @@ function error_found {
   printf "sudo /bin/bash ~/Mycodo/mycodo/scripts/upgrade_commands.sh upgrade\n"
   printf "3. If that command returns that you are running the latest version, run the following command:\n"
   printf "sudo /bin/bash ~/Mycodo/mycodo/scripts/upgrade_post.sh\n\n"
-  echo '2' > ${INSTALL_DIRECTORY}/Mycodo/.upgrade
+  echo '2' > /var/mycodo/.upgrade
   exit 1
 }
 
 printf "\n#### Continuing Upgrade: Stage 2 of 2 ####\n"
 
-if [ ! -d "/var/Mycodo-backups" ] ; then
-  mkdir /var/Mycodo-backups
+if [ ! -d "/var/mycodo/Mycodo-backups" ] ; then
+  mkdir -p /var/mycodo/Mycodo-backups
 fi
 
-printf "\nMoving old Mycodo from ${INSTALL_DIRECTORY}/Mycodo to ${BACKUP_DIR}..."
-if ! mv ${INSTALL_DIRECTORY}/Mycodo ${BACKUP_DIR} ; then
-  printf "Failed: Error while trying to move old Mycodo install from ${INSTALL_DIRECTORY}/Mycodo to ${BACKUP_DIR}.\n"
+printf "\nMoving old Mycodo from ${INSTALL_DIRECTORY}/mycodo to ${BACKUP_DIR}..."
+if ! mv ${INSTALL_DIRECTORY}/mycodo ${BACKUP_DIR} ; then
+  printf "Failed: Error while trying to move old Mycodo install from ${INSTALL_DIRECTORY}/mycodo to ${BACKUP_DIR}.\n"
   error_found
 fi
 printf "Done.\n"
 
-printf "Moving new Mycodo from ${MYCODO_NEW_TMP_DIR} to ${INSTALL_DIRECTORY}/Mycodo..."
-if ! mv ${MYCODO_NEW_TMP_DIR} ${INSTALL_DIRECTORY}/Mycodo ; then
-  printf "Failed: Error while trying to move new Mycodo install from ${MYCODO_NEW_TMP_DIR} to ${INSTALL_DIRECTORY}/Mycodo.\n"
+printf "Moving new Mycodo from ${MYCODO_NEW_TMP_DIR} to ${INSTALL_DIRECTORY}/mycodo..."
+if ! mv ${MYCODO_NEW_TMP_DIR} ${INSTALL_DIRECTORY}/mycodo ; then
+  printf "Failed: Error while trying to move new Mycodo install from ${MYCODO_NEW_TMP_DIR} to ${INSTALL_DIRECTORY}/mycodo.\n"
   error_found
 fi
 printf "Done.\n"
 
 sleep 30
 
-cd ${INSTALL_DIRECTORY}/Mycodo
-
-if ! ${INSTALL_DIRECTORY}/Mycodo/mycodo/scripts/upgrade_commands.sh update-alembic ; then
-  printf "Failed: Error while updating database with alembic.\n"
-  error_found
-fi
+cd ${INSTALL_DIRECTORY}/mycodo
 
 printf "\nRunning post-upgrade script...\n"
-if ! ${INSTALL_DIRECTORY}/Mycodo/mycodo/scripts/upgrade_post.sh ; then
+if ! ${INSTALL_DIRECTORY}/mycodo/mycodo/scripts/upgrade_post.sh ; then
   printf "Failed: Error while running post-upgrade script.\n"
   error_found
 fi
@@ -246,7 +154,7 @@ printf "Done.\n\n"
 
 printf "Upgrade completed successfully without errors.\n"
 
-echo '0' > ${INSTALL_DIRECTORY}/Mycodo/.upgrade
+echo '0' > /var/mycodo/.upgrade
 rm \$0
 EOF
   exec /bin/bash /tmp/upgrade_mycodo_stagetwo.sh

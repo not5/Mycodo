@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
-import logging
-import subprocess
-
 import bcrypt
 import flask_login
+import logging
 import os
 import re
 import sqlalchemy
+import subprocess
 from flask import flash
 from flask import redirect
 from flask import url_for
@@ -17,6 +16,7 @@ from sqlalchemy import or_
 from mycodo.config import BACKUP_LOG_FILE
 from mycodo.config import DEPENDENCY_INIT_FILE
 from mycodo.config import INSTALL_DIRECTORY
+from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.config import UPGRADE_INIT_FILE
 from mycodo.config_devices_units import MEASUREMENTS
 from mycodo.config_devices_units import UNITS
@@ -321,9 +321,9 @@ def settings_input_import(form):
     try:
         # correct_format = 'Mycodo_MYCODOVERSION_Settings_DBVERSION_HOST_DATETIME.zip'
         install_dir = os.path.abspath(INSTALL_DIRECTORY)
-        tmp_directory = os.path.join(install_dir, 'inputs/tmp_inputs')
+        tmp_directory = '/var/mycodo/tmp_inputs'
         assure_path_exists(tmp_directory)
-        custom_directory = os.path.join(install_dir, 'inputs/custom_inputs')
+        custom_directory = '/var/mycodo/custom_inputs'
         assure_path_exists(custom_directory)
         tmp_name = 'tmp_input_testing.py'
         full_path_tmp = os.path.join(tmp_directory, tmp_name)
@@ -416,7 +416,7 @@ def settings_input_import(form):
             unique_name = '{}.py'.format(input_info.INPUT_INFORMATION['input_name_unique'].lower())
 
             # Move module from temp directory to custom_input directory
-            full_path_custom_inputs = os.path.join(install_dir, 'inputs/custom_inputs')
+            full_path_custom_inputs = '/var/mycodo/custom_inputs'
             full_path_final = os.path.join(full_path_custom_inputs, unique_name)
             os.rename(full_path_tmp, full_path_final)
 
@@ -440,7 +440,7 @@ def settings_input_delete(form):
 
     input_device_name = None
     install_dir = os.path.abspath(INSTALL_DIRECTORY)
-    custom_directory = os.path.join(install_dir, 'inputs/custom_inputs')
+    custom_directory = '/var/mycodo/custom_inputs'
     file_name = '{}.py'.format(form.input_id.data.lower())
     full_path_file = os.path.join(custom_directory, file_name)
 
@@ -1274,7 +1274,7 @@ def settings_diagnostic_delete_settings_database():
 
     if not error:
         try:
-            os.remove('/var/mycodo-root/databases/mycodo.db')
+            os.remove(SQL_DATABASE_MYCODO)
             cmd = "{pth}/mycodo/scripts/mycodo_wrapper frontend_restart" \
                   " | ts '[%Y-%m-%d %H:%M:%S]'" \
                   " >> {log} 2>&1".format(pth=INSTALL_DIRECTORY,

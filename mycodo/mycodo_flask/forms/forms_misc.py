@@ -129,7 +129,6 @@ class LogView(FlaskForm):
     logdaemon = SubmitField(lazy_gettext('Daemon'))
     logdependency = SubmitField(lazy_gettext('Dependency'))
     logbackup = SubmitField(lazy_gettext('Backup'))
-    logkeepup = SubmitField(lazy_gettext('KeepUp'))
     logupgrade = SubmitField(lazy_gettext('Upgrade'))
     logrestore = SubmitField(lazy_gettext('Restore'))
     log_pid_settings = SubmitField(lazy_gettext('PID Settings'))

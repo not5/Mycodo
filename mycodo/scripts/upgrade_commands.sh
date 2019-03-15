@@ -9,9 +9,7 @@ fi
 
 # Required apt packages. This has only been tested with Raspbian for the
 # Raspberry Pi but should work with most debian-based systems.
-APT_PKGS="fswebcam gawk gcc git libffi-dev libi2c-dev logrotate \
-          moreutils nginx python-setuptools sqlite3 wget \
-          python3 python3-dev python3-smbus python3-pylint-common"
+APT_PKGS="moreutils wget git gcc libffi-dev"
 
 # Get the Mycodo root directory
 SOURCE="${BASH_SOURCE[0]}"
@@ -27,15 +25,15 @@ cd ${MYCODO_PATH}
 HELP_OPTIONS="upgrade_commands.sh [option] - Program to execute various mycodo commands
 
 Options:
-  backup-create                 Create a backup of the ~/Mycodo directory
+  backup-create                 Create a backup of the Container /home/mycodo to the Volume /var/mycodo
   backup-restore [backup]       Restore [backup] location, which must be the full path to the backup.
-                                Ex.: '/var/Mycodo-backups/Mycodo-backup-2018-03-11_21-19-15-5.6.4/'
+                                Ex.: '/var/mycodo/Mycodo-backups/Mycodo-backup-2018-03-11_21-19-15-5.6.4/'
   compile-translations          Compile language translations for web interface
   create-files-directories      Create required directories
   restart-daemon                Restart the Mycodo daemon
   ssl-certs-generate            Generate SSL certificates for the web user interface
   update-alembic                Use alembic to upgrade the mycodo.db settings database
-  update-apt                    Update apt sources
+  update-apt-packages           Install required apt packages are installed/up-to-date
   install-bcm2835               Install bcm2835
   install-pigpiod               Install pigpiod
   install-wiringpi              Install wiringpi
@@ -46,7 +44,6 @@ Options:
   enable-pigpiod-disabled       Create empty service to indicate pigpiod is disabled
   update-pigpiod                Update to latest version of pigpiod service file
   update-logrotate              Install logrotate script
-  update-packages               Install required apt packages are installed/up-to-date
   update-pip3                   Update pip
   update-pip3-packages          Update required pip packages
   update-swap-size              Ensure sqap size is sufficiently large (512 MB)
@@ -70,9 +67,13 @@ case "${1:-''}" in
     ;;
     'create-files-directories')
         printf "\n#### Creating files and directories\n"
-        mkdir -p /var/mycodo/log
-        mkdir -p /var/Mycodo-backups
-        mkdir -p ${MYCODO_PATH}/note_attachments
+        mkdir -pv /var/mycodo/log
+        mkdir -pv /var/mycodo/database
+        mkdir -pv /var/mycodo/lock
+        mkdir -pv /var/mycodo/ssl_certs
+        mkdir -pv /var/mycodo/database
+        mkdir -pv /var/mycodo/Mycodo-backups
+        mkdir -p/ /var/mycodo/note_attachments
 
         if [ ! -e /var/mycodo/log/mycodo.log ]; then
             touch /var/mycodo/log/mycodo.log
@@ -133,11 +134,7 @@ case "${1:-''}" in
     'update-alembic')
         printf "\n#### Upgrading Mycodo database with alembic (if needed)\n"
         cd ${MYCODO_PATH}/mycodo/database_version
-        ${MYCODO_PATH}/env/bin/alembic upgrade head
-    ;;
-    'update-apt')
-        printf "\n\n#### Updating apt repositories\n"
-        apt-get update
+        alembic upgrade head
     ;;
     'install-bcm2835')
         printf "\n#### Installing bcm2835\n"
@@ -183,14 +180,13 @@ case "${1:-''}" in
     ;;
     'uninstall-pigpiod')
         printf "\n#### Uninstalling pigpiod\n"
-        apt-get remove -y python3-pigpio
         cd ${MYCODO_PATH}/install
-        # wget --quiet -P ${MYCODO_PATH}/install abyz.co.uk/rpi/pigpio/pigpio.zip
-        tar xf pigpio.tar
-        cd ${MYCODO_PATH}/install/PIGPIO
+        wget --quiet -P ${MYCODO_PATH} https://github.com/joan2937/pigpio/archive/master.zip
+        unzip master.zip
+        cd pigpio-master
         make uninstall
         cd ${MYCODO_PATH}/install
-        rm -rf ./PIGPIO
+        rm -rf ./pigpio-master
         touch /etc/systemd/system/pigpiod_uninstalled.service
         rm -f /opt/mycodo/pigpio_installed
     ;;
@@ -253,22 +249,19 @@ case "${1:-''}" in
         cp -f ${MYCODO_PATH}/install/logrotate_mycodo /etc/logrotate.d/mycodo
         printf "#### Mycodo logrotate script installed\n"
     ;;
-    'update-packages')
+    'update-apt-packages')
         printf "\n#### Installing prerequisite apt packages and update pip\n"
         apt-get update -y
-        apt-get remove -y apache2
         apt-get install -y ${APT_PKGS}
-        easy_install pip
-        pip install --upgrade pip
     ;;
-    'update-pip3')
+    'update-pip')
         printf "\n#### Updating pip\n"
         pip install --upgrade pip
     ;;
-    'update-pip3-packages')
+    'update-pip-packages')
         printf "\n#### Installing pip requirements from requirements.txt\n"
         pip install --upgrade pip setuptools
-        pip install --upgrade -r ${MYCODO_PATH}/install/requirements.txt
+        pip install --no-cache-dir -r /home/mycodo/requirements.txt
     ;;
     'upgrade')
         /bin/bash ${MYCODO_PATH}/mycodo/scripts/upgrade_mycodo_release.sh

@@ -228,7 +228,7 @@ class ConditionalController(threading.Thread):
         # Add functions to the top of the statement string
         pre_statement = """
 import os, sys
-sys.path.append(os.path.abspath('/var/mycodo-root'))
+sys.path.append(os.path.abspath('/home/mycodo'))
 from mycodo.mycodo_client import DaemonControl
 control = DaemonControl()
 

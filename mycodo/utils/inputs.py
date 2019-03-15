@@ -94,11 +94,10 @@ def parse_input_information():
         return dict_inp
 
     excluded_files = ['__init__.py', '__pycache__', 'base_input.py',
-                      'custom_inputs', 'examples', 'tmp_inputs',
-                      'sensorutils.py']
+                      'examples', 'sensorutils.py']
 
     path_inputs = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir) + '/inputs')
-    path_custom_inputs = os.path.join(path_inputs, "custom_inputs")
+    path_custom_inputs = '/var/mycodo/custom_inputs'
 
     input_paths = [path_inputs, path_custom_inputs]
 
