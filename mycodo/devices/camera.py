@@ -12,7 +12,6 @@ from mycodo.mycodo_client import DaemonControl
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.system_pi import assure_path_exists
 from mycodo.utils.system_pi import cmd_output
-from mycodo.utils.system_pi import set_user_grp
 
 logger = logging.getLogger('mycodo.devices.picamera')
 
@@ -139,7 +138,6 @@ def camera_record(record_type, unique_id, duration_sec=None, tmp_filename=None):
         daemon_control.output_off(settings.output_id)
 
     try:
-        set_user_grp(path_file, 'mycodo', 'mycodo')
         return save_path, filename
     except Exception as e:
         logger.exception(

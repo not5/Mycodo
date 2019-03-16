@@ -31,9 +31,9 @@ BACKUP_DIR="/var/mycodo/Mycodo-backups/Mycodo-backup-${NOW}-${CURRENT_VERSION}"
 
 printf "\n#### Restore of backup $1 initiated $NOW ####\n"
 
-printf "\nBacking up current Mycodo from ${INSTALL_DIRECTORY}/mycodo to ${BACKUP_DIR}..."
-if ! mv ${INSTALL_DIRECTORY}/mycodo ${BACKUP_DIR} ; then
-    printf "Failed: Error while trying to back up current Mycodo install from ${INSTALL_DIRECTORY}/mycodo to ${BACKUP_DIR}.\n"
+printf "\nBacking up current Mycodo install..."
+if ! /bin/bash ${INSTALL_DIRECTORY}/mycodo/mycodo/scripts/mycodo_backup_create.sh ; then
+    printf "Failed: Error while Backing up current Mycodo install.\n"
     error_found
 fi
 printf "Done.\n"
@@ -41,6 +41,13 @@ printf "Done.\n"
 printf "\nRestoring Mycodo from $1 to ${INSTALL_DIRECTORY}/mycodo..."
 if ! mv $1 ${INSTALL_DIRECTORY}/mycodo ; then
     printf "Failed: Error while trying to restore Mycodo backup from ${INSTALL_DIRECTORY}/mycodo to ${BACKUP_DIR}.\n"
+    error_found
+fi
+printf "Done.\n"
+
+printf "\nRestoring Mycodo database from $1/mycodo.db to /var/mycodo/database/..."
+if ! mv $1/mycodo.db /var/mycodo/database/ ; then
+    printf "Failed: Error while trying to restore Mycodo database from $1/mycodo.db to /var/mycodo/database/.\n"
     error_found
 fi
 printf "Done.\n"

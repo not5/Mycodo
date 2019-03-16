@@ -72,26 +72,30 @@ case "${1:-''}" in
         mkdir -pv /var/mycodo/lock
         mkdir -pv /var/mycodo/ssl_certs
         mkdir -pv /var/mycodo/database
+        mkdir -pv /var/mycodo/custom_inputs
         mkdir -pv /var/mycodo/Mycodo-backups
-        mkdir -p/ /var/mycodo/note_attachments
+        mkdir -pv /var/mycodo/note_attachments
 
+        if [ ! -e /var/mycodo/custom_inputs/__init__.py ]; then
+            touch /var/mycodo/custom_inputs/__init__.py
+        fi
         if [ ! -e /var/mycodo/log/mycodo.log ]; then
             touch /var/mycodo/log/mycodo.log
         fi
-        if [ ! -e /var/mycodo/log/mycodobackup.log ]; then
-            touch /var/mycodo/log/mycodobackup.log
+        if [ ! -e /var/mycodo/log/backup.log ]; then
+            touch /var/mycodo/log/backup.log
         fi
-        if [ ! -e /var/mycodo/log/mycodokeepup.log ]; then
-            touch /var/mycodo/log/mycodokeepup.log
+        if [ ! -e /var/mycodo/log/keepup.log ]; then
+            touch /var/mycodo/log/keepup.log
         fi
-        if [ ! -e /var/mycodo/log/mycododependency.log ]; then
-            touch /var/mycodo/log/mycododependency.log
+        if [ ! -e /var/mycodo/log/dependency.log ]; then
+            touch /var/mycodo/log/dependency.log
         fi
-        if [ ! -e /var/mycodo/log/mycodoupgrade.log ]; then
-            touch /var/mycodo/log/mycodoupgrade.log
+        if [ ! -e /var/mycodo/log/upgrade.log ]; then
+            touch /var/mycodo/log/upgrade.log
         fi
-        if [ ! -e /var/mycodo/log/mycodorestore.log ]; then
-            touch /var/mycodo/log/mycodorestore.log
+        if [ ! -e /var/mycodo/log/restore.log ]; then
+            touch /var/mycodo/log/restore.log
         fi
         if [ ! -e /var/mycodo/log/login.log ]; then
             touch /var/mycodo/log/login.log

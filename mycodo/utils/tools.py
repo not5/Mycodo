@@ -14,7 +14,6 @@ from mycodo.databases.models import Output
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.influx import output_sec_on
 from mycodo.utils.system_pi import assure_path_exists
-from mycodo.utils.system_pi import set_user_grp
 
 logger = logging.getLogger("mycodo.tools")
 
@@ -236,7 +235,5 @@ def generate_output_usage_report():
                                 value['1m']['cost'],
                                 value['1m_date']['cost'],
                                 value['1y']['cost']])
-
-        set_user_grp(report_path_file, 'mycodo', 'mycodo')
     except Exception:
         logger.exception("Energy Usage Report Generation ERROR")

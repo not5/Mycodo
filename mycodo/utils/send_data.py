@@ -11,7 +11,6 @@ from email.mime.text import MIMEText
 import os
 
 # from mycodo.utils.system_pi import cmd_output
-# from mycodo.utils.system_pi import set_user_grp
 
 logger = logging.getLogger("mycodo.notification")
 
@@ -124,7 +123,6 @@ def send_email(smtp_host, smtp_ssl, smtp_port, smtp_user, smtp_pass,
         #         'avconv -i "{}" -vf scale=-1:768 -c:v libx264 -preset '
         #         'veryfast -crf 22 -c:a copy "{}"'.format(
         #             attachment_file, out_filename))
-        #     set_user_grp(out_filename, 'mycodo', 'mycodo')
         #     f = open(attachment_file, 'rb').read()
         #     video = email.mime.base.MIMEBase('application', 'octet-stream')
         #     video.set_payload(f)

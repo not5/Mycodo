@@ -37,5 +37,12 @@ if ! mv ${TMP_DIR}/mycodo ${BACKUP_DIR} ; then
 fi
 printf "Done.\n"
 
+printf "Copying database from /var/mycodo/database/mycodo.db to ${BACKUP_DIR}..."
+if ! cp /var/mycodo/database/mycodo.db ${BACKUP_DIR} ; then
+    printf "Failed: Error while trying to copy /var/mycodo/database/mycodo.db to ${BACKUP_DIR}.\n"
+    error_found
+fi
+printf "Done.\n"
+
 date
 printf "Backup completed successfully without errors.\n"

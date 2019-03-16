@@ -263,7 +263,6 @@ def assure_path_exists(path):
     if not os.path.exists(path):
         os.makedirs(path)
         os.chmod(path, 0o774)
-        set_user_grp(path, 'mycodo', 'mycodo')
     return path
 
 
