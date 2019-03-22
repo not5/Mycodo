@@ -17,4 +17,4 @@ before_script:
   - docker exec -ti flask /usr/local/bin/pip install --upgrade testfixtures==6.4.1 mock==2.0.0 pytest==4.0.2 factory_boy==2.11.1 webtest==2.0.32
 
 script:
-  - docker exec -it flask pytest -W ignore::SADeprecationWarning /home/mycodo/mycodo/tests/software_tests
+  - docker exec -it flask pytest -W ignore::DeprecationWarning /home/mycodo/mycodo/tests/software_tests
