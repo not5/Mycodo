@@ -33,6 +33,7 @@ services:
     image: app
     restart: always
     volumes:
+      - /dev:/dev
       - mycodo_var:/var/mycodo
       - /etc/localtime:/etc/localtime:ro  # Use timezone of the host (read-only)
     privileged: true
@@ -49,6 +50,7 @@ services:
     restart: always
     build: .
     volumes:
+      - /dev:/dev
       - mycodo_var:/var/mycodo
       - /etc/localtime:/etc/localtime:ro  # Use timezone of the host (read-only)
     privileged: true
