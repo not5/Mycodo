@@ -83,13 +83,23 @@ class InputModule(AbstractInput):
         """ Gets the CO2, VOC, and temperature """
         return_dict = measurements_dict.copy()
 
-        if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.calculateTemperature()
+        if self.sensor.available():
 
-        if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.getTVOC()
+            temp = self.sensor.calculateTemperature()
 
-        if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.geteCO2()
+            if self.is_enabled(2):
+                return_dict[2]['value'] = temp
 
-        return return_dict
+            if not self.sensor.readData():
+
+                if self.is_enabled(0):
+                    return_dict[0]['value'] = self.sensor.geteCO2()
+
+                if self.is_enabled(1):
+                    return_dict[1]['value'] = self.sensor.getTVOC()
+
+            else:
+                self.logger.error("Sensor error")
+                return
+
+            return return_dict

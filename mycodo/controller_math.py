@@ -37,6 +37,7 @@ from mycodo.databases.models import Conversion
 from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import Math
 from mycodo.databases.models import Misc
+from mycodo.databases.models import Output
 from mycodo.databases.models import SMTP
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
 from mycodo.inputs.sensorutils import convert_units
@@ -44,6 +45,8 @@ from mycodo.mycodo_client import DaemonControl
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.influx import add_measurements_influxdb
 from mycodo.utils.influx import read_last_influxdb
+from mycodo.utils.influx import average_past_seconds
+from mycodo.utils.influx import sum_past_seconds
 from mycodo.utils.influx import read_past_influxdb
 from mycodo.utils.system_pi import get_measurement
 from mycodo.utils.system_pi import return_measurement_info
@@ -186,8 +189,10 @@ class MathController(threading.Thread):
     def calculate_math(self):
         measurement_dict = {}
 
+        #
+        # Average (multiple channels)
+        #
         if self.math_type == 'average':
-
             device_measurement = self.device_measurements.filter(
                 DeviceMeasurements.channel == 0).first()
 
@@ -215,13 +220,56 @@ class MathController(threading.Thread):
             else:
                 self.error_not_within_max_age()
 
+        #
+        # Average (single channel)
+        #
         elif self.math_type == 'average_single':
-
             device_id = self.inputs.split(',')[0]
             measurement_id = self.inputs.split(',')[1]
 
-            device_measurement = db_retrieve_table_daemon(
-                DeviceMeasurements, unique_id=measurement_id)
+            if measurement_id == 'output':
+                output = db_retrieve_table_daemon(Output, unique_id=device_id)
+                channel = output.channel
+                unit = output.unit
+                measurement = output.measurement
+            else:
+                device_measurement = db_retrieve_table_daemon(
+                    DeviceMeasurements, unique_id=measurement_id)
+                if device_measurement:
+                    conversion = db_retrieve_table_daemon(
+                        Conversion, unique_id=device_measurement.conversion_id)
+                else:
+                    conversion = None
+                channel, unit, measurement = return_measurement_info(
+                    device_measurement, conversion)
+
+            try:
+                average_measurements = average_past_seconds(
+                    device_id,
+                    unit,
+                    channel,
+                    self.max_measure_age,
+                    measure=measurement)
+                if average_measurements:
+                    measurement_dict = {
+                        channel: {
+                            'measurement': measurement,
+                            'unit': unit,
+                            'value': average_measurements
+                        }
+                    }
+                else:
+                    self.error_not_within_max_age()
+            except Exception as msg:
+                self.logger.exception("average_single Error: {err}".format(err=msg))
+
+        #
+        # Sum (multiple channels)
+        #
+        if self.math_type == 'sum':
+            device_measurement = self.device_measurements.filter(
+                DeviceMeasurements.channel == 0).first()
+
             if device_measurement:
                 conversion = db_retrieve_table_daemon(
                     Conversion, unique_id=device_measurement.conversion_id)
@@ -230,35 +278,69 @@ class MathController(threading.Thread):
             channel, unit, measurement = return_measurement_info(
                 device_measurement, conversion)
 
+            success, measure = self.get_measurements_from_str(self.inputs)
+            if success:
+                sum_value = float(sum(measure))
+
+                measurement_dict = {
+                    channel: {
+                        'measurement': measurement,
+                        'unit': unit,
+                        'value': sum_value
+                    }
+                }
+            elif measure:
+                self.logger.error(measure)
+            else:
+                self.error_not_within_max_age()
+
+        #
+        # Sum (single channel)
+        #
+        elif self.math_type == 'sum_single':
+            device_id = self.inputs.split(',')[0]
+            measurement_id = self.inputs.split(',')[1]
+
+            if measurement_id == 'output':
+                output = db_retrieve_table_daemon(Output, unique_id=device_id)
+                channel = output.channel
+                unit = output.unit
+                measurement = output.measurement
+            else:
+                device_measurement = db_retrieve_table_daemon(
+                    DeviceMeasurements, unique_id=measurement_id)
+                if device_measurement:
+                    conversion = db_retrieve_table_daemon(
+                        Conversion, unique_id=device_measurement.conversion_id)
+                else:
+                    conversion = None
+                channel, unit, measurement = return_measurement_info(
+                    device_measurement, conversion)
+
             try:
-                last_measurements = read_past_influxdb(
+                sum_measurements = sum_past_seconds(
                     device_id,
                     unit,
-                    measurement,
                     channel,
-                    self.max_measure_age)
-
-                if last_measurements:
-                    measure_list = []
-                    for each_set in last_measurements:
-                        if len(each_set) == 2:
-                            measure_list.append(each_set[1])
-                    average = sum(measure_list) / float(len(measure_list))
-
+                    self.max_measure_age,
+                    measure=measurement)
+                if sum_measurements:
                     measurement_dict = {
                         channel: {
                             'measurement': measurement,
                             'unit': unit,
-                            'value': average
+                            'value': sum_measurements
                         }
                     }
                 else:
                     self.error_not_within_max_age()
             except Exception as msg:
-                self.logger.exception("average_single Error: {err}".format(err=msg))
+                self.logger.exception("sum_single Error: {err}".format(err=msg))
 
+        #
+        # Difference between two channels
+        #
         elif self.math_type == 'difference':
-
             device_measurement = self.device_measurements.filter(
                 DeviceMeasurements.channel == 0).first()
             if device_measurement:
@@ -290,8 +372,10 @@ class MathController(threading.Thread):
             else:
                 self.error_not_within_max_age()
 
+        #
+        # Equation (math performed on measurement)
+        #
         elif self.math_type == 'equation':
-
             device_measurement = self.device_measurements.filter(
                 DeviceMeasurements.channel == 0).first()
             if device_measurement:
@@ -302,7 +386,7 @@ class MathController(threading.Thread):
             channel, unit, measurement = return_measurement_info(
                 device_measurement, conversion)
 
-            success, measure = self.get_measurements_from_str(self.inputs)
+            success, measure = self.get_measurements_from_str(self.equation_input)
             if success:
                 replaced_str = self.equation.replace('x', str(measure[0]))
                 equation_output = eval(replaced_str)
@@ -319,6 +403,9 @@ class MathController(threading.Thread):
             else:
                 self.error_not_within_max_age()
 
+        #
+        # Redundancy (Use next measurement if one isn't currently available)
+        #
         elif self.math_type == 'redundancy':
             list_order = self.order_of_use.split(';')
             measurement_success = False
@@ -359,8 +446,10 @@ class MathController(threading.Thread):
             if not measurement_success:
                 self.error_not_within_max_age()
 
+        #
+        # Statistical analysis on all measurements from a period of time
+        #
         elif self.math_type == 'statistics':
-
             success, measure = self.get_measurements_from_str(self.inputs)
             if success:
                 # Perform some math
@@ -399,8 +488,10 @@ class MathController(threading.Thread):
             else:
                 self.error_not_within_max_age()
 
+        #
+        # Verification (only use measurement if it's close to another measurement)
+        #
         elif self.math_type == 'verification':
-
             device_measurement = self.device_measurements.filter(
                 DeviceMeasurements.channel == 0).first()
             if device_measurement:
@@ -429,8 +520,10 @@ class MathController(threading.Thread):
             else:
                 self.error_not_within_max_age()
 
+        #
+        # Calculate humidity from wet- and dry-bulb temperatures
+        #
         elif self.math_type == 'humidity':
-
             pressure_pa = 101325
             critical_error = False
 
@@ -568,8 +661,10 @@ class MathController(threading.Thread):
             else:
                 self.error_not_within_max_age()
 
+        #
+        # Calculate vapor pressure deficit from temperature and humidity
+        #
         elif self.math_type == 'vapor_pressure_deficit':
-
             vpd_pa = None
             critical_error = False
 

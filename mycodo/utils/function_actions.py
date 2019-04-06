@@ -33,39 +33,67 @@ MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 logger = logging.getLogger("mycodo.function_actions")
 
 
-def get_condition_measurement(sql_condition):
-    device_id = sql_condition.measurement.split(',')[0]
-    measurement_id = sql_condition.measurement.split(',')[1]
+def check_allowed_to_email():
+    smtp_table = db_retrieve_table_daemon(SMTP, entry='first')
+    smtp_max_count = smtp_table.hourly_max
+    smtp_wait_timer = smtp_table.smtp_wait_timer
+    email_count = smtp_table.email_count
 
-    device_measurement = db_retrieve_table_daemon(
-        DeviceMeasurements, unique_id=measurement_id)
-    if device_measurement:
-        conversion = db_retrieve_table_daemon(
-            Conversion, unique_id=device_measurement.conversion_id)
+    if (email_count >= smtp_max_count and
+            time.time() < smtp_wait_timer):
+        allowed_to_send_notice = False
     else:
-        conversion = None
-    channel, unit, measurement = return_measurement_info(
-        device_measurement, conversion)
+        if time.time() > smtp_wait_timer:
+            with session_scope(MYCODO_DB_PATH) as new_session:
+                mod_smtp = new_session.query(SMTP).first()
+                mod_smtp.email_count = 0
+                mod_smtp.smtp_wait_timer = time.time() + 3600
+                new_session.commit()
+        allowed_to_send_notice = True
 
-    if None in [channel, unit]:
-        logger.error(
-            "Could not determine channel or unit from measurement ID: "
-            "{}".format(measurement_id))
-        return
+    with session_scope(MYCODO_DB_PATH) as new_session:
+        mod_smtp = new_session.query(SMTP).first()
+        mod_smtp.email_count += 1
+        new_session.commit()
 
-    max_age = sql_condition.max_age
+    return smtp_wait_timer, allowed_to_send_notice
 
+
+def get_condition_measurement(sql_condition):
+    """
+    Returns condition measurements for Conditional controllers
+    :param sql_condition: str containint comma-separated device ID and measurement ID
+    :return: measurement: float measurement, gpio_state: int 0 or 1, output_state: 'on', 'off', or int duty cycle
+    """
     # Check Measurement Conditions
     if sql_condition.condition_type == 'measurement':
+        device_id = sql_condition.measurement.split(',')[0]
+        measurement_id = sql_condition.measurement.split(',')[1]
+
+        device_measurement = db_retrieve_table_daemon(
+            DeviceMeasurements, unique_id=measurement_id)
+        if device_measurement:
+            conversion = db_retrieve_table_daemon(
+                Conversion, unique_id=device_measurement.conversion_id)
+        else:
+            conversion = None
+        channel, unit, measurement = return_measurement_info(
+            device_measurement, conversion)
+
+        if None in [channel, unit]:
+            logger.error(
+                "Could not determine channel or unit from measurement ID: "
+                "{}".format(measurement_id))
+            return
+
+        max_age = sql_condition.max_age
         # Check if there hasn't been a measurement in the last set number
         # of seconds. If not, trigger conditional
         last_measurement = get_last_measurement(
             device_id, unit, measurement, channel, max_age)
         return last_measurement
 
-    # If the edge detection variable is set, calling this function will
-    # trigger an edge detection event. This will merely produce the correct
-    # message based on the edge detection settings.
+    # Return GPIO state
     elif sql_condition.condition_type == 'gpio_state':
         try:
             import RPi.GPIO as GPIO
@@ -76,6 +104,14 @@ def get_condition_measurement(sql_condition):
             gpio_state = None
             logger.error("Exception reading the GPIO pin")
         return gpio_state
+
+    # Return output state
+    elif sql_condition.condition_type == 'output_state':
+        output = Output.query.filter(
+            Output.unique_id == sql_condition.output_id).first()
+        if output:
+            control = DaemonControl()
+            return control.output_state(output.unique_id)
 
 
 def get_last_measurement(unique_id, unit, measurement, channel, duration_sec):
@@ -152,12 +188,6 @@ def trigger_action(
 
     try:
         control = DaemonControl()
-
-        smtp_table = db_retrieve_table_daemon(
-            SMTP, entry='first')
-        smtp_max_count = smtp_table.hourly_max
-        smtp_wait_timer = smtp_table.smtp_wait_timer
-        email_count = smtp_table.email_count
 
         # Pause
         if cond_action.action_type == 'pause_actions':
@@ -290,19 +320,19 @@ def trigger_action(
 
             message += " Create note with tag '{}'.".format(tag_name)
             if single_action and cond_action.do_action_string:
-                    list_tags = []
-                    check_tag = db_retrieve_table_daemon(
-                        NoteTags, unique_id=cond_action.do_action_string)
-                    if check_tag:
-                        list_tags.append(cond_action.do_action_string)
+                list_tags = []
+                check_tag = db_retrieve_table_daemon(
+                    NoteTags, unique_id=cond_action.do_action_string)
+                if check_tag:
+                    list_tags.append(cond_action.do_action_string)
 
-                    if list_tags:
-                        with session_scope(MYCODO_DB_PATH) as db_session:
-                            new_note = Notes()
-                            new_note.name = 'Action'
-                            new_note.tags = ','.join(list_tags)
-                            new_note.note = message
-                            db_session.add(new_note)
+                if list_tags:
+                    with session_scope(MYCODO_DB_PATH) as db_session:
+                        new_note = Notes()
+                        new_note.name = 'Action'
+                        new_note.tags = ','.join(list_tags)
+                        new_note.note = message
+                        db_session.add(new_note)
             else:
                 note_tags.append(cond_action.do_action_string)
 
@@ -486,48 +516,32 @@ def trigger_action(
         if cond_action.action_type in [
                 'email', 'photo_email', 'video_email']:
 
-            if (email_count >= smtp_max_count and
-                    time.time() < smtp_wait_timer):
-                allowed_to_send_notice = False
-            else:
-                if time.time() > smtp_wait_timer:
-                    with session_scope(MYCODO_DB_PATH) as new_session:
-                        mod_smtp = new_session.query(SMTP).first()
-                        mod_smtp.email_count = 0
-                        mod_smtp.smtp_wait_timer = time.time() + 3600
-                        new_session.commit()
-                allowed_to_send_notice = True
+            message += " Notify {email}.".format(
+                email=cond_action.do_action_string)
+            # attachment_type != False indicates to
+            # attach a photo or video
+            if cond_action.action_type == 'photo_email':
+                message += " Photo attached to email."
+                attachment_type = 'still'
+            elif cond_action.action_type == 'video_email':
+                message += " Video attached to email."
+                attachment_type = 'video'
 
-            with session_scope(MYCODO_DB_PATH) as new_session:
-                mod_smtp = new_session.query(SMTP).first()
-                mod_smtp.email_count += 1
-                new_session.commit()
-
-            # If the emails per hour limit has not been exceeded
-            if allowed_to_send_notice:
-                message += " Notify {email}.".format(
-                    email=cond_action.do_action_string)
-                # attachment_type != False indicates to
-                # attach a photo or video
-                if cond_action.action_type == 'photo_email':
-                    message += " Photo attached to email."
-                    attachment_type = 'still'
-                elif cond_action.action_type == 'video_email':
-                    message += " Video attached to email."
-                    attachment_type = 'video'
-
-                if single_action and cond_action.do_action_string:
+            if single_action:
+                # If the emails per hour limit has not been exceeded
+                smtp_wait_timer, allowed_to_send_notice = check_allowed_to_email()
+                if allowed_to_send_notice and cond_action.do_action_string:
                     smtp = db_retrieve_table_daemon(SMTP, entry='first')
                     send_email(smtp.host, smtp.ssl, smtp.port,
                                smtp.user, smtp.passw, smtp.email_from,
                                [cond_action.do_action_string], message,
                                attachment_file, attachment_type)
                 else:
-                    email_recipients.append(cond_action.do_action_string)
+                    logger_actions.error(
+                        "Wait {sec:.0f} seconds to email again.".format(
+                            sec=smtp_wait_timer - time.time()))
             else:
-                logger_actions.error(
-                    "Wait {sec:.0f} seconds to email again.".format(
-                        sec=smtp_wait_timer - time.time()))
+                email_recipients.append(cond_action.do_action_string)
 
         if cond_action.action_type == 'flash_lcd_on':
             lcd = db_retrieve_table_daemon(
@@ -634,11 +648,18 @@ def trigger_function_actions(function_id, message=''):
     # In order to append all action messages to send in the email
     # send_email_at_end will be None or the TO email address
     if email_recipients:
-        smtp = db_retrieve_table_daemon(SMTP, entry='first')
-        send_email(smtp.host, smtp.ssl, smtp.port,
-                   smtp.user, smtp.passw, smtp.email_from,
-                   email_recipients, message,
-                   attachment_file, attachment_type)
+        # If the emails per hour limit has not been exceeded
+        smtp_wait_timer, allowed_to_send_notice = check_allowed_to_email()
+        if allowed_to_send_notice:
+            smtp = db_retrieve_table_daemon(SMTP, entry='first')
+            send_email(smtp.host, smtp.ssl, smtp.port,
+                       smtp.user, smtp.passw, smtp.email_from,
+                       email_recipients, message,
+                       attachment_file, attachment_type)
+        else:
+            logger_actions.error(
+                "Wait {sec:.0f} seconds to email again.".format(
+                    sec=smtp_wait_timer - time.time()))
 
     # Create a note with the tags from the unique_ids in the list note_tags
     if note_tags:

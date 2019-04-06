@@ -5,7 +5,6 @@ import os
 import sqlalchemy
 from flask import current_app
 from flask import flash
-from flask import redirect
 from flask import url_for
 from flask_babel import gettext
 
@@ -23,6 +22,7 @@ from mycodo.mycodo_flask.utils.utils_general import flash_form_errors
 from mycodo.mycodo_flask.utils.utils_general import flash_success_errors
 from mycodo.mycodo_flask.utils.utils_general import reorder
 from mycodo.mycodo_flask.utils.utils_general import return_dependencies
+from mycodo.utils.inputs import parse_custom_option_values
 from mycodo.utils.inputs import parse_input_information
 from mycodo.utils.system_pi import csv_to_list_of_str
 from mycodo.utils.system_pi import is_int
@@ -241,7 +241,25 @@ def input_add(form_add):
                     display_order, new_input.unique_id)
                 db.session.commit()
 
-                if ('measurements_dict' in dict_inputs[input_name] and
+                #
+                # The Things Network: Data Storage (variable number of measurements)
+                #
+
+                if new_input.device == 'TTN_DATA_STORAGE':
+                    # Add first default measurement with empty unit and measurement
+                    new_measurement = DeviceMeasurements()
+                    new_measurement.name = ""
+                    new_measurement.device_id = new_input.unique_id
+                    new_measurement.measurement = ""
+                    new_measurement.unit = ""
+                    new_measurement.channel = 0
+                    new_measurement.save()
+
+                #
+                # If measurements defined in the Input Module
+                #
+
+                elif ('measurements_dict' in dict_inputs[input_name] and
                         dict_inputs[input_name]['measurements_dict'] != []):
                     for each_channel in dict_inputs[input_name]['measurements_dict']:
                         measure_info = dict_inputs[input_name]['measurements_dict'][each_channel]
@@ -455,6 +473,32 @@ def input_mod(form_mod, request_form):
         mod_input.custom_options = ';'.join(list_options)
 
         if not error:
+
+            # Add or delete channels for TTN data storage Input
+            if mod_input.device == 'TTN_DATA_STORAGE':
+                channels = DeviceMeasurements.query.filter(
+                    DeviceMeasurements.device_id == form_mod.input_id.data)
+
+                if channels.count() != form_mod.num_channels.data:
+                    # Delete channels
+                    if form_mod.num_channels.data < channels.count():
+                        for index, each_channel in enumerate(channels.all()):
+                            if index + 1 >= channels.count():
+                                delete_entry_with_id(DeviceMeasurements,
+                                                     each_channel.unique_id)
+
+                    # Add channels
+                    elif form_mod.num_channels.data > channels.count():
+                        start_number = channels.count()
+                        for index in range(start_number, form_mod.num_channels.data):
+                            new_measurement = DeviceMeasurements()
+                            new_measurement.name = ""
+                            new_measurement.device_id = mod_input.unique_id
+                            new_measurement.measurement = ""
+                            new_measurement.unit = ""
+                            new_measurement.channel = index
+                            new_measurement.save()
+
             db.session.commit()
 
     except Exception as except_msg:
@@ -480,29 +524,34 @@ def measurement_mod(form):
 
         mod_meas.name = form.name.data
 
-        input_info = parse_input_information()
-        if ('enable_channel_unit_select' in input_info[mod_input.device] and
-                input_info[mod_input.device]['enable_channel_unit_select']):
-            if ',' in form.select_measurement_unit.data:
-                mod_meas.measurement = form.select_measurement_unit.data.split(',')[0]
-                mod_meas.unit = form.select_measurement_unit.data.split(',')[1]
-            else:
-                mod_meas.measurement = ''
-                mod_meas.unit = ''
+        if form.input_type.data == 'measurement_select':
+            mod_meas.measurement = form.select_measurement_unit.data.split(',')[0]
+            mod_meas.unit = form.select_measurement_unit.data.split(',')[1]
 
-        if form.rescaled_measurement_unit.data != '' and ',' in form.rescaled_measurement_unit.data:
-            mod_meas.rescaled_measurement = form.rescaled_measurement_unit.data.split(',')[0]
-            mod_meas.rescaled_unit = form.rescaled_measurement_unit.data.split(',')[1]
-        elif form.rescaled_measurement_unit.data == '':
-            mod_meas.rescaled_measurement = ''
-            mod_meas.rescaled_unit = ''
+        elif form.input_type.data == 'measurement_convert':
+            input_info = parse_input_information()
+            if ('enable_channel_unit_select' in input_info[mod_input.device] and
+                    input_info[mod_input.device]['enable_channel_unit_select']):
+                if ',' in form.select_measurement_unit.data:
+                    mod_meas.measurement = form.select_measurement_unit.data.split(',')[0]
+                    mod_meas.unit = form.select_measurement_unit.data.split(',')[1]
+                else:
+                    mod_meas.measurement = ''
+                    mod_meas.unit = ''
 
-        mod_meas.scale_from_min = form.scale_from_min.data
-        mod_meas.scale_from_max = form.scale_from_max.data
-        mod_meas.scale_to_min = form.scale_to_min.data
-        mod_meas.scale_to_max = form.scale_to_max.data
-        mod_meas.invert_scale = form.invert_scale.data
-        mod_meas.conversion_id = form.convert_to_measurement_unit.data
+            if form.rescaled_measurement_unit.data != '' and ',' in form.rescaled_measurement_unit.data:
+                mod_meas.rescaled_measurement = form.rescaled_measurement_unit.data.split(',')[0]
+                mod_meas.rescaled_unit = form.rescaled_measurement_unit.data.split(',')[1]
+            elif form.rescaled_measurement_unit.data == '':
+                mod_meas.rescaled_measurement = ''
+                mod_meas.rescaled_unit = ''
+
+            mod_meas.scale_from_min = form.scale_from_min.data
+            mod_meas.scale_from_max = form.scale_from_max.data
+            mod_meas.scale_to_min = form.scale_to_min.data
+            mod_meas.scale_to_max = form.scale_to_max.data
+            mod_meas.invert_scale = form.invert_scale.data
+            mod_meas.conversion_id = form.convert_to_measurement_unit.data
 
         if not error:
             db.session.commit()
@@ -568,13 +617,62 @@ def input_reorder(input_id, display_order, direction):
 
 
 def input_activate(form_mod):
+    action = '{action} {controller}'.format(
+        action=TRANSLATIONS['activate']['title'],
+        controller=TRANSLATIONS['input']['title'])
+    error = []
+    dict_inputs = parse_input_information()
     input_id = form_mod.input_id.data
     input_dev = Input.query.filter(Input.unique_id == input_id).first()
-    if input_dev.device == 'LINUX_COMMAND':
-        if input_dev.cmd_command is '':
-            flash("Cannot activate Input without Command set.", "error")
-            return redirect(url_for('routes_page.page_data'))
-    controller_activate_deactivate('activate', 'Input',  input_id)
+    device_measurements = DeviceMeasurements.query.filter(
+        DeviceMeasurements.device_id == input_dev.unique_id)
+    custom_options_values = parse_custom_option_values(input_dev)
+
+    #
+    # General Input checks
+    #
+    if not input_dev.period:
+        error.append("Period must be set")
+
+    if (input_dev.pre_output_id and
+            len(input_dev.pre_output_id) > 1 and
+            not input_dev.pre_output_duration):
+        error.append("Pre Output Duration must be > 0 if Pre Output is enabled")
+
+    if not device_measurements.filter(DeviceMeasurements.is_enabled == True).count():
+        error.append("At least one measurement must be enabled")
+
+    #
+    # Check if required custom options are set
+    #
+    if 'custom_options' in dict_inputs[input_dev.device]:
+        for each_option in dict_inputs[input_dev.device]['custom_options']:
+            value = custom_options_values[input_dev.unique_id][each_option['id']]
+            if ('required' in each_option and
+                    each_option['required'] and
+                    not value):
+                error.append("{} is required to be set".format(
+                    each_option['name']))
+
+    #
+    # Input-specific checks
+    #
+    if input_dev.device == 'LINUX_COMMAND' and not input_dev.cmd_command:
+        error.append("Cannot activate Command Input without a Command set")
+
+    elif input_dev.device == 'TTN_DATA_STORAGE':
+        measure_set = True
+        for each_channel in device_measurements.all():
+            if (not each_channel.name or
+                    not each_channel.measurement or
+                    not each_channel.unit):
+                measure_set = False
+        if not measure_set:
+            error.append("All measurements must have a name and unit/measurement set")
+
+    if not error:
+        controller_activate_deactivate('activate', 'Input',  input_id)
+    flash_success_errors(error, action, url_for('routes_page.page_data'))
 
 
 def input_deactivate(form_mod):

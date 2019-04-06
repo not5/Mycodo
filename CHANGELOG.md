@@ -1,3 +1,41 @@
+## 7.4.2 (2019-04-02)
+
+### Bugfixes
+
+ - Fix Average (single) and Sum (single) Math controllers with an Output selected
+
+
+## 7.4.1 (2019-04-02)
+
+### Bugfixes
+
+ - Fix custom input preservation during upgrade
+
+
+## 7.4.0 (2019-04-01)
+
+### Bugfixes
+
+ - Include Pre Output activation during Acquire Measurements Now instruction
+ - Fix Outputs triggering at startup
+ - Fix CCS811 Input measurement issue ([#641](https://github.com/kizniche/mycodo/issues/641))
+ - Fix Math controller (equation)
+ - Fix sending email notification to multiple recipients
+ - Prevent RPyC TimeoutError from crashing PID controller
+
+### Features
+
+ - Add Input: [The Things Network: Data Storage Integration](https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#the-things-network)
+ - Add Math controllers: Sum (past, single channel), Sum (last, multiple channels)
+ - Add Outputs to Math controllers: Average, Redundancy, Statistics, Sum
+ - Add 'required' option for Input 'custom_options' (indicates if option is required to activate Input)
+ - Add 'Output State' ('on', 'off', or duty cycle) Condition for Conditional controllers ([#642](https://github.com/kizniche/mycodo/issues/642))
+
+### Miscellaneous
+
+ - Change channel designations to start at 0
+
+
 ## 7.3.1 (2019-02-26)
 
 ### Bugfixes

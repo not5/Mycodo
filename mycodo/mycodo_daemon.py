@@ -282,22 +282,15 @@ def mycodo_service(mycodo):
             return mycodo.send_infrared_code_broadcast(code)
 
         @staticmethod
-        def exposed_test_trigger_actions(function_id, message=''):
-            """Test triggering actions"""
-            return mycodo.test_trigger_actions(function_id, message)
-
-        @staticmethod
         def exposed_trigger_action(action_id, message='', single_action=False):
             """Trigger action"""
             return mycodo.trigger_action(
                 action_id, message=message, single_action=single_action)
 
         @staticmethod
-        def exposed_trigger_all_actions(
-                function_id, message=''):
+        def exposed_trigger_all_actions(function_id, message=''):
             """Trigger all actions"""
-            return mycodo.trigger_all_actions(
-                function_id, message)
+            return mycodo.trigger_all_actions(function_id, message=message)
 
         @staticmethod
         def exposed_terminate_daemon():
@@ -952,17 +945,27 @@ class DaemonController:
         :type trigger_conditionals: Indicate whether to trigger conditional statements
         """
         try:
-            return_status = self.controller['Output'].output_on_off(
-                output_id,
-                'on',
-                duration=duration,
-                min_off=min_off,
-                duty_cycle=duty_cycle,
-                trigger_conditionals=trigger_conditionals)
-            if return_status:
+            test_count = 1
+            while self.controller['Output'] is None and test_count < 30:
+                # Upon initial startup, triggers may actuate outputs before the controller is started
+                test_count += 1
+                time.sleep(0.1)
+
+            if self.controller['Output'] is None:
+                self.logger.error("Could not find Output Controller")
                 return "Error"
             else:
-                return "Turned on"
+                return_status = self.controller['Output'].output_on_off(
+                    output_id,
+                    'on',
+                    duration=duration,
+                    min_off=min_off,
+                    duty_cycle=duty_cycle,
+                    trigger_conditionals=trigger_conditionals)
+                if return_status:
+                    return "Error"
+                else:
+                    return "Turned on"
         except Exception as except_msg:
             message = "Could not turn output on:" \
                       " {err}".format(err=except_msg)
@@ -1108,15 +1111,6 @@ class DaemonController:
                     args=(code,))
                 broadcast_ir.start()
 
-    def test_trigger_actions(
-            self, function_id, message=''):
-        try:
-            return trigger_function_actions(function_id, message=message)
-        except Exception as except_msg:
-            message = "Could not trigger Conditional Actions:" \
-                      " {err}".format(err=except_msg)
-            self.logger.exception(message)
-
     def trigger_action(self, action_id, message='', single_action=False):
         try:
             return trigger_action(action_id,
@@ -1127,8 +1121,7 @@ class DaemonController:
                       " {err}".format(err=except_msg)
             self.logger.exception(message)
 
-    def trigger_all_actions(
-            self, function_id, message=''):
+    def trigger_all_actions(self, function_id, message=''):
         try:
             return trigger_function_actions(function_id, message=message)
         except Exception as except_msg:
