@@ -362,7 +362,7 @@ LCD_INFO = {
         ]
     },
     '128x32_pioled': {
-        'name': '128x32 OLED',
+        'name': '128x32 OLED (SD1306)',
         'dependencies_module': [
             ('apt', 'libjpeg-dev', 'libjpeg-dev'),
             ('pip-pypi', 'PIL', 'Pillow'),
@@ -372,7 +372,7 @@ LCD_INFO = {
         ]
     },
     '128x64_pioled': {
-        'name': '128x64 OLED',
+        'name': '128x64 OLED (SD1306)',
         'dependencies_module': [
             ('apt', 'libjpeg-dev', 'libjpeg-dev'),
             ('pip-pypi', 'PIL', 'Pillow'),
@@ -593,6 +593,7 @@ OUTPUT_INFO = {
     'wireless_rpi_rf': {
         'name': lazy_gettext('Raspberry Pi: Wireless 315/433MHz LPD/SRD (rpi-rf)'),
         'dependencies_module': [
+            ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO'),
             ('pip-pypi', 'rpi_rf', 'rpi_rf')
         ],
         'measure': {

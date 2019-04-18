@@ -1,3 +1,25 @@
+## 7.4.4 (Unreleased)
+
+### Bugfixes
+
+ - Fix storing latest SHT31 Smart Gadget measurements
+
+
+## 7.4.3 (2019-04-17)
+
+### Bugfixes
+
+ - Fix Sunrise/Sunset calculation
+ - Update Infrared Remote section of manual to work with latest kernel
+ - Add Bluetooth locking to prevent broken pipes
+
+### Features
+
+ - Add Input: RuuviTag ([#638](https://github.com/kizniche/mycodo/issues/638))
+ - Add Inputs: Atlas Scientific ORP, Atlas Scientific DO (FTDI, UART, I2C) ([#643](https://github.com/kizniche/mycodo/issues/643))
+ - Add Reset Pin option and editable location for SD1306 OLED display ([#647](https://github.com/kizniche/mycodo/issues/647))
+
+
 ## 7.4.2 (2019-04-02)
 
 ### Bugfixes

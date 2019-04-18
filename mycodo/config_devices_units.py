@@ -9,6 +9,22 @@ from flask_babel import lazy_gettext
 # Measurement information
 # First unit in list is the default unit when Input is created
 MEASUREMENTS = {
+    'acceleration_g_force': {
+        'name': lazy_gettext('Acceleration (G-Force)'),
+        'meas': 'g_force',
+        'units': ['g_force']},
+    'acceleration_x_g_force': {
+        'name': lazy_gettext('Acceleration (G-Force, X)'),
+        'meas': 'g_force',
+        'units': ['g_force']},
+    'acceleration_y_g_force': {
+        'name': lazy_gettext('Acceleration (G-Force, Y)'),
+        'meas': 'g_force',
+        'units': ['g_force']},
+    'acceleration_z_g_force': {
+        'name': lazy_gettext('Acceleration (G-Force, Z)'),
+        'meas': 'g_force',
+        'units': ['g_force']},
     'altitude': {
         'name': lazy_gettext('Altitude'),
         'meas': 'altitude',
@@ -45,6 +61,10 @@ MEASUREMENTS = {
         'name': lazy_gettext('Disk'),
         'meas': 'disk_space',
         'units': ['MB', 'kB', 'GB']},
+    'dissolved_oxygen': {
+        'name': lazy_gettext('Dissolved Oxygen'),
+        'meas': 'dissolved_oxygen',
+        'units': ['mg_L']},
     'duration_time': {
         'name': lazy_gettext('Duration'),
         'meas': 'duration_time',
@@ -68,7 +88,7 @@ MEASUREMENTS = {
     'electrical_potential': {
         'name': lazy_gettext('Electrical Potential'),
         'meas': 'electrical_potential',
-        'units': ['V']},
+        'units': ['V', 'mV']},
     'frequency': {
         'name': lazy_gettext('Frequency'),
         'meas': 'frequency',
@@ -97,6 +117,10 @@ MEASUREMENTS = {
         'name': lazy_gettext('Moisture'),
         'meas': 'moisture',
         'units': ['unitless']},
+    'oxidation_reduction_potential': {
+        'name': lazy_gettext('Oxidation Reduction Potential'),
+        'meas': 'oxidation_reduction_potential',
+        'units': ['mV', 'V']},
     'particulate_matter_1_0': {
         'name': 'PM1',
         'meas': 'particulate_matter_1_0',
@@ -206,6 +230,9 @@ UNITS = {
     'full': {
         'name': lazy_gettext('Full'),
         'unit': 'full'},
+    'g_force': {
+        'name': lazy_gettext('G-Force'),
+        'unit': 'G'},
     'GB': {
         'name': lazy_gettext('Gigabyte'),
         'unit': 'GB'},
@@ -239,9 +266,15 @@ UNITS = {
     'm': {
         'name': lazy_gettext('Meter'),
         'unit': 'm'},
+    'mg_L': {
+        'name': lazy_gettext('Milligram per Liter'),
+        'unit': 'mg/L'},
     'ml': {
         'name': lazy_gettext('Milliliter'),
         'unit': 'ml'},
+    'mV': {
+        'name': lazy_gettext('Millivolt'),
+        'unit': 'mV'},
     'm3_kg': {
         'name': lazy_gettext('Cubic meters per kilogram'),
         'unit': 'm^3/kg'},
@@ -339,5 +372,9 @@ UNIT_CONVERSIONS = [
 
     # Time
     ('s', 'minute', 'x/60'),
-    ('minute', 's', 'x*60')
+    ('minute', 's', 'x*60'),
+
+    # Volt
+    ('V', 'mV', 'x*1000'),
+    ('mV', 'V', 'x/1000')
 ]
