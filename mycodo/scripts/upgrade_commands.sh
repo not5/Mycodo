@@ -44,8 +44,8 @@ Options:
   enable-pigpiod-disabled       Create empty service to indicate pigpiod is disabled
   update-pigpiod                Update to latest version of pigpiod service file
   update-logrotate              Install logrotate script
-  update-pip3                   Update pip
-  update-pip3-packages          Update required pip packages
+  update-pip                    Update pip
+  update-pip-packages           Update required pip packages
   update-swap-size              Ensure sqap size is sufficiently large (512 MB)
   upgrade                       Upgrade Mycodo to the latest release
   upgrade-major-release         Upgrade Mycodo to a major version release
