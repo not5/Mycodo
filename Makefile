@@ -1,6 +1,6 @@
 build:
-	docker-compose up --build -d
+	./env/bin/docker-compose up --build -d
 
 clean:
-	docker-compose down
+	./env/bin/docker-compose down
 	docker system prune -a

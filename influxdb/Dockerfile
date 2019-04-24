@@ -1,4 +1,4 @@
-FROM quay.io/influxdb/influxdb:2.0.0-alpha
+FROM influxdb:latest
 
 RUN mkdir -pv /var/influxdb/data
 
