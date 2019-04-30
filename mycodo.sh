@@ -10,8 +10,8 @@ cd ${INSTALL_PATH}
 
 case "${1:-''}" in
     "install-dependencies")
-        printf "\n#### Checking for python 3 virtualenv\n" 2>&1 | tee -a ${LOG_LOCATION}
-        if [ ! -e ${MYCODO_PATH}/env/bin/python3 ]; then
+        printf "\n#### Checking for python 3 virtualenv at ${INSTALL_PATH}/env/bin/python3\n" 2>&1 | tee -a ${LOG_LOCATION}
+        if [ ! -L ${INSTALL_PATH}/env/bin/python3 ]; then
             printf "#### Virtualenv doesn't exist. Creating...\n" 2>&1 | tee -a ${LOG_LOCATION}
             pip install virtualenv --upgrade
             rm -rf ${INSTALL_PATH}/env
@@ -30,7 +30,7 @@ case "${1:-''}" in
 
         if ! [ -x "$(command -v docker-compose)" ]; then
             printf "#### Installing docker-compose\n" 2>&1 | tee -a ${LOG_LOCATION}
-            ${INSTALL_PATH}/env/bin/pip3 install docker-compose
+            ${INSTALL_PATH}/env/bin/pip install docker-compose
         fi
 
         if ! [ -x "$(command -v docker-compose)" ]; then
@@ -42,7 +42,7 @@ case "${1:-''}" in
         printf "#### Dependencies installed\n" 2>&1 | tee -a ${LOG_LOCATION}
     ;;
     "test")
-        docker exec -ti flask ${INSTALL_PATH}/env/bin/pip3 install --upgrade -r /home/mycodo/mycodo/tests/software_tests/requirements.txt
+        docker exec -ti flask ${INSTALL_PATH}/env/bin/pip install --upgrade -r /home/mycodo/mycodo/tests/software_tests/requirements.txt
         docker exec -ti flask pytest /home/mycodo/mycodo/tests/software_tests
     ;;
     "clean-all")
