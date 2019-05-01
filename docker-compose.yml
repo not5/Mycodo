@@ -12,7 +12,7 @@ services:
     env_file:
       - 'influxdb/env.influxdb'
     volumes:
-      - /var/influxdb/data:/var/lib/influxdb
+      - influxdb-volume:/var/lib/influxdb
       - /etc/localtime:/etc/localtime:ro  # Use timezone of the host (read-only)
 
   nginx:
@@ -61,10 +61,10 @@ services:
   telegraf:
     image: telegraf:latest
     container_name: telegraf
-    links:
-      - influxdb
     volumes:
       - ./telegraf/telegraf.conf:/etc/telegraf/telegraf.conf:ro
+    depends_on:
+      - influxdb
 
   grafana:
     image: grafana/grafana:latest
@@ -73,12 +73,12 @@ services:
       - "3000:3000"
     env_file:
       - 'grafana/env.grafana'
-    links:
-      - influxdb
     volumes:
-      # Data persistency
-      # sudo mkdir -p /srv/docker/grafana/data; chown 472:472 /srv/docker/grafana/data
-      - /var/grafana/data:/var/lib/grafana
+      - grafana-volume:/var/lib/grafana
+    depends_on:
+      - influxdb
 
 volumes:
   mycodo_var:
+  grafana-volume:
+  influxdb-volume:
