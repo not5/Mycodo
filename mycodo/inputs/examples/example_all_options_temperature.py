@@ -63,6 +63,11 @@ INPUT_INFORMATION = {
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
 
+    # For use with Inputs that store multiple measurements.
+    # Set True if all measurements should be stored in the database with the same timestamp.
+    # Set False to use the timestamp generated when self.set_value() is used to save measurement.
+    'measurements_use_same_timestamp': True,
+
     # Web User Interface display options
     # Options that are enabled will be editable from the input options page.
     # Options that are disabled will appear on the input options page but not be editable.
@@ -74,7 +79,8 @@ INPUT_INFORMATION = {
         'uart_location',
         'custom_options',
         'period',
-        'pre_output'
+        'pre_output',
+        'log_level_debug'
     ],
     'options_disabled': ['interface'],
 
@@ -289,6 +295,11 @@ class InputModule(AbstractInput):
                 # No UART driver available for this input
                 pass
 
+        if input_dev.log_level_debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
+
     def get_measurement(self):
         """ Gets the temperature and humidity """
         #
@@ -306,5 +317,8 @@ class InputModule(AbstractInput):
         #
         # End sensor measurement code
         #
+
+        self.logger.info("This INFO message will always be displayed.")
+        self.logger.debug("This DEBUG message will only be displayed if the Debug option is enabled.")
 
         return return_dict

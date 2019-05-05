@@ -31,10 +31,12 @@ INPUT_INFORMATION = {
     'input_name': 'Dummy Input 00',
     'measurements_name': 'Humidity/Temperature',
     'measurements_dict': measurements_dict,
+    'measurements_use_same_timestamp': True,
 
     'options_enabled': [
         'period',
-        'pre_output'
+        'pre_output',
+        'log_level_debug'
     ],
     'options_disabled': [
         'interface',
@@ -73,6 +75,11 @@ class InputModule(AbstractInput):
             self.i2c_address = input_dev.i2c_location
             self.i2c_bus = input_dev.i2c_bus
 
+        if input_dev.log_level_debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
+
     def get_measurement(self):
         """ Measures temperature and humidity """
         # Resetting these values ensures old measurements aren't mistaken for new measurements
@@ -83,17 +90,27 @@ class InputModule(AbstractInput):
             humidity = self.random.randint(0, 100)
             temperature = self.random.randint(0, 50)
 
+            self.logger.info(
+                "This INFO message will always be displayed. "
+                "Acquiring measurements...")
+            self.logger.debug(
+                "This DEBUG message will only be displayed if the Debug "
+                "option is enabled. "
+                "Humidity: {hum}, Temperature: {temp}".format(
+                    hum=humidity, temp=temperature))
+
             if self.is_enabled(0):
-                return_dict[0]['value'] = temperature
+                self.set_value(return_dict, 0, temperature)
 
             if self.is_enabled(1):
-                return_dict[1]['value'] = humidity
+                self.set_value(return_dict, 1, humidity)
 
             if (self.is_enabled(2) and
                     self.is_enabled(0) and
                     self.is_enabled(1)):
-                return_dict[2]['value'] = calculate_dewpoint(
-                    return_dict[0]['value'], return_dict[1]['value'])
+                dewpoint = calculate_dewpoint(
+                    self.get_value(0), self.get_value(1))
+                self.set_value(return_dict, 2, dewpoint)
 
             return return_dict
         except Exception as msg:

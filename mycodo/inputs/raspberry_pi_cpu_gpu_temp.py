@@ -27,10 +27,12 @@ INPUT_INFORMATION = {
     'input_name': 'RPi CPU/GPU Temperature',
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
+    'measurements_use_same_timestamp': True,
 
     'options_enabled': [
         'measurements_select',
-        'period'
+        'period',
+        'log_level_debug'
     ],
     'options_disabled': ['interface'],
 
@@ -39,7 +41,7 @@ INPUT_INFORMATION = {
 
 
 class InputModule(AbstractInput):
-    """ A sensor support class that monitors the raspberry pi's cpu temperature """
+    """ A sensor support class that monitors the raspberry pi's CPU and GPU temperatures """
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
@@ -53,8 +55,13 @@ class InputModule(AbstractInput):
                 DeviceMeasurements).filter(
                     DeviceMeasurements.device_id == input_dev.unique_id)
 
+        if input_dev.log_level_debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
+
     def get_measurement(self):
-        """ Gets the Raspberry pi's temperature in Celsius by reading the temp file and div by 1000 """
+        """ Gets the Raspberry pi's CPU and GPU temperatures in Celsius """
         # import psutil
         # import resource
         # open_files_count = 0
@@ -67,17 +74,21 @@ class InputModule(AbstractInput):
 
         return_dict = measurements_dict.copy()
 
+        self.logger.debug("Acquiring Measurements...")
+
         if self.is_enabled(0):
             # CPU temperature
             with open('/sys/class/thermal/thermal_zone0/temp') as cpu_temp_file:
-                temperature_cpu = float(cpu_temp_file.read()) / 1000
-                return_dict[0]['value'] = temperature_cpu
+                temp_cpu = float(cpu_temp_file.read()) / 1000
+                self.set_value(return_dict, 0, temp_cpu)
+                self.logger.debug("CPU Temperature: {}".format(temp_cpu))
 
         if self.is_enabled(1):
             # GPU temperature
             temperature_gpu = subprocess.check_output(
                 ('/opt/vc/bin/vcgencmd', 'measure_temp'))
-            return_dict[1]['value'] = float(
-                temperature_gpu.split(b'=')[1].split(b"'")[0])
+            temp_gpu = float(temperature_gpu.split(b'=')[1].split(b"'")[0])
+            self.set_value(return_dict, 1, temp_gpu)
+            self.logger.debug("GPU Temperature: {}".format(temp_gpu))
 
         return return_dict

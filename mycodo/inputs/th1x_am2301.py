@@ -40,15 +40,17 @@ measurements_dict = {
 INPUT_INFORMATION = {
     'input_name_unique': 'TH16_10',
     'input_manufacturer': 'Sonoff',
-    'input_name': 'TH16/10 (Tasmota firmware)',
+    'input_name': 'TH16/10 (Tasmota firmware) with AM2301',
     'measurements_name': 'Humidity/Temperature',
     'measurements_dict': measurements_dict,
+    'measurements_use_same_timestamp': False,
 
     'options_enabled': [
         'measurements_select',
         'custom_options',
         'period',
-        'pre_output'
+        'pre_output',
+        'log_level_debug'
     ],
 
     'custom_options': [
@@ -67,12 +69,12 @@ INPUT_INFORMATION = {
 class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.th16")
+        self.logger = logging.getLogger("mycodo.inputs.th16_am2301")
         self.ip_address = None
 
         if not testing:
             self.logger = logging.getLogger(
-                "mycodo.th16_{id}".format(id=input_dev.unique_id.split('-')[0]))
+                "mycodo.th16_am2301_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             self.device_measurements = db_retrieve_table_daemon(
                 DeviceMeasurements).filter(
@@ -84,6 +86,11 @@ class InputModule(AbstractInput):
                     value = each_option.split(',')[1]
                     if option == 'ip_address':
                         self.ip_address = value.replace(" ", "")  # Remove spaces from string
+
+        if input_dev.log_level_debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         return_dict = measurements_dict.copy()
@@ -100,26 +107,26 @@ class InputModule(AbstractInput):
 
         # Convert temperature to SI unit Celsius
         if self.is_enabled(0):
-            return_dict[0]['value'] = convert_from_x_to_y_unit(
+            temp_c = convert_from_x_to_y_unit(
                 'F', 'C', dict_data['StatusSNS']['AM2301']['Temperature'])
-            return_dict[0]['timestamp'] = datetime_timestmp
+            self.set_value(return_dict, 0, temp_c, timestamp=datetime_timestmp)
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = dict_data['StatusSNS']['AM2301']['Humidity']
-            return_dict[1]['timestamp'] = datetime_timestmp
+            humidity = dict_data['StatusSNS']['AM2301']['Humidity']
+            self.set_value(return_dict, 1, humidity, timestamp=datetime_timestmp)
 
         if (self.is_enabled(2) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[2]['value'] = calculate_dewpoint(
-                return_dict[0]['value'], return_dict[1]['value'])
-            return_dict[2]['timestamp'] = datetime_timestmp
+            dewpoint = calculate_dewpoint(
+                self.get_value(0), self.get_value(1))
+            self.set_value(return_dict, 2, dewpoint, timestamp=datetime_timestmp)
 
         if (self.is_enabled(3) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[3]['value'] = calculate_vapor_pressure_deficit(
-                return_dict[0]['value'], return_dict[1]['value'])
-            return_dict[3]['timestamp'] = datetime_timestmp
+            vpd = calculate_vapor_pressure_deficit(
+                self.get_value(0), self.get_value(1))
+            self.set_value(return_dict, 3, vpd, timestamp=datetime_timestmp)
 
         return return_dict

@@ -73,6 +73,10 @@ from mycodo.utils.statistics import return_stat_file_dict
 from mycodo.utils.statistics import send_anonymous_stats
 from mycodo.utils.tools import generate_output_usage_report
 from mycodo.utils.tools import next_schedule
+from mycodo.utils.function_actions import get_condition_measurement
+from mycodo.utils.function_actions import get_condition_measurement_dict
+from mycodo.utils.function_actions import trigger_function_actions
+from mycodo.utils.function_actions import trigger_action
 
 logger = logging.getLogger("mycodo")
 
@@ -121,6 +125,10 @@ def mycodo_service(mycodo):
         @staticmethod
         def exposed_get_condition_measurement(condition_id):
             return mycodo.get_condition_measurement(condition_id)
+
+        @staticmethod
+        def exposed_get_condition_measurement_dict(condition_id):
+            return mycodo.get_condition_measurement_dict(condition_id)
 
         @staticmethod
         def exposed_controller_activate(cont_type, cont_id):
@@ -387,14 +395,17 @@ class DaemonController:
 
     """
 
-    def __init__(self):
+    def __init__(self, debug):
         self.logger = logging.getLogger("mycodo.daemon")
+        if not debug:
+            self.logger.setLevel(logging.INFO)
         self.logger.info("Mycodo daemon v{ver} starting".format(ver=MYCODO_VERSION))
 
         self.startup_timer = timeit.default_timer()
         self.daemon_startup_time = None
         self.daemon_run = True
         self.terminated = False
+        self.debug = debug
 
         self.dict_input_information = {}
         self.input_information_update()
@@ -455,7 +466,7 @@ class DaemonController:
     def run(self):
         killer = GracefulKill()
         try:
-            self.start_all_controllers()
+            self.start_all_controllers(self.debug)
             self.daemon_startup_time = timeit.default_timer() - self.startup_timer
             self.logger.info("Mycodo daemon started in {sec:.3f} seconds".format(
                 sec=self.daemon_startup_time))
@@ -527,6 +538,13 @@ class DaemonController:
             ConditionalConditions.unique_id == condition_id).first()
         if condition:
             return get_condition_measurement(condition)
+
+    @staticmethod
+    def get_condition_measurement_dict(condition_id):
+        condition = db_retrieve_table_daemon(ConditionalConditions).filter(
+            ConditionalConditions.unique_id == condition_id).first()
+        if condition:
+            return get_condition_measurement_dict(condition)
 
     def controller_activate(self, cont_type, cont_id):
         """
@@ -620,7 +638,10 @@ class DaemonController:
             if cont_id in self.controller[cont_type]:
                 if self.controller[cont_type][cont_id].is_running():
                     try:
-                        self.controller[cont_type][cont_id].stop_controller()
+                        if cont_type == 'PID':
+                            self.controller[cont_type][cont_id].stop_controller(deactivate_pid=True)
+                        else:
+                            self.controller[cont_type][cont_id].stop_controller()
                         self.controller[cont_type][cont_id].join()
                         return 0, "{type} controller with ID {id} "\
                             "deactivated.".format(type=cont_type, id=cont_id)
@@ -1019,7 +1040,7 @@ class DaemonController:
             self.logger.exception(
                 "Statistics initialization Error: {err}".format(err=msg))
 
-    def start_all_controllers(self):
+    def start_all_controllers(self, debug):
         """
         Start all activated controllers
 
@@ -1038,7 +1059,7 @@ class DaemonController:
             }
 
             self.logger.debug("Starting Output controller")
-            self.controller['Output'] = OutputController()
+            self.controller['Output'] = OutputController(debug)
             self.controller['Output'].daemon = True
             self.controller['Output'].start()
 
@@ -1266,8 +1287,10 @@ class MycodoDaemon:
 
     """
 
-    def __init__(self, mycodo):
+    def __init__(self, mycodo, debug):
         self.logger = logging.getLogger("mycodo.daemon")
+        if not debug:
+            self.logger.setLevel(logging.INFO)
         self.mycodo = mycodo
 
     def start_daemon(self):
@@ -1303,12 +1326,12 @@ if __name__ == '__main__':
     # Parse commandline arguments
     args = parse_args()
 
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-        fh.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-        fh.setLevel(logging.INFO)
+    # Set up logger
+    logger = logging.getLogger("mycodo")
+    fh = logging.FileHandler(DAEMON_LOG_FILE, 'a')
+
+    logger.setLevel(logging.DEBUG)
+    fh.setLevel(logging.DEBUG)
 
     try:
         daemon_controller = DaemonController()
@@ -1316,3 +1339,20 @@ if __name__ == '__main__':
         mycodo_daemon.start_daemon()
     except:
         logger.exception(1)
+
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    fh.setFormatter(formatter)
+    logger.propagate = False
+    logger.addHandler(fh)
+    keep_fds = [fh.stream.fileno()]
+
+    daemon_controller = DaemonController(args.debug)
+    mycodo_daemon = MycodoDaemon(daemon_controller, args.debug)
+
+    # Set up daemon and start it
+    daemon = Daemonize(app="mycodo_daemon",
+                       pid=DAEMON_PID_FILE,
+                       action=mycodo_daemon.start_daemon,
+                       keep_fds=keep_fds)
+    daemon.start()

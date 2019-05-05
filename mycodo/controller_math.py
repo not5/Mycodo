@@ -116,6 +116,12 @@ class MathController(threading.Thread):
             self.period = math.period
             self.start_offset = math.start_offset
             self.max_measure_age = math.max_measure_age
+            self.log_level_debug = math.log_level_debug
+
+            if self.log_level_debug:
+                self.logger.setLevel(logging.DEBUG)
+            else:
+                self.logger.setLevel(logging.INFO)
 
             # Inputs to calculate with
             self.inputs = math.inputs
@@ -266,7 +272,7 @@ class MathController(threading.Thread):
         #
         # Sum (multiple channels)
         #
-        if self.math_type == 'sum':
+        elif self.math_type == 'sum':
             device_measurement = self.device_measurements.filter(
                 DeviceMeasurements.channel == 0).first()
 
@@ -434,7 +440,7 @@ class MathController(threading.Thread):
                                 'measurement': measurement,
                                 'unit': unit,
                                 'value': float(measure[1]),
-                                'timestamp': measure[0],
+                                'timestamp_utc': measure[0],
                             }
                         }
                         measurement_success = True
@@ -759,10 +765,13 @@ class MathController(threading.Thread):
             self.logger.error("Unknown math type: {type}".format(type=self.math_type))
 
         # Finally, add measurements to influxdb
+        self.logger.debug(
+            "Adding measurements to influxdb with ID {}: {}".format(
+                self.unique_id, measurement_dict))
         add_measurements_influxdb(self.unique_id, measurement_dict)
 
     def error_not_within_max_age(self):
-        self.logger.error(
+        self.logger.debug(
             "One or more inputs were not within the Max Age that has been "
             "set. Ensure all Inputs are operating properly.")
 

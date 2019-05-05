@@ -8,6 +8,7 @@ Input.
 All Inputs should inherit from this class and overwrite methods that raise
 NotImplementedErrors
 """
+import datetime
 import logging
 
 from sqlalchemy import and_
@@ -47,16 +48,14 @@ class AbstractInput(object):
         """  Representation of object """
         return_str = '<{cls}'.format(cls=type(self).__name__)
         if self._measurements:
-            for each_measurement, unit_data in self._measurements.items():
-                for each_unit, channel_data in unit_data.items():
-                    for each_channel in channel_data:
-                        return_str = '{prev}({meas},{unit},{chan},{val})'.format(
-                            prev=return_str,
-                            meas=each_measurement,
-                            unit=each_unit,
-                            chan=each_channel,
-                            val=self._measurements[each_measurement][each_unit][each_channel])
-            return_str = '{prev}>'.format(prev=return_str)
+            for each_channel, channel_data in self._measurements.items():
+                return_str += '({ts},{chan},{meas},{unit},{val})'.format(
+                    ts=channel_data['time'],
+                    chan=each_channel,
+                    meas=channel_data['measurement'],
+                    unit=channel_data['unit'],
+                    val=channel_data['value'])
+            return_str += '>'
             return return_str
         else:
             return "Measurements dictionary empty"
@@ -66,19 +65,17 @@ class AbstractInput(object):
         return_str = ''
         skip_first_separator = False
         if self._measurements:
-            for each_measurement, unit_data in self._measurements.items():
-                for each_unit, channel_data in unit_data.items():
-                    for each_channel in channel_data:
-                        if skip_first_separator:
-                            return_str = '{prev};'.format(prev=return_str)
-                        else:
-                            skip_first_separator = True
-                        return_str = '{prev}{meas},{unit},{chan},{val}'.format(
-                            prev=return_str,
-                            meas=each_measurement,
-                            unit=each_unit,
-                            chan=each_channel,
-                            val=self._measurements[each_measurement][each_unit][each_channel])
+            for each_channel, channel_data in self._measurements.items():
+                if skip_first_separator:
+                    return_str += ';'
+                else:
+                    skip_first_separator = True
+                return_str += '{ts},{chan},{meas},{unit},{val}'.format(
+                    ts=channel_data['time'],
+                    chan=each_channel,
+                    meas=channel_data['measurement'],
+                    unit=channel_data['unit'],
+                    val=channel_data['value'])
             return return_str
         else:
             return "Measurements dictionary empty"
@@ -126,6 +123,14 @@ class AbstractInput(object):
                 "{cls} raised an exception when taking a reading: "
                 "{err}".format(cls=type(self).__name__, err=e))
         return 1
+
+    def get_value(self, channel):
+        return self._measurements[channel]['value']
+
+    @staticmethod
+    def set_value(return_dict, channel, value, timestamp=None):
+        return_dict[channel]['value'] = value
+        return_dict[channel]['timestamp_utc'] = timestamp if timestamp else datetime.datetime.utcnow()
 
     def filter_average(self, name, init_max=0, measurement=None):
         """

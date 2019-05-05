@@ -88,6 +88,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Method')},
     'modify': {
         'title': lazy_gettext('Modify')},
+    'multiple': {
+        'title': lazy_gettext('Multiple')},
     'none_available': {
         'title': lazy_gettext('None Available')},
     'note': {
@@ -126,6 +128,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Setpoint')},
     'settings': {
         'title': lazy_gettext('Settings')},
+    'single': {
+        'title': lazy_gettext('Single')},
     'tag': {
         'title': lazy_gettext('Tag')},
     'timer': {
@@ -206,6 +210,9 @@ TRANSLATIONS = {
     'invert_scale': {
         'title': lazy_gettext('Invert Scale'),
         'phrase': lazy_gettext('Invert the scale')},
+    'log_level_debug': {
+        'title': lazy_gettext('Log Level: Debug'),
+        'phrase': lazy_gettext('Show debug lines in the Daemon Log')},
     'max_age': {
         'title': lazy_gettext('Max Age (seconds)'),
         'phrase': lazy_gettext('The maximum allowable measurement age')},

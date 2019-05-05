@@ -37,13 +37,15 @@ INPUT_INFORMATION = {
     'input_name': 'K30 (->Serial->TTN)',
     'measurements_name': 'CO2',
     'measurements_dict': measurements_dict,
+    'measurements_use_same_timestamp': True,
 
     'options_enabled': [
         'uart_location',
         'uart_baud_rate',
         'custom_options',
         'period',
-        'pre_output'
+        'pre_output',
+        'log_level_debug'
     ],
     'options_disabled': ['interface'],
 
@@ -117,6 +119,11 @@ class InputModule(AbstractInput):
                 "Min time between transmissions: {} seconds".format(
                     min_seconds_between_transmissions))
 
+        if input_dev.log_level_debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
+
     def lock_setup(self):
         self.lock = self.locket.lock_file(self.lock_file, timeout=10)
         try:
@@ -156,14 +163,14 @@ class InputModule(AbstractInput):
             low = resp[4]
             co2 = (high * 256) + low
 
-        return_dict[0]['value'] = co2
+        self.set_value(return_dict, 0, co2)
 
         try:
             now = time.time()
             if now > self.timer:
                 self.timer = now + min_seconds_between_transmissions
                 # "K" designates this data belonging to the K30
-                string_send = 'K,{}'.format(return_dict[0]['value'])
+                string_send = 'K,{}'.format(self.get_value(0))
                 self.lock_setup()
                 self.serial_send = self.serial.Serial(self.serial_device, 9600)
                 self.serial_send.write(string_send.encode())

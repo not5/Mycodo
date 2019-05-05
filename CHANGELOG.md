@@ -1,8 +1,26 @@
-## 7.4.4 (Unreleased)
+## 7.5.0 (Unreleased)
 
 ### Bugfixes
 
  - Fix storing latest SHT31 Smart Gadget measurements
+ - Fix Base Input __repr__ and __str__
+ - Fix unaccounted PID error if activation attempted when Measurement not set ([#649](https://github.com/kizniche/mycodo/issues/649))
+ - Fix missing GPIO Pin sanity check ([#650](https://github.com/kizniche/mycodo/issues/650))
+ - Fix "Unknown math type" filling log ([#651](https://github.com/kizniche/mycodo/issues/651))
+ - Fix inability to stop PID autotune ([#651](https://github.com/kizniche/mycodo/issues/651))
+ - Fix incomplete display of PID Settings on Mycodo Logs page
+
+### Features
+
+ - Add Conditional Condition: Measurement (Multiple)
+ - Add ability of Inputs to store measurements with the same or separate timestamps
+ - Add option to show debug lines in Daemon Log (for Input/Math/PID/Trigger/Conditional)
+ - Add Log Filters: Daemon INFO, Daemon DEBUG
+ - Add Input: TH1x with DS18B20 ([#654](https://github.com/kizniche/mycodo/issues/654))
+
+### Miscellaneous
+
+ - Update InfluxDB to 1.7.6
 
 
 ## 7.4.3 (2019-04-17)

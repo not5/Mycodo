@@ -20,11 +20,12 @@ from mycodo.utils.database import db_retrieve_table_daemon
 logger = logging.getLogger("mycodo.influxdb")
 
 
-def add_measurements_influxdb(unique_id, measurements):
+def add_measurements_influxdb(unique_id, measurements, use_same_timestamp=True):
     """
-
+    Parse measurement data into list to be input into influxdb
     :param unique_id: Unique ID of device
     :param measurements: dict of measurements
+    :param use_same_timestamp: boolean
     :return:
     """
     data = []
@@ -32,10 +33,12 @@ def add_measurements_influxdb(unique_id, measurements):
     for each_channel, each_measurement in measurements.items():
         if 'value' in each_measurement and each_measurement['value'] is not None:
 
-            if 'timestamp' in each_measurement:
-                timestamp = each_measurement['timestamp']
-            else:
+            if use_same_timestamp:
+                # Create and use timestamp when data is stored in influxdb
                 timestamp = None
+            else:
+                # Use timestamp stored with each measurement
+                timestamp = each_measurement['timestamp_utc']
 
             data.append(format_influxdb_data(
                 unique_id,
@@ -96,6 +99,9 @@ def format_influxdb_data(unique_id, unit, value, channel=None, measure=None, tim
         influx_dict['tags']['channel'] = channel
 
     if timestamp:
+        # Timestamp (UTC) can either be received as:
+        # 1. datetime object
+        # 2. string in the format %Y-%m-%dT%H:%M:%S.%fZ
         if isinstance(timestamp, str):
             influx_dict['time'] = timestamp
         else:
@@ -115,7 +121,7 @@ def parse_measurement(conversion,
         'measurement': each_measurement['measurement'],
         'unit': each_measurement['unit'],
         'value': each_measurement['value'],
-        'timestamp': timestamp
+        'timestamp_utc': timestamp
     }
 
     # Scaling needs to come before conversion
@@ -128,7 +134,7 @@ def parse_measurement(conversion,
             'measurement': measurement.rescaled_measurement,
             'unit': measurement.rescaled_unit,
             'value': scaled_value,
-            'timestamp': timestamp
+            'timestamp_utc': timestamp
         }
 
     # Convert measurement
@@ -140,7 +146,7 @@ def parse_measurement(conversion,
             'measurement': None,
             'unit': conversion.convert_unit_to,
             'value': converted_value,
-            'timestamp': timestamp
+            'timestamp_utc': timestamp
         }
     return measurements_record
 
@@ -246,7 +252,7 @@ def read_past_influxdb(unique_id, unit, measurement, channel, past_seconds):
     if query_str == 1:
         return '', 204
     raw_data = client.query(query_str).raw
-    if raw_data:
+    if raw_data and 'series' in raw_data:
         return raw_data['series'][0]['values']
 
 
@@ -294,18 +300,12 @@ def read_last_influxdb(unique_id, unit, measurement, channel, duration_sec=None)
         logger.debug("Failed to establish a new influxdb connection. Ensure influxdb is running.")
         last_measurement = None
 
-    if last_measurement:
+    if last_measurement and 'series' in last_measurement:
         try:
             number = len(last_measurement['series'][0]['values'])
             last_time = last_measurement['series'][0]['values'][number - 1][0]
             last_measurement = last_measurement['series'][0]['values'][number - 1][1]
             return [last_time, last_measurement]
-        except KeyError:
-            if duration_sec:
-                logger.debug("No measurement available in the past "
-                             "{sec} seconds.".format(sec=duration_sec))
-            else:
-                logger.debug("No measurement available.")
         except Exception:
             logger.exception("Error parsing the last influx measurement")
 

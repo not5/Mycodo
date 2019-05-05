@@ -60,6 +60,7 @@ def pid_mod(form_mod_pid_base,
     mod_pid.measurement = form_mod_pid_base.measurement.data
     mod_pid.direction = form_mod_pid_base.direction.data
     mod_pid.period = form_mod_pid_base.period.data
+    mod_pid.log_level_debug = form_mod_pid_base.log_level_debug.data
     mod_pid.start_offset = form_mod_pid_base.start_offset.data
     mod_pid.max_measure_age = form_mod_pid_base.max_measure_age.data
     mod_pid.setpoint = form_mod_pid_base.setpoint.data
@@ -223,14 +224,20 @@ def has_required_pid_values(pid_id):
     pid = PID.query.filter(
         PID.unique_id == pid_id).first()
     error = False
-    device_unique_id = pid.measurement.split(',')[0]
-    input = Input.query.filter(
-        Input.unique_id == device_unique_id).first()
-    math = Math.query.filter(
-        Math.unique_id == device_unique_id).first()
-    if (not input and not math) or not pid.measurement:
+
+    if not pid.measurement:
         flash(gettext("A valid Measurement is required"), "error")
         error = True
+    else:
+        device_unique_id = pid.measurement.split(',')[0]
+        input_dev = Input.query.filter(
+            Input.unique_id == device_unique_id).first()
+        math = Math.query.filter(
+            Math.unique_id == device_unique_id).first()
+        if not input_dev and not math:
+            flash(gettext("A valid Measurement is required"), "error")
+            error = True
+
     if not pid.raise_output_id and not pid.lower_output_id:
         flash(gettext("A Raise Output and/or a Lower Output is ""required"),
               "error")
