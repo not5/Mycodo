@@ -403,6 +403,44 @@ CALIBRATION_INFO = {
     }
 }
 
+
+# Cameras
+CAMERA_INFO = {
+    'fswebcam': {
+        'name': '{} (fswebcam)'.format(lazy_gettext('USB camera')),
+        'dependencies_module': [
+            ('apt', 'fswebcam', 'fswebcam')
+        ]
+    },
+    'raspberry_pi_picamera': {
+        'name': '{} {} (picamera)'.format(lazy_gettext('Raspberry Pi'),
+                                          lazy_gettext('Camera')),
+        'dependencies_module': [
+            ('pip-pypi', 'picamera', 'picamera')
+        ]
+    },
+}
+
+CAMERAS = [
+    ('raspberry_pi_picamera', CAMERA_INFO['raspberry_pi_picamera']['name']),
+    ('fswebcam', CAMERA_INFO['fswebcam']['name'])
+]
+
+# Conditional controllers
+CONDITIONAL_CONDITION_INFO = {
+    'gpio_state': {
+        'name': '{}'.format(lazy_gettext('GPIO State')),
+        'dependencies_module': [
+            ('apt', 'gcc', 'gcc'),
+            ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
+        ]
+    },
+    'measurement': {
+        'name': '{}'.format(TRANSLATIONS['measurement']['title']),
+        'dependencies_module': []
+    }
+}
+
 # Conditional controllers
 CONDITIONAL_CONDITIONS = [
     ('measurement', "{} ({})".format(

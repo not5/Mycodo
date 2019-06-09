@@ -20,7 +20,7 @@ case "${1:-''}" in
             printf "#### Virtualenv doesn't exist. Creating...\n" 2>&1 | tee -a ${LOG_LOCATION}
             pip install virtualenv --upgrade
             rm -rf ${INSTALL_PATH}/env
-            PYTHON_BINARY_SYS_LOC="$(python3.5 -c "import os; print(os.environ['_'])")"
+            PYTHON_BINARY_SYS_LOC="$(python3 -c "import os; print(os.environ['_'])")"
             virtualenv -p ${PYTHON_BINARY_SYS_LOC} ${INSTALL_PATH}/env
         else
             printf "#### Virtualenv already exists, skipping creation\n" 2>&1 | tee -a ${LOG_LOCATION}
@@ -33,12 +33,12 @@ case "${1:-''}" in
 
         usermod -aG docker pi
 
-        if ! [ -x "$(command -v docker-compose)" ]; then
+        if ! [ -x "$(command -v ./env/bin/docker-compose)" ]; then
             printf "#### Installing docker-compose\n" 2>&1 | tee -a ${LOG_LOCATION}
             ${INSTALL_PATH}/env/bin/pip install docker-compose
         fi
 
-        if ! [ -x "$(command -v docker-compose)" ]; then
+        if ! [ -x "$(command -v logrotate)" ]; then
             printf "#### Installing logrotate\n" 2>&1 | tee -a ${LOG_LOCATION}
             apt install logrotate
         fi
