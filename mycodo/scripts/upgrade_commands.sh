@@ -155,7 +155,7 @@ case "${1:-''}" in
     ;;
     'install-docker-ce-cli')
         printf "\n#### Installing Docker Client\n"
-        apt-get install -y \
+        apt-get -y install \
             apt-transport-https \
             ca-certificates \
             curl \
