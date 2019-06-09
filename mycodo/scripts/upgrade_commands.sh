@@ -9,7 +9,7 @@ fi
 
 # Required apt packages. This has only been tested with Raspbian for the
 # Raspberry Pi but should work with most debian-based systems.
-APT_PKGS="moreutils wget git gcc libffi-dev"
+APT_PKGS="moreutils wget git gcc libffi-dev docker-ce"
 
 # Get the Mycodo root directory
 SOURCE="${BASH_SOURCE[0]}"

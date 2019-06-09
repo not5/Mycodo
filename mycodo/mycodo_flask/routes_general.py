@@ -971,12 +971,13 @@ def computer_command(action):
 
     try:
         if action == 'daemon_restart':
-            try:
-                control = DaemonControl()
-                control.terminate_daemon()
-                flash(gettext("Command to restart the daemon sent"), "success")
-            except:
-                pass
+            control = DaemonControl()
+            control.terminate_daemon()
+            flash(gettext("Command to restart the daemon sent"), "success")
+        elif action == 'frontend_reload':
+            cmd = 'docker exec -it flask docker restart flask'
+            subprocess.Popen(cmd, shell=True)
+            flash(gettext("Command to reload the frontend sent"), "success")
         elif action not in ['restart', 'shutdown', 'frontend_reload']:
             flash("Unrecognized command: {action}".format(
                 action=action), "success")
@@ -988,8 +989,7 @@ def computer_command(action):
             flash(gettext("System rebooting in 10 seconds"), "success")
         elif action == 'shutdown':
             flash(gettext("System shutting down in 10 seconds"), "success")
-        elif action == 'frontend_reload':
-            flash(gettext("Command to reload the frontend sent"), "success")
+
         return redirect('/settings')
     except Exception as e:
         logger.error("System command '{cmd}' raised and error: "
