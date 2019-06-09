@@ -9,7 +9,7 @@ fi
 
 # Required apt packages. This has only been tested with Raspbian for the
 # Raspberry Pi but should work with most debian-based systems.
-APT_PKGS="moreutils wget git gcc libffi-dev docker-ce"
+APT_PKGS="moreutils wget git gcc libffi-dev"
 
 # Get the Mycodo root directory
 SOURCE="${BASH_SOURCE[0]}"
@@ -35,6 +35,7 @@ Options:
   update-alembic                Use alembic to upgrade the mycodo.db settings database
   update-apt-packages           Install required apt packages are installed/up-to-date
   install-bcm2835               Install bcm2835
+  install-docker-ce-cli         Install Docker Client
   install-pigpiod               Install pigpiod
   install-wiringpi              Install wiringpi
   uninstall-pigpiod             Uninstall pigpiod
@@ -151,6 +152,37 @@ case "${1:-''}" in
         sudo make install
         cd ${MYCODO_PATH}/install
         rm -rf ./bcm2835-1.50
+    ;;
+    'install-docker-ce-cli')
+        printf "\n#### Installing Docker Client\n"
+        apt-get install -y \
+            apt-transport-https \
+            ca-certificates \
+            curl \
+            gnupg2 \
+            software-properties-common
+        curl -fsSL https://download.docker.com/linux/debian/gpg | apt-key add -
+
+        UNAME_TYPE=`uname -m`
+        MACHINE_TYPE=`dpkg --print-architecture`
+        if [ ${UNAME_TYPE} == 'x86_64' ]; then
+            add-apt-repository -y \
+               "deb [arch=amd64] https://download.docker.com/linux/debian \
+               $(lsb_release -cs) \
+               stable"
+        elif [ ${MACHINE_TYPE} == 'armhf' ]; then
+            add-apt-repository -y \
+               "deb [arch=armhf] https://download.docker.com/linux/debian \
+               $(lsb_release -cs) \
+               stable"
+        elif [ ${MACHINE_TYPE} == 'arm64' ]; then
+            add-apt-repository -y \
+               "deb [arch=arm64] https://download.docker.com/linux/debian \
+               $(lsb_release -cs) \
+               stable"
+        fi
+        apt-get update
+        apt-get install docker-ce docker-ce-cli
     ;;
     'install-wiringpi')
         cd ${MYCODO_PATH}/install
