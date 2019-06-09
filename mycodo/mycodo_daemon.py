@@ -1346,8 +1346,8 @@ if __name__ == '__main__':
     fh.setLevel(logging.DEBUG)
 
     try:
-        daemon_controller = DaemonController()
-        mycodo_daemon = MycodoDaemon(daemon_controller)
+        daemon_controller = DaemonController(args.debug)
+        mycodo_daemon = MycodoDaemon(daemon_controller, args.debug)
         mycodo_daemon.start_daemon()
     except:
         logger.exception(1)
