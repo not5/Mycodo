@@ -165,17 +165,17 @@ case "${1:-''}" in
 
         UNAME_TYPE=`uname -m`
         MACHINE_TYPE=`dpkg --print-architecture`
-        if [ ${UNAME_TYPE} == 'x86_64' ]; then
+        if [[ ${UNAME_TYPE} == 'x86_64' ]]; then
             add-apt-repository -y \
                "deb [arch=amd64] https://download.docker.com/linux/debian \
                $(lsb_release -cs) \
                stable"
-        elif [ ${MACHINE_TYPE} == 'armhf' ]; then
+        elif [[ ${MACHINE_TYPE} == 'armhf' ]]; then
             add-apt-repository -y \
                "deb [arch=armhf] https://download.docker.com/linux/debian \
                $(lsb_release -cs) \
                stable"
-        elif [ ${MACHINE_TYPE} == 'arm64' ]; then
+        elif [[ ${MACHINE_TYPE} == 'arm64' ]]; then
             add-apt-repository -y \
                "deb [arch=arm64] https://download.docker.com/linux/debian \
                $(lsb_release -cs) \
