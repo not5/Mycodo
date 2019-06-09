@@ -42,6 +42,10 @@ from mycodo.mycodo_client import DaemonControl
 control = DaemonControl()
 message = ''
 
+# The following functions are used to test the Conditional code.
+# The functions that are used in the production environment will
+# return the proper values and affect the proper systems when called.
+
 def measure(condition_id):
     # pylint: disable=unused-argument
     return random.choice([

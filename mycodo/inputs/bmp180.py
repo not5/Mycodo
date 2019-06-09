@@ -1,11 +1,8 @@
 # coding=utf-8
-import logging
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_altitude
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -57,40 +54,28 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.bmp180")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from Adafruit_BMP import BMP085
-            self.logger = logging.getLogger(
-                "mycodo.bmp180_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_bus = input_dev.i2c_bus
             self.bmp = BMP085.BMP085(busnum=self.i2c_bus)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the BMP180/085 """
         time.sleep(2)
 
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.bmp.read_pressure()
+            self.value_set(0, self.bmp.read_pressure())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.bmp.read_temperature()
+            self.value_set(1, self.bmp.read_temperature())
 
         if self.is_enabled(2) and self.is_enabled(0):
-            return_dict[2]['value'] = calculate_altitude(
-                return_dict[0]['value'])
+            self.value_set(2, calculate_altitude(
+                self.value_get(0)))
 
-        return return_dict
+        return self.return_dict

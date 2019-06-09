@@ -20,7 +20,7 @@ class AtlasScientificI2C:
         # it is usually 1, except for older revisions where its 0
         # wb and rb indicate binary read and write
         self.logger = logging.getLogger(
-            "mycodo.device.atlas_scientific_i2c_{add}".format(add=i2c_address))
+            "{}_{}_{}".format(__name__, i2c_address, i2c_bus))
         self.current_addr = i2c_address
         self.setup = True
         try:

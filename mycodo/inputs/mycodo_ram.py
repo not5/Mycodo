@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import resource
 
 from mycodo.inputs.base_input import AbstractInput
@@ -38,28 +37,19 @@ class InputModule(AbstractInput):
 
     """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.mycodo_ram")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self._disk_space = None
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.mycodo_ram_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
             self.control = DaemonControl()
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         """ Gets the measurement in units by reading resource """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         try:
-            return_dict[0]['value'] = resource.getrusage(
-                resource.RUSAGE_SELF).ru_maxrss / float(1000)
-            return return_dict
+            self.value_set(0, resource.getrusage(
+                resource.RUSAGE_SELF).ru_maxrss / float(1000))
+            return self.return_dict
         except Exception:
             pass

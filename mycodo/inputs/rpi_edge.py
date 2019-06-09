@@ -10,9 +10,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'RPI_EDGE',
+    'input_name_unique': 'EDGE',
     'input_manufacturer': 'Raspberry Pi',
-    'input_name': 'RPi Edge',
+    'input_name': 'Edge',
     'measurements_name': 'Rising/Falling Edge',
     'measurements_dict': measurements_dict,
 
@@ -25,7 +25,6 @@ INPUT_INFORMATION = {
     'options_disabled': ['interface'],
 
     'dependencies_module': [
-        ('apt', 'gcc', 'gcc'),
         ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO')
     ],
 

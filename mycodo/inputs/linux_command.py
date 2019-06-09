@@ -1,9 +1,6 @@
 # coding=utf-8
-import logging
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.system_pi import cmd_output
 from mycodo.utils.system_pi import str_is_float
 
@@ -19,7 +16,7 @@ measurements_dict = {
 INPUT_INFORMATION = {
     'input_name_unique': 'LINUX_COMMAND',
     'input_manufacturer': 'Linux',
-    'input_name': 'Linux Command',
+    'input_name': 'Bash Command',
     'measurements_name': 'Return Value',
     'measurements_dict': measurements_dict,
 
@@ -42,27 +39,14 @@ class InputModule(AbstractInput):
     """ A sensor support class that returns a value from a command """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.linux_command")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.inputs.linux_command_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                DeviceMeasurements.device_id == input_dev.unique_id)
-
             self.command = input_dev.cmd_command
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         """ Determine if the return value of the command is a number """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         out, _, _ = cmd_output(self.command)
 
@@ -75,10 +59,10 @@ class InputModule(AbstractInput):
                 "by the command.")
             return
 
-        for channel, meas in enumerate(self.device_measurements.all()):
-            if meas.is_enabled:
-                return_dict[channel]['unit'] = meas.unit
-                return_dict[channel]['measurement'] = meas.measurement
-                return_dict[channel]['value'] = list_measurements[channel]
+        for channel in self.device_measurements:
+            if self.is_enabled(channel):
+                self.return_dict[channel]['unit'] = self.device_measurements[channel].unit
+                self.return_dict[channel]['measurement'] = self.device_measurements[channel].measurement
+                self.return_dict[channel]['value'] = list_measurements[channel]
 
-        return return_dict
+        return self.return_dict

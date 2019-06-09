@@ -3,16 +3,13 @@
 # Author: Tony DiCola
 # Based on the BMP280 driver with SHT31 changes provided by
 # David J Taylor, Edinburgh (www.satsignal.eu)
-import logging
 import time
 
 from flask_babel import lazy_gettext
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
-from mycodo.utils.database import db_retrieve_table_daemon
 
 
 def constraints_pass_positive_value(mod_input, value):
@@ -117,8 +114,7 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.sht31")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.measurement_count = 0
         self.heater_enable = None
         self.heater_seconds = None
@@ -126,14 +122,6 @@ class InputModule(AbstractInput):
 
         if not testing:
             from Adafruit_SHT31 import SHT31
-
-            self.logger = logging.getLogger(
-                "mycodo.sht31_{id}".format(
-                    id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             if input_dev.custom_options:
                 for each_option in input_dev.custom_options.split(';'):
@@ -152,32 +140,27 @@ class InputModule(AbstractInput):
                 address=self.i2c_address,
                 busnum=self.i2c_bus)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.read_temperature()
+            self.value_set(0, self.sensor.read_temperature())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.sensor.read_humidity()
+            self.value_set(1, self.sensor.read_humidity())
 
         if (self.is_enabled(2) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[2]['value'] = calculate_dewpoint(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(2, calculate_dewpoint(
+                self.value_get(0), self.value_get(1)))
 
         if (self.is_enabled(3) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[3]['value'] = calculate_vapor_pressure_deficit(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(3, calculate_vapor_pressure_deficit(
+                self.value_get(0), self.value_get(1)))
 
         if self.heater_enable and self.heater_seconds and self.heater_measurements:
             time.sleep(2)
@@ -188,7 +171,7 @@ class InputModule(AbstractInput):
                 time.sleep(self.heater_seconds)
                 self.sensor.set_heater(False)
 
-        return return_dict
+        return self.return_dict
 
     def status(self):
         status = self.sensor.read_status()

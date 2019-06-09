@@ -1,10 +1,7 @@
 # coding=utf-8
-import logging
 from collections import OrderedDict
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = OrderedDict()
@@ -69,19 +66,11 @@ INPUT_INFORMATION = {
 class InputModule(AbstractInput):
     """ ADC Read """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger('mycodo.mcp342x')
-        self.acquiring_measurement = False
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from smbus2 import SMBus
             from MCP342x import MCP342x
-            self.logger = logging.getLogger(
-                'mycodo.mcp342x_{id}'.format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
@@ -91,22 +80,17 @@ class InputModule(AbstractInput):
             self.MCP342x = MCP342x
             self.bus = SMBus(self.i2c_bus)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
-        for each_measure in self.device_measurements.all():
-            if each_measure.is_enabled:
+        for channel in self.device_measurements:
+            if self.is_enabled(channel):
                 adc = self.MCP342x(self.bus,
                                    self.i2c_address,
-                                   channel=each_measure.channel,
+                                   channel=channel,
                                    gain=self.adc_gain,
                                    resolution=self.adc_resolution)
-                return_dict[each_measure.channel]['value'] = adc.convert_and_read()
+                self.value_set(channel, adc.convert_and_read())
 
         # Dummy data for testing
         # import random
@@ -115,7 +99,7 @@ class InputModule(AbstractInput):
         # return_dict[2]['value'] = random.uniform(0.5, 0.6)
         # return_dict[3]['value'] = random.uniform(3.5, 6.2)
 
-        return return_dict
+        return self.return_dict
 
 
 if __name__ == "__main__":

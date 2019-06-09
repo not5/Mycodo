@@ -21,7 +21,6 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import logging
 import math
 import time
 
@@ -83,37 +82,29 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.max31865")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.max31865_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
             self.pin_clock = input_dev.pin_clock
             self.pin_cs = input_dev.pin_cs
             self.pin_miso = input_dev.pin_miso
             self.pin_mosi = input_dev.pin_mosi
             self.thermocouple_type = input_dev.thermocouple_type
             self.ref_ohm = input_dev.ref_ohm
-            self.sensor = max31865_sen(self.pin_cs,
-                                       self.pin_miso,
-                                       self.pin_mosi,
-                                       self.pin_clock)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+            self.sensor = max31865_sen(
+                self.pin_cs,
+                self.pin_miso,
+                self.pin_mosi,
+                self.pin_clock)
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
-        return_dict[0]['value'] = self.sensor.readTemp(
-            self.thermocouple_type, self.ref_ohm)
+        self.value_set(0, self.sensor.readTemp(
+            self.thermocouple_type, self.ref_ohm))
 
-        return return_dict
+        return self.return_dict
 
     def stop_sensor(self):
         """ Called by InputController class when sensors are deactivated """

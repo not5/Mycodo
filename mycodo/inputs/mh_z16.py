@@ -19,7 +19,6 @@
 # The above copyright notice and this permission notice shall be
 # included in all copies or substantial portions of the Software.
 
-import logging
 import time
 
 from mycodo.inputs.base_input import AbstractInput
@@ -64,13 +63,9 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the MH-Z16's CO2 concentration """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.mh_z16")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.mh_z16_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
             self.interface = input_dev.interface
             self.uart_location = input_dev.uart_location
 
@@ -108,14 +103,9 @@ class InputModule(AbstractInput):
                 self.i2c = SMBus(self.i2c_bus)
                 self.begin()
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the MH-Z16's CO2 concentration in ppmv via UART"""
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         co2 = None
 
@@ -141,9 +131,9 @@ class InputModule(AbstractInput):
             except Exception:
                 co2 = None
 
-        return_dict[0]['value'] = co2
+        self.value_set(0, co2)
 
-        return return_dict
+        return self.return_dict
 
     def begin(self):
         try:

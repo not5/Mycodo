@@ -28,7 +28,7 @@ import threading
 import time
 import timeit
 
-import locket
+import filelock
 import os
 import requests
 
@@ -78,7 +78,7 @@ class InputController(threading.Thread):
         threading.Thread.__init__(self)
 
         self.logger = logging.getLogger(
-            "mycodo.input_{id}".format(id=input_id.split('-')[0]))
+            "{}_{}".format(__name__, input_id.split('-')[0]))
 
         self.stop_iteration_counter = 0
         self.thread_startup_timer = timeit.default_timer()
@@ -99,6 +99,11 @@ class InputController(threading.Thread):
         self.input_id = input_id
         input_dev = db_retrieve_table_daemon(
             Input, unique_id=self.input_id)
+
+        if input_dev.log_level_debug:
+            self.logger.setLevel(logging.DEBUG)
+        else:
+            self.logger.setLevel(logging.INFO)
 
         self.device_measurements = db_retrieve_table_daemon(
             DeviceMeasurements).filter(
@@ -124,6 +129,7 @@ class InputController(threading.Thread):
         self.pre_output_duration = input_dev.pre_output_duration
         self.pre_output_during_measure = input_dev.pre_output_during_measure
         self.pre_output_setup = False
+        self.last_measurement = 0
         self.next_measurement = time.time()
         self.get_new_measurement = False
         self.trigger_cond = False
@@ -135,7 +141,8 @@ class InputController(threading.Thread):
         # Check if Pre-Output ID actually exists
         output = db_retrieve_table_daemon(Output, entry='all')
         for each_output in output:
-            if each_output.unique_id == self.pre_output_id and self.pre_output_duration:
+            if (each_output.unique_id == self.pre_output_id and
+                    self.pre_output_duration):
                 self.pre_output_setup = True
 
         smtp = db_retrieve_table_daemon(SMTP, entry='first')
@@ -145,7 +152,8 @@ class InputController(threading.Thread):
 
         # Set up input lock
         self.input_lock = None
-        self.lock_file = '/var/lock/input_pre_output_{id}'.format(id=self.pre_output_id)
+        self.lock_file = '/var/lock/input_pre_output_{id}'.format(
+            id=self.pre_output_id)
 
         # Convert string I2C address to base-16 int
         if self.interface == 'I2C':
@@ -164,7 +172,8 @@ class InputController(threading.Thread):
         self.device_recognized = True
 
         if self.device in self.dict_inputs:
-            input_loaded = load_module_from_file(self.dict_inputs[self.device]['file_path'])
+            input_loaded = load_module_from_file(
+                self.dict_inputs[self.device]['file_path'])
 
             if self.device == 'RPI_EDGE':
                 # Edge detection handled internally, no module to load
@@ -183,6 +192,9 @@ class InputController(threading.Thread):
         self.input_timer = time.time()
         self.running = False
         self.lastUpdate = None
+
+    def __str__(self):
+        return str(self.__class__)
 
     def run(self):
         try:
@@ -213,9 +225,15 @@ class InputController(threading.Thread):
                 if self.device not in ['EDGE']:
                     now = time.time()
                     # Signal that a measurement needs to be obtained
-                    if now > self.next_measurement and not self.get_new_measurement:
-                        self.get_new_measurement = True
-                        self.trigger_cond = True
+                    if (now > self.next_measurement and
+                            not self.get_new_measurement):
+
+                        # Prevent double measurement if previous acquisition of a measurement was delayed
+                        if self.last_measurement < self.next_measurement:
+                            self.get_new_measurement = True
+                            self.trigger_cond = True
+
+                        # Ensure the next measure event will occur in the future
                         while self.next_measurement < now:
                             self.next_measurement += self.period
 
@@ -310,11 +328,11 @@ class InputController(threading.Thread):
 
     def lock_setup(self):
         # Set up lock
-        self.input_lock = locket.lock_file(self.lock_file, timeout=30)
+        self.input_lock = filelock.FileLock(self.lock_file, timeout=30)
         try:
             self.input_lock.acquire()
             self.pre_output_locked = True
-        except locket.LockError:
+        except filelock.Timeout:
             self.logger.error("Could not acquire input lock. Breaking for future locking.")
             try:
                 os.remove(self.lock_file)
@@ -369,6 +387,7 @@ class InputController(threading.Thread):
 
         if self.device_recognized and measurements is not None:
             self.measurement = Measurement(measurements)
+            self.last_measurement = time.time()
             self.measurement_success = True
         else:
             self.measurement_success = False
@@ -426,6 +445,7 @@ class InputController(threading.Thread):
                                     name=self.input_name,
                                     state=state_str,
                                     pin=bcm_pin)
+                    self.logger.debug("Edge: {}".format(message))
 
                     self.control.trigger_all_actions(
                         each_trigger.unique_id, message=message)
@@ -446,6 +466,9 @@ class InputController(threading.Thread):
                     measurements_record,
                     each_channel,
                     each_measurement)
+        self.logger.debug(
+            "Adding measurements to InfluxDB with ID {}: {}".format(
+                self.input_id, measurements_record))
         return measurements_record
 
     def force_measurements(self):

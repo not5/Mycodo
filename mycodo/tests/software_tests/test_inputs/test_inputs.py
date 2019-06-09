@@ -26,15 +26,17 @@ from mycodo.inputs.linux_free_space import InputModule as LinuxFreeSpace
 from mycodo.inputs.mh_z16 import InputModule as MHZ16Sensor
 from mycodo.inputs.mh_z19 import InputModule as MHZ19Sensor
 from mycodo.inputs.mycodo_ram import InputModule as MycodoRam
-from mycodo.inputs.raspberry_pi_cpu_gpu_temp import InputModule as RaspberryPiCPUTemp
-from mycodo.inputs.raspberry_pi_signal_pwm import InputModule as SignalPWMInput
-from mycodo.inputs.raspberry_pi_signal_revolutions import InputModule as SignalRPMInput
+from mycodo.inputs.rpi_cpu_gpu_temperature import InputModule as RaspberryPiCPUTemp
+from mycodo.inputs.rpi_signal_pwm import InputModule as SignalPWMInput
+from mycodo.inputs.rpi_signal_revolutions import InputModule as SignalRPMInput
 from mycodo.inputs.sht1x_7x import InputModule as SHT1x7xSensor
 from mycodo.inputs.sht2x import InputModule as SHT2xSensor
+from mycodo.inputs.system_cpuload import InputModule as RaspberryPiCPULoad
+from mycodo.inputs.system_freespace import InputModule as RaspberryPiFreeSpace
 from mycodo.inputs.tmp006 import InputModule as TMP006Sensor
 from mycodo.inputs.tsl2561 import InputModule as TSL2561Sensor
 from mycodo.inputs.tsl2591_sensor import InputModule as TSL2591Sensor
-from mycodo.inputs.ttn_data_storage import InputModule as TTN_DATA_STORAGE
+from mycodo.inputs.ttn_data_storage import InputModule as TTNDataStorage
 
 input_classes = [
     AM2315Sensor(None, testing=True),
@@ -64,24 +66,27 @@ input_classes = [
     TMP006Sensor(None, testing=True),
     TSL2561Sensor(None, testing=True),
     TSL2591Sensor(None, testing=True),
-    TTN_DATA_STORAGE(None, testing=True)
+    TTNDataStorage(None, testing=True)
 ]
 
 
-# ----------------------------
-#   AM2315 tests
-# ----------------------------
 def test_inputs_have_depreciated_stop_sensor():
     """ Verify that the input objects have the stop_sensor() method """
-    for each_class in input_classes:
+    print("\nTest: test_inputs_have_depreciated_stop_sensor")
+    for index, each_class in enumerate(input_classes):
+        print("test_inputs_have_depreciated_stop_sensor: Testing Class ({}/{}): {}".format(
+            index + 1, len(input_classes), each_class))
         assert hasattr(each_class, 'stop_sensor')
 
 
 def test__iter__returns_iterator():
     """ The iter methods must return an iterator in order to work properly """
-    for each_class in input_classes:
+    print("\nTest: test__iter__returns_iterator")
+    for index, each_class in enumerate(input_classes):
         full_path = inspect.getfile(each_class.__class__)
         filename = os.path.splitext(os.path.basename(full_path))[0]
+        print("test__iter__returns_iterator: Testing Input ({}/{}): {}".format(
+            index + 1, len(input_classes), filename))
         with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename)) as mock_measure:
             mock_measure.side_effect = [
                 {
@@ -116,11 +121,14 @@ def test__iter__returns_iterator():
             assert isinstance(each_class.__iter__(), Iterator), "{cls} is not an iterator instance".format(cls=each_class.__class__.__name__)
 
 
-def test_read_updates_temp():
-    """  Verify that AM2315Sensor(None, testing=True).read() gets the average temp """
-    for each_class in input_classes:
+def test_read_updates_measurement():
+    """  Verify that read() gets the average temp """
+    print("\nTest: test_read_updates_measurement")
+    for index, each_class in enumerate(input_classes):
         full_path = inspect.getfile(each_class.__class__)
         filename = os.path.splitext(os.path.basename(full_path))[0]
+        print("test_read_updates_measurement: Testing Input ({}/{}): {}".format(
+            index + 1, len(input_classes), filename))
         with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename)) as mock_measure:
             mock_measure.side_effect = [
                 {
@@ -152,7 +160,6 @@ def test_read_updates_temp():
                    }
                 }
             ]
-            print("Testing {}".format(filename))
             assert each_class._measurements is None
             assert each_class._measurements is None
             assert not each_class.read()
@@ -171,9 +178,11 @@ def test_read_updates_temp():
 
 def test_special_method_str():
     """ expect a __str__ format """
-    for each_class in input_classes:
+    print("\nTest: test_special_method_str")
+    for index, each_class in enumerate(input_classes):
         full_path = inspect.getfile(each_class.__class__)
         filename = os.path.splitext(os.path.basename(full_path))[0]
+        print("test_special_method_str: Testing Input ({}/{}): {}".format(index + 1, len(input_classes), filename))
         with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename)) as mock_measure:
             mock_measure.side_effect = [
                 {
@@ -212,7 +221,8 @@ def test_special_method_str():
 
 def test_special_method_repr():
     """ expect a __repr__ format """
-    for each_class in input_classes:
+    print("\nTest: test_special_method_repr")
+    for index, each_class in enumerate(input_classes):
         full_path = inspect.getfile(each_class.__class__)
         filename = os.path.splitext(os.path.basename(full_path))[0]
         with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename)) as mock_measure:
@@ -232,6 +242,7 @@ def test_special_method_repr():
                    }
                 }
             ]
+            print("test_special_method_repr: Testing Input ({}/{}): {}".format(index + 1, len(input_classes), filename))
             each_class.read()
             assert "<InputModule" in repr(each_class)
             assert "(1556199975,0,temperature,C,24)" in repr(each_class)
@@ -241,9 +252,11 @@ def test_special_method_repr():
 
 def test_raises_exception():
     """ stops iteration on read() error """
-    for each_class in input_classes:
+    print("\nTest: test_raises_exception")
+    for index, each_class in enumerate(input_classes):
         full_path = inspect.getfile(each_class.__class__)
         filename = os.path.splitext(os.path.basename(full_path))[0]
+        print("test_raises_exception: Testing Input ({}/{}): {}".format(index + 1, len(input_classes), filename))
         with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename), side_effect=IOError):
             with pytest.raises(StopIteration):
                 each_class.next()
@@ -251,19 +264,24 @@ def test_raises_exception():
 
 def test_read_returns_1_on_exception():
     """ Verify the read() method returns true on error """
-    for each_class in input_classes:
+    print("\nTest: test_read_returns_1_on_exception")
+    for index, each_class in enumerate(input_classes):
         full_path = inspect.getfile(each_class.__class__)
         filename = os.path.splitext(os.path.basename(full_path))[0]
+        print("test_read_returns_1_on_exception: Testing Input ({}/{}): {}".format(index + 1, len(input_classes), filename))
         with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename), side_effect=Exception):
             assert each_class.read()
 
 
 def test_read_logs_unknown_errors():
     """ verify that IOErrors are logged """
+    print("\nTest: test_read_logs_unknown_errors")
     with LogCapture() as log_cap:
-        for each_class in input_classes:
+        for index, each_class in enumerate(input_classes):
             full_path = inspect.getfile(each_class.__class__)
             filename = os.path.splitext(os.path.basename(full_path))[0]
+            print("test_read_logs_unknown_errors: Testing Input ({}/{}): {}".format(
+                index + 1, len(input_classes), filename))
             with mock.patch('mycodo.inputs.{fn}.InputModule.get_measurement'.format(fn=filename), side_effect=Exception('msg')):
                 each_class.read()
             expected_logs = ('mycodo.inputs.{fn}'.format(fn=filename),

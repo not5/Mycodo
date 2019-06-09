@@ -13,7 +13,7 @@ from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.system_pi import assure_path_exists
 from mycodo.utils.system_pi import cmd_output
 
-logger = logging.getLogger('mycodo.devices.picamera')
+logger = logging.getLogger(__name__)
 
 
 #

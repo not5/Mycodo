@@ -1,9 +1,5 @@
 # coding=utf-8
-import logging
-
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -59,40 +55,29 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the TMP006's die and object temperatures """
 
     def __init__(self, input_dev,  testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.tmp006")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self._temperature_die = None
         self._temperature_object = None
 
         if not testing:
             from Adafruit_TMP import TMP006
-            self.logger = logging.getLogger(
-                "mycodo.tmp006_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
             self.sensor = TMP006.TMP006(
-                address=self.i2c_address, busnum=self.i2c_bus)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+                address=self.i2c_address,
+                busnum=self.i2c_bus)
 
     def get_measurement(self):
         """ Gets the TMP006's temperature in Celsius """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         self.sensor.begin()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.readObjTempC()
+            self.value_set(0, self.sensor.readObjTempC())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.sensor.readDieTempC()
+            self.value_set(1, self.sensor.readDieTempC())
 
-        return return_dict
+        return self.return_dict

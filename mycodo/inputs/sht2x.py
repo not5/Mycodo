@@ -1,13 +1,10 @@
 # coding=utf-8
 # From https://github.com/ControlEverythingCommunity/SHT25/blob/master/Python/SHT25.py
-import logging
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -63,30 +60,18 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.sht2x")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from smbus2 import SMBus
-            self.logger = logging.getLogger(
-                "mycodo.sht2x_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
             self.sht2x = SMBus(self.i2c_bus)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         for _ in range(2):
             try:
@@ -110,24 +95,24 @@ class InputModule(AbstractInput):
                 humidity = -6 + (((data0 * 256 + data1) * 125.0) / 65536.0)
 
                 if self.is_enabled(0):
-                    return_dict[0]['value'] = temperature
+                    self.value_set(0, temperature)
 
                 if self.is_enabled(1):
-                    return_dict[1]['value'] = humidity
+                    self.value_set(1, humidity)
 
                 if (self.is_enabled(2) and
                         self.is_enabled(0) and
                         self.is_enabled(1)):
-                    return_dict[2]['value'] = calculate_dewpoint(
-                        return_dict[0]['value'], return_dict[1]['value'])
+                    self.value_set(2, calculate_dewpoint(
+                        self.value_get(0), self.value_get(1)))
 
                 if (self.is_enabled(3) and
                         self.is_enabled(0) and
                         self.is_enabled(1)):
-                    return_dict[3]['value'] = calculate_vapor_pressure_deficit(
-                        return_dict[0]['value'], return_dict[1]['value'])
+                    self.value_set(3, calculate_vapor_pressure_deficit(
+                        self.value_get(0), self.value_get(1)))
 
-                return return_dict
+                return self.return_dict
             except Exception as e:
                 self.logger.exception(
                     "Exception when taking a reading: {err}".format(err=e))

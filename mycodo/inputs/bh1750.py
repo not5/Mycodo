@@ -1,10 +1,7 @@
 # coding=utf-8
-import logging
 import time
 
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.databases.models import DeviceMeasurements
-from mycodo.utils.database import db_retrieve_table_daemon
 
 list_sensitivity = []
 for num in range(31, 255):
@@ -75,17 +72,10 @@ ONE_TIME_LOW_RES_MODE = 0x23
 class InputModule(AbstractInput):
     """ A sensor support class that monitors the DS18B20's lux """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.bh1750")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from smbus2 import SMBus
-            self.logger = logging.getLogger(
-                "mycodo.bh1750_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.resolution = input_dev.resolution
@@ -93,11 +83,6 @@ class InputModule(AbstractInput):
             self.i2c_bus = SMBus(input_dev.i2c_bus)
             self.power_down()
             self.set_sensitivity(sensitivity=self.sensitivity)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     @property
     def lux(self):
@@ -108,7 +93,7 @@ class InputModule(AbstractInput):
 
     def get_measurement(self):
         """ Gets the BH1750's lux """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.resolution == 0:
             lux = self.measure_low_res()
@@ -119,9 +104,9 @@ class InputModule(AbstractInput):
         else:
             return None
 
-        return_dict[0]['value'] = lux
+        self.value_set(0, lux)
 
-        return return_dict
+        return self.return_dict
 
     def _set_mode(self, mode):
         self.mode = mode

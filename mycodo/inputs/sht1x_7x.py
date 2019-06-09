@@ -1,11 +1,7 @@
 # coding=utf-8
-import logging
-
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -70,8 +66,7 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.sht1x_7x")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self._dew_point = None
         self._humidity = None
         self._temperature = None
@@ -79,12 +74,6 @@ class InputModule(AbstractInput):
         if not testing:
             from sht_sensor import Sht
             from sht_sensor import ShtVDDLevel
-            self.logger = logging.getLogger(
-                "mycodo.sht1x_7x_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.gpio = int(input_dev.gpio_location)
             self.clock_pin = input_dev.clock_pin
@@ -95,36 +84,33 @@ class InputModule(AbstractInput):
                 4.0: ShtVDDLevel.vdd_4,
                 5.0: ShtVDDLevel.vdd_5
             }
-            self.sht_voltage = sht_sensor_vdd_value[round(float(input_dev.sht_voltage), 1)]
-            self.sht_sensor = Sht(self.clock_pin,
-                                  self.gpio,
-                                  voltage=self.sht_voltage)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+            self.sht_voltage = sht_sensor_vdd_value[
+                round(float(input_dev.sht_voltage), 1)]
+            self.sht_sensor = Sht(
+                self.clock_pin,
+                self.gpio,
+                voltage=self.sht_voltage)
 
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.sht_sensor.read_t()
+            self.value_set(0, self.sht_sensor.read_t())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.sht_sensor.read_rh()
+            self.value_set(1, self.sht_sensor.read_rh())
 
         if (self.is_enabled(2) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[2]['value'] = calculate_dewpoint(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(2, calculate_dewpoint(
+                self.value_get(0), self.value_get(1)))
 
         if (self.is_enabled(3) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[3]['value'] = calculate_vapor_pressure_deficit(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(3, calculate_vapor_pressure_deficit(
+                self.value_get(0), self.value_get(1)))
 
-        return return_dict
+        return self.return_dict

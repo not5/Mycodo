@@ -835,14 +835,17 @@ def page_info():
     if uname_output:
         uname_output = uname_output.decode("latin1")
 
-    gpio = subprocess.Popen(
-        "gpio readall", stdout=subprocess.PIPE, shell=True)
-    (gpio_output, _) = gpio.communicate()
-    gpio.wait()
-    if gpio_output:
-        gpio_output = gpio_output.decode("latin1")
+    if not current_app.config['TESTING']:
+        gpio = subprocess.Popen(
+            "gpio readall", stdout=subprocess.PIPE, shell=True)
+        (gpio_output, _) = gpio.communicate()
+        gpio.wait()
+        if gpio_output:
+            gpio_output = gpio_output.decode("latin1")
+    else:
+        gpio_output = ''
 
-    # Search for /dev/i2c- devices and compile a sorted dictionary of each
+        # Search for /dev/i2c- devices and compile a sorted dictionary of each
     # device's integer device number and the corresponding 'i2cdetect -y ID'
     # output for display on the info page
     i2c_devices_sorted = {}
@@ -1788,7 +1791,9 @@ def page_data():
 
     # Add 1-wire devices from ow-shell (if installed)
     devices_1wire_ow_shell = []
-    if not dpkg_package_exists('ow-shell'):
+    if current_app.config['TESTING']:
+        logger.debug("Testing: Skipping testing for 'ow-shell'")
+    elif not dpkg_package_exists('ow-shell'):
         logger.debug("Package 'ow-shell' not found")
     else:
         logger.debug("Package 'ow-shell' found")
@@ -2125,6 +2130,7 @@ def dict_custom_colors():
                     if None not in [input_dev, device_measurement]:
                         total.append({
                             'unique_id': input_unique_id,
+                            'type': 'Input',
                             'name': input_dev.name,
                             'channel': channel,
                             'unit': unit,
@@ -2160,6 +2166,7 @@ def dict_custom_colors():
                     if math is not None:
                         total.append({
                             'unique_id': math_unique_id,
+                            'type': 'Math',
                             'name': math.name,
                             'channel': channel,
                             'unit': unit,
@@ -2195,6 +2202,7 @@ def dict_custom_colors():
                     if pid is not None:
                         total.append({
                             'unique_id': pid_unique_id,
+                            'type': 'PID',
                             'name': pid.name,
                             'channel': channel,
                             'unit': unit,
@@ -2225,10 +2233,33 @@ def dict_custom_colors():
                     if device_measurement is not None:
                         total.append({
                             'unique_id': output_unique_id,
+                            'type': 'Output',
                             'name': device_measurement.name,
                             'channel': channel,
                             'unit': unit,
                             'measure': measurement,
+                            'color': color})
+                        index += 1
+                index_sum += index
+
+            if each_graph.note_tag_ids:
+                index = 0
+                for each_set in each_graph.note_tag_ids.split(';'):
+                    tag_unique_id = each_set.split(',')[0]
+
+                    device_measurement = NoteTags.query.filter_by(
+                        unique_id=tag_unique_id).first()
+
+                    if (index < len(each_graph.note_tag_ids.split(',')) and
+                            len(colors) > index_sum + index):
+                        color = colors[index_sum + index]
+                    else:
+                        color = '#FF00AA'
+                    if device_measurement is not None:
+                        total.append({
+                            'unique_id': tag_unique_id,
+                            'type': 'Tag',
+                            'name': device_measurement.name,
                             'color': color})
                         index += 1
                 index_sum += index

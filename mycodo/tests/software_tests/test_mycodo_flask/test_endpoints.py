@@ -31,6 +31,7 @@ def redirects_to_admin_creation_page(testapp, endpoint):
 
 def test_sees_admin_creation_form(testapp):
     """ No Admin user exists: user sees the admin creation page """
+    print("\nTest: test_sees_admin_creation_form")
     # Delete all admin users to show the admin creation form
     for each_admin in User.query.filter_by(role_id=1).all():
         each_admin.delete()
@@ -40,6 +41,7 @@ def test_sees_admin_creation_form(testapp):
 
 def test_does_not_see_admin_creation_form(testapp):
     """ Admin user exists: user sees the normal login page """
+    print("\nTest: test_does_not_see_admin_creation_form")
     expected_body_msg = "<!-- Route: /login -->"
     assert expected_body_msg in testapp.get('/').maybe_follow()
 
@@ -49,6 +51,7 @@ def test_routes_when_not_logged_in(testapp):
     Verifies behavior of these endpoints when not logged in.
     All endpoint requests should redirect to the login page.
     """
+    print("\nTest: test_routes_when_not_logged_in")
     routes = [
         '',
         'admin/backup',
@@ -99,6 +102,9 @@ def test_routes_when_not_logged_in(testapp):
 @mock.patch('mycodo.mycodo_flask.routes_authentication.login_log')
 def test_routes_logged_in_as_admin(_, testapp):
     """ Verifies behavior of these endpoints for a logged in admin user """
+    print("\nTest: test_routes_logged_in_as_admin")
+
+    print("test_routes_logged_in_as_admin: login_user(testapp, 'admin', '53CR3t_p4zZW0rD')")
     login_user(testapp, 'admin', '53CR3t_p4zZW0rD')
 
     # Test if the navigation bar is seen on the main page
@@ -138,7 +144,10 @@ def test_routes_logged_in_as_admin(_, testapp):
         ('usage', '<!-- Route: /usage -->'),
         ('usage_reports', '<!-- Route: /usage_reports -->')
     ]
-    for route in routes:
+
+    for index, route in enumerate(routes):
+        print("test_routes_logged_in_as_admin: Test Route ({}/{}): testapp.get('/{}').maybe_follow()".format(
+            index + 1, len(routes), route[0]))
         response = testapp.get('/{add}'.format(add=route[0])).maybe_follow()
         assert response.status_code == 200, "Endpoint Tested: {page}".format(page=route[0])
         assert route[1] in response, "Unexpected HTTP Response: \n{body}".format(body=response.body)
@@ -147,6 +156,7 @@ def test_routes_logged_in_as_admin(_, testapp):
 @mock.patch('mycodo.mycodo_flask.routes_authentication.login_log')
 def test_add_all_data_devices_logged_in_as_admin(_, testapp):
     """ Verifies adding all inputs as a logged in admin user """
+    print("\nTest: test_add_all_data_devices_logged_in_as_admin")
     login_user(testapp, 'admin', '53CR3t_p4zZW0rD')
 
     # Add All Inputs
@@ -163,9 +173,10 @@ def test_add_all_data_devices_logged_in_as_admin(_, testapp):
             for each_interface in dict_inputs[each_input]['interfaces']:
                 choices_input.append('{inp},{int}'.format(inp=each_input, int=each_interface))
 
-    for each_input in choices_input:
+    for index, each_input in enumerate(choices_input):
         choice_name = each_input.split(',')[0]
-        print("Testing {}".format(each_input))
+        print("test_add_all_data_devices_logged_in_as_admin: Adding Input ({}/{}): {}".format(
+            index + 1, len(choices_input), each_input))
         response = add_data(testapp, data_type='input', input_type=each_input)
 
         # Verify success message flashed
@@ -181,7 +192,9 @@ def test_add_all_data_devices_logged_in_as_admin(_, testapp):
 
     # Add All Maths
     math_count = 0
-    for each_math in MATH_INFO.keys():
+    for index, each_math in enumerate(MATH_INFO.keys()):
+        print("test_add_all_data_devices_logged_in_as_admin: Adding Math ({}/{}): {}".format(
+            index + 1, len(MATH_INFO.keys()), each_math))
         response = add_data(testapp, data_type='math', input_type=each_math)
 
         # Verify success message flashed
@@ -203,6 +216,9 @@ def test_add_all_data_devices_logged_in_as_admin(_, testapp):
 @mock.patch('mycodo.mycodo_flask.routes_authentication.login_log')
 def test_routes_logged_in_as_guest(_, testapp):
     """ Verifies behavior of these endpoints for a logged in guest user """
+    print("\nTest: test_routes_logged_in_as_guest")
+
+    print("test_routes_logged_in_as_admin: login_user(testapp, 'guest', '53CR3t_p4zZW0rD')")
     login_user(testapp, 'guest', '53CR3t_p4zZW0rD')
 
     # Test if the navigation bar is seen on the main page
@@ -223,7 +239,9 @@ def test_routes_logged_in_as_guest(_, testapp):
         ('systemctl/restart', '<!-- Route: /live -->'),
         ('systemctl/shutdown', '<!-- Route: /live -->')
     ]
-    for route in routes:
+    for index, route in enumerate(routes):
+        print("test_routes_logged_in_as_guest: Test Route ({}/{}): testapp.get('/{}').maybe_follow()".format(
+            index + 1, len(routes), route[0]))
         response = testapp.get('/{add}'.format(add=route[0])).maybe_follow()
         assert response.status_code == 200, "Endpoint Tested: {page}".format(page=route[0])
         assert route[1] in response, "Unexpected HTTP Response: \n{body}".format(body=response.body)
@@ -258,6 +276,7 @@ def add_data(testapp, data_type='input', input_type='LINUX_CPU_LOAD'):
 def sees_navbar(testapp):
     """ Test if the navbar is seen at the endpoint '/' """
     # Test if the navigation bar is seen on the main page
+    print("sees_navbar(testapp): {}".format(testapp))
     response = testapp.get('/').maybe_follow()
     assert response.status_code == 200
     navbar_strings = [

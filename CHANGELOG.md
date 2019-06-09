@@ -1,9 +1,92 @@
-## 7.5.0 (Unreleased)
+## 7.5.6 (Unreleased)
+
+### Bugfixes
+
+ - Fix issues with SHT31 Smart Gadget and Ruuvitag Inputs ([#638](https://github.com/kizniche/mycodo/issues/638))
+ - Fix 500 Error generating measurement/unit choices ([#662](https://github.com/kizniche/mycodo/issues/662))
+ - Change AM2320 Input code ([#585](https://github.com/kizniche/mycodo/issues/585))
+
+### Features
+
+ - Increase Live page measurement query duration to fix the display of Input measurements
+
+
+## 7.5.5 (2019-06-03)
+
+### Bugfixes
+
+ - Add influxdb read/write wait timers to prevent connection errors at startup before influxdb has started
+
+### Features
+
+ - Add --get_measurement parameter to mycodo_client.py
+ 
+### Miscellaneous
+
+ - Replace locket with filelock
+
+
+## 7.5.4 (2019-05-29)
+
+### Bugfixes
+
+ - Prevent rapid successive measurements from inputs after measurement delay
+ - Increase lock timeout for Ruuvitag and SHT31 Smart Gadget ([#638](https://github.com/kizniche/mycodo/issues/638))
+ - Fix IO error during locking for Ruuvitag ([#638](https://github.com/kizniche/mycodo/issues/638))
+ - Fix pytests
+
+### Features
+
+ - Add RPyC Timeout configuration option
+ - Allow multiple PIDs to use the same output ([#661](https://github.com/kizniche/mycodo/issues/661))
+ - Add timeout parameter to cmd_output() function
+ 
+### Miscellaneous
+
+ - Refactor Min Off Duration to be centrally controlled by the Output Controller ([#660](https://github.com/kizniche/mycodo/issues/660))
+
+
+## 7.5.3 (2019-05-17)
+
+### Bugfixes
+
+ - Prevent logging aberrant SHT31 Smart Gadget measurements
+ - Handle type casting issues with Ruuvitag Input
+ - Add Tags to Custom Colors selection of Graphs ([#656](https://github.com/kizniche/mycodo/issues/656))
+ - Fix issues with Single Channel Sum and Average Math controllers
+ - Fix inability to change Measurement Conversion back to "Do Not Convert"
+ - Avoid build error with bcrypt 3.1.6 by lowering to version 3.1.4 ([#658](https://github.com/kizniche/mycodo/issues/658))
+ - Fix issue with conversion calculation in wet-bulb humidity function
+
+### Features
+
+ - Add Function Actions: Raise/Lower PID Setpoint ([#657](https://github.com/kizniche/mycodo/issues/657))
+
+### Miscellaneous
+
+ - Add Unit: Pounds per square inch (psi) ([#657](https://github.com/kizniche/mycodo/issues/657))
+
+
+## 7.5.2 (2019-05-08)
+
+### Bugfixes
+
+ - Fix issues with logging
+
+
+## 7.5.1 (2019-05-06)
+
+### Bugfixes
+
+ - Fix bug in Input get_value() ([#654](https://github.com/kizniche/mycodo/issues/654))
+
+
+## 7.5.0 (2019-05-06)
 
 ### Bugfixes
 
  - Fix storing latest SHT31 Smart Gadget measurements
- - Fix Base Input __repr__ and __str__
+ - Fix Base Input \_\_repr__ and \_\_str__
  - Fix unaccounted PID error if activation attempted when Measurement not set ([#649](https://github.com/kizniche/mycodo/issues/649))
  - Fix missing GPIO Pin sanity check ([#650](https://github.com/kizniche/mycodo/issues/650))
  - Fix "Unknown math type" filling log ([#651](https://github.com/kizniche/mycodo/issues/651))

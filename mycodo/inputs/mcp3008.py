@@ -1,11 +1,8 @@
 # coding=utf-8
 import argparse
-import logging
 from collections import OrderedDict
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 
 # Measurements
@@ -55,19 +52,11 @@ INPUT_INFORMATION = {
 class InputModule(AbstractInput):
     """ ADC Read """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger('mycodo.mcp3008')
-        self.acquiring_measurement = False
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.adc = None
 
         if not testing:
             import Adafruit_MCP3008
-            self.logger = logging.getLogger(
-                'mycodo.mcp3008_{id}'.format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.pin_clock = input_dev.pin_clock
             self.pin_cs = input_dev.pin_cs
@@ -75,25 +64,21 @@ class InputModule(AbstractInput):
             self.pin_mosi = input_dev.pin_mosi
             self.scale_from_max = input_dev.scale_from_max
 
-            self.adc = Adafruit_MCP3008.MCP3008(clk=self.pin_clock,
-                                                cs=self.pin_cs,
-                                                miso=self.pin_miso,
-                                                mosi=self.pin_mosi)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+            self.adc = Adafruit_MCP3008.MCP3008(
+                clk=self.pin_clock,
+                cs=self.pin_cs,
+                miso=self.pin_miso,
+                mosi=self.pin_mosi)
 
     def get_measurement(self):
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
-        for each_measure in self.device_measurements.all():
-            if each_measure.is_enabled:
-                return_dict[each_measure.channel]['value'] = (
-                    (self.adc.read_adc(each_measure.channel) / 1023.0) * self.scale_from_max)
+        for channel in self.device_measurements:
+            if self.is_enabled(channel):
+                self.value_set(channel, (
+                    (self.adc.read_adc(channel) / 1023.0) * self.scale_from_max))
 
-        return return_dict
+        return self.return_dict
 
 
 def parse_args(parser):

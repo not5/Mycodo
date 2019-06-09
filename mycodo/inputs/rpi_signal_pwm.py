@@ -1,10 +1,7 @@
 # coding=utf-8
-import logging
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -24,9 +21,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'RPI_SIGNAL_PWM',
+    'input_name_unique': 'SIGNAL_PWM',
     'input_manufacturer': 'Raspberry Pi',
-    'input_name': 'RPi Signal (PWM)',
+    'input_name': 'Signal (PWM)',
     'measurements_name': 'Frequency/Pulse Width/Duty Cycle',
     'measurements_dict': measurements_dict,
 
@@ -42,7 +39,7 @@ INPUT_INFORMATION = {
     'options_disabled': ['interface'],
 
     'dependencies_module': [
-        ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpiod')
+        ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpio')
     ],
 
     'interfaces': ['GPIO'],
@@ -55,31 +52,19 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors pwm """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.raspberry_pi_signal_pwm")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             import pigpio
-            self.logger = logging.getLogger(
-                "mycodo.signal_pwm_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.gpio = int(input_dev.gpio_location)
             self.weighting = input_dev.weighting
             self.sample_time = input_dev.sample_time
             self.pigpio = pigpio
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the pwm """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         pi = self.pigpio.pi()
         if not pi.connected:  # Check if pigpiod is running
@@ -93,18 +78,18 @@ class InputModule(AbstractInput):
         time.sleep(self.sample_time)
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = read_pwm.frequency()
+            self.value_set(0, read_pwm.frequency())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = int(read_pwm.pulse_width() + 0.5)
+            self.value_set(1, int(read_pwm.pulse_width() + 0.5))
 
         if self.is_enabled(2):
-            return_dict[2]['value'] = read_pwm.duty_cycle()
+            self.value_set(2, read_pwm.duty_cycle())
 
         read_pwm.cancel()
         pi.stop()
 
-        return return_dict
+        return self.return_dict
 
 
 class ReadPWM:

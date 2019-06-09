@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import time
 
 from flask_babel import lazy_gettext
@@ -85,15 +84,12 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the MH-Z19's CO2 concentration """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.mh_z19")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.measure_range = None
         self.abc_enable = False
 
         if not testing:
             import serial
-            self.logger = logging.getLogger(
-                "mycodo.mhz19_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             self.uart_location = input_dev.uart_location
             self.baud_rate = input_dev.baud_rate
@@ -102,9 +98,10 @@ class InputModule(AbstractInput):
             self.serial_device = is_device(self.uart_location)
             if self.serial_device:
                 try:
-                    self.ser = serial.Serial(self.serial_device,
-                                             baudrate=self.baud_rate,
-                                             timeout=1)
+                    self.ser = serial.Serial(
+                        self.serial_device,
+                        baudrate=self.baud_rate,
+                        timeout=1)
                 except serial.SerialException:
                     self.logger.exception('Opening serial')
             else:
@@ -132,14 +129,9 @@ class InputModule(AbstractInput):
 
             time.sleep(0.1)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the MH-Z19's CO2 concentration in ppmv via UART"""
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         co2 = None
 
@@ -160,9 +152,9 @@ class InputModule(AbstractInput):
         else:
             self.logger.error("Bad response")
 
-        return_dict[0]['value'] = co2
+        self.value_set(0, co2)
 
-        return return_dict
+        return self.return_dict
 
     def abcoff(self):
         """

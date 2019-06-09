@@ -1,10 +1,6 @@
 # coding=utf-8
-import logging
-
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
-from mycodo.databases.models import DeviceMeasurements
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -60,43 +56,31 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.cozir_co2")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from cozir import Cozir
-            self.logger = logging.getLogger(
-                "mycodo.cozir_co2_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.uart_location = input_dev.uart_location
             self.sensor = Cozir(self.uart_location)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the measurements """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.read_CO2()
+            self.value_set(0, self.sensor.read_CO2())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.sensor.read_temperature()
+            self.value_set(1, self.sensor.read_temperature())
 
         if self.is_enabled(2):
-            return_dict[2]['value'] = self.sensor.read_humidity()
+            self.value_set(2, self.sensor.read_humidity())
 
         if (self.is_enabled(3) and
                 self.is_enabled(1) and
                 self.is_enabled(2)):
-            return_dict[3]['value'] = calculate_dewpoint(
-                return_dict[1]['value'], return_dict[2]['value'])
+            self.value_set(3, calculate_dewpoint(
+                self.value_get(1), self.value_get(2)))
 
-        return return_dict
+        return self.return_dict

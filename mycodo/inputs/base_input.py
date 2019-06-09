@@ -10,10 +10,13 @@ NotImplementedErrors
 """
 import datetime
 import logging
+import time
 
-from sqlalchemy import and_
+import filelock
 
+from mycodo.databases.models import Conversion
 from mycodo.databases.models import DeviceMeasurements
+from mycodo.utils.database import db_retrieve_table_daemon
 
 
 class AbstractInput(object):
@@ -29,16 +32,27 @@ class AbstractInput(object):
 
     """
 
-    def __init__(self, run_main=False):
-        self.logger = logging.getLogger('mycodo.inputs.base_input')
+    def __init__(self, input_dev, testing=False, name=__name__):
+        self.logger = None
+        self.setup_logger(testing=testing, name=name, input_dev=input_dev)
+        self.input_dev = input_dev
         self._measurements = None
-        self.run_main = run_main
+        self.channels_conversion = {}
+        self.channels_measurement = {}
+        self.lock = None
+        self.lock_file = None
+        self.locked = False
+        self.return_dict = {}
         self.avg_max = {}
         self.avg_index = {}
         self.avg_meas = {}
         self.acquiring_measurement = False
         self.running = True
         self.device_measurements = None
+
+        if not testing:
+            self.unique_id = input_dev.unique_id
+            self.initialize_measurements()
 
     def __iter__(self):
         """ Support the iterator protocol """
@@ -114,23 +128,108 @@ class AbstractInput(object):
             self._measurements = self.get_measurement()
             if self._measurements is not None:
                 return  # success - no errors
+        except TimeoutError as error:
+            self.logger.error("Error: {}".format(error))
         except IOError as e:
             self.logger.error(
                 "{cls}.get_measurement() method raised IOError: "
                 "{err}".format(cls=type(self).__name__, err=e))
         except Exception as e:
-            self.logger.exception(
-                "{cls} raised an exception when taking a reading: "
-                "{err}".format(cls=type(self).__name__, err=e))
+            msg = "{cls} raised an exception when taking a reading: " \
+                  "{err}".format(cls=type(self).__name__, err=e)
+            if logging.getLevelName(self.logger.getEffectiveLevel()) == 'DEBUG':
+                self.logger.exception(msg)
+            else:
+                self.logger.error(msg)
+        finally:
+            # Clean up
+            self.lock_release()
         return 1
 
-    def get_value(self, channel):
-        return self._measurements[channel]['value']
+    def initialize_measurements(self):
+        try:
+            if self.device_measurements:
+                return
+        except:
+            self.setup_device_measurement()
 
-    @staticmethod
-    def set_value(return_dict, channel, value, timestamp=None):
-        return_dict[channel]['value'] = value
-        return_dict[channel]['timestamp_utc'] = timestamp if timestamp else datetime.datetime.utcnow()
+    def is_enabled(self, channel):
+        try:
+            return self.channels_measurement[channel].is_enabled
+        except:
+            self.setup_device_measurement()
+            return self.channels_measurement[channel].is_enabled
+
+    def setup_device_measurement(self):
+        # Make 5 attempts to access database
+        for _ in range(5):
+            try:
+                self.device_measurements = db_retrieve_table_daemon(
+                    DeviceMeasurements).filter(
+                    DeviceMeasurements.device_id == self.input_dev.unique_id)
+
+                for each_measure in self.device_measurements.all():
+                    self.channels_measurement[each_measure.channel] = each_measure
+                    self.channels_conversion[each_measure.channel] = db_retrieve_table_daemon(
+                        Conversion, unique_id=each_measure.conversion_id)
+                return
+            except Exception as msg:
+                self.logger.debug("Error: {}".format(msg))
+            time.sleep(1)
+
+    def setup_logger(self, testing=None, name=None, input_dev=None):
+        name = name if name else __name__
+        if not testing and input_dev:
+            log_name = "{}_{}".format(name, input_dev.unique_id.split('-')[0])
+        else:
+            log_name = name
+        self.logger = logging.getLogger(log_name)
+        if not testing and input_dev:
+            if input_dev.log_level_debug:
+                self.logger.setLevel(logging.DEBUG)
+            else:
+                self.logger.setLevel(logging.INFO)
+
+    def start_sensor(self):
+        """ Not used yet """
+        self.running = True
+
+    def stop_sensor(self):
+        """ Called when sensors are deactivated """
+        self.running = False
+
+    def value_get(self, channel):
+        """
+        Returns the value of a channel, if set.
+        :param channel: measurement channel
+        :type channel: int
+        :return: measurement value
+        :rtype: float
+        """
+        if (channel in self.return_dict and
+                'value' in self.return_dict[channel]):
+            return self.return_dict[channel]['value']
+
+    def value_set(self, chan, value, ts=None):
+        """
+        Sets the measurement value for a channel
+        :param chan: measurement channel
+        :type chan: int
+        :param value: measurement value
+        :type value: float
+        :param ts: measurement timestamp
+        :type ts: datetime.datetime
+        :return:
+        """
+        self.return_dict[chan]['value'] = value
+        if ts:
+            self.return_dict[chan]['timestamp_utc'] = ts
+        else:
+            self.return_dict[chan]['timestamp_utc'] = datetime.datetime.utcnow()
+
+    #
+    # Accessory functions
+    #
 
     def filter_average(self, name, init_max=0, measurement=None):
         """
@@ -138,7 +237,7 @@ class AbstractInput(object):
         Use to smooth erratic measurements
 
         :param name: name of the measurement
-        :param init_max: initialize variables for this name
+        :param init_max: initialize_measurements variables for this name
         :param measurement: add measurement to pool and return average of past init_max measurements
         :return: int or float, whichever measurements come in as
         """
@@ -166,22 +265,36 @@ class AbstractInput(object):
 
         return average
 
-    def is_enabled(self, channel):
-        if self.run_main:
-            return True
-        elif (self.device_measurements and
-                self.device_measurements.filter(and_(
-                    DeviceMeasurements.is_enabled == True,
-                    DeviceMeasurements.channel == channel)).count()):
-            return True
+    def lock_acquire(self, lockfile, timeout):
+        """ Non-blocking locking method """
+        self.lock = filelock.FileLock(lockfile, timeout=1)
+        self.locked = False
+        timer = time.time() + timeout
+        self.logger.debug("Acquiring lock for {} ({} sec timeout)".format(
+            lockfile, timeout))
+        while self.running and time.time() < timer:
+            try:
+                self.lock.acquire()
+                seconds = time.time() - (timer - timeout)
+                self.logger.debug(
+                    "Lock acquired for {} in {:.3f} seconds".format(
+                        lockfile, seconds))
+                self.locked = True
+                break
+            except:
+                pass
+        if not self.locked:
+            self.logger.debug(
+                "Lock unable to be acquired after {:.3f} seconds. "
+                "Breaking for future lock.".format(timeout))
+            self.lock_release()
 
-    def stop_sensor(self):
-        """ Called when sensors are deactivated """
-        self.running = False
-
-    def start_sensor(self):
-        """ Not used yet """
-        self.running = True
+    def lock_release(self):
+        """ Release lock and force deletion of lock file """
+        try:
+            self.lock.release(force=True)
+        except:
+            pass
 
     def is_acquiring_measurement(self):
         return self.acquiring_measurement

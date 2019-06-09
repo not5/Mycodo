@@ -2,15 +2,12 @@
 #
 # From https://github.com/Theoi-Meteoroi/Winsen_ZH03B
 #
-import logging
 import time
 
 from flask_babel import lazy_gettext
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import is_device
-from mycodo.utils.database import db_retrieve_table_daemon
 
 
 def constraints_pass_positive_value(mod_input, value):
@@ -92,19 +89,12 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the WINSEN_ZH03B's particulate concentration """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.winsen_zh03b")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.fan_is_on = False
 
         if not testing:
             import serial
             import binascii
-            self.logger = logging.getLogger(
-                "mycodo.winsen_zh03b_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.binascii = binascii
             self.uart_location = input_dev.uart_location
@@ -149,17 +139,12 @@ class InputModule(AbstractInput):
                     'Check the device location is correct.'.format(
                         dev=self.uart_location))
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the WINSEN_ZH03B's Particulate concentration in μg/m^3 via UART """
         if not self.serial_device:  # Don't measure if device isn't validated
             return None
 
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         self.logger.debug("Reading sample")
 
@@ -185,19 +170,19 @@ class InputModule(AbstractInput):
             self.logger.error("PM10 measurement out of range (over 1000 ug/m^3)")
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = pm_1_0
+            self.value_set(0, pm_1_0)
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = pm_2_5
+            self.value_set(1, pm_2_5)
 
         if self.is_enabled(2):
-            return_dict[2]['value'] = pm_10_0
+            self.value_set(2, pm_10_0)
 
         # Turn the fan off
         if self.fan_modulate:
             self.dormant_mode('sleep')
 
-        return return_dict
+        return self.return_dict
 
     @staticmethod
     def hex_to_byte(hex_str):

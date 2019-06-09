@@ -15,7 +15,8 @@ class AtlasScientificFTDI(Device):
     def __init__(self, serial_device):
         Device.__init__(self, mode='t', device_id=serial_device)
         self.logger = logging.getLogger(
-            "mycodo.device.atlas_scientific_ftdi_{dev}".format(dev=serial_device))
+            "{}_{}".format(__name__, serial_device))
+
         time.sleep(1)
         self.flush()
         self.setup = True

@@ -1,6 +1,4 @@
 # coding=utf-8
-import logging
-
 import os
 
 from mycodo.inputs.base_input import AbstractInput
@@ -15,9 +13,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'LINUX_FREE_SPACE',
-    'input_manufacturer': 'Linux',
-    'input_name': 'Linux Free Space',
+    'input_name_unique': 'RPiFreeSpace',
+    'input_manufacturer': 'System',
+    'input_name': 'Free Space',
     'measurements_name': 'Unallocated Disk Space',
     'measurements_dict': measurements_dict,
 
@@ -41,26 +39,17 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the free space of a path """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.linux_free_space")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self._disk_space = None
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.raspi_freespace_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
             self.path = input_dev.location
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         """ Gets the free space """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         f = os.statvfs(self.path)
-        return_dict[0]['value'] = (f.f_bsize * f.f_bavail) / 1000000.0
+        self.value_set(0, (f.f_bsize * f.f_bavail) / 1000000.0)
 
-        return return_dict
+        return self.return_dict

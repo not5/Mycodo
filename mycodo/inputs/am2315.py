@@ -24,11 +24,9 @@
 #
 # This library was originally authored by Sopwith:
 #     http://sopwith.ismellsmoke.net/?p=104
-import logging
 import math
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import Output
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
@@ -88,19 +86,12 @@ class InputModule(AbstractInput):
 
     """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger('mycodo.inputs.am2315')
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.powered = False
         self.am = None
 
         if not testing:
             from mycodo.mycodo_client import DaemonControl
-            self.logger = logging.getLogger(
-                'mycodo.am2315_{id}'.format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_bus = input_dev.i2c_bus
             self.power_output_id = input_dev.power_output_id
@@ -108,14 +99,9 @@ class InputModule(AbstractInput):
             self.start_sensor()
             self.am = AM2315(self.i2c_bus)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         temperature = None
         humidity = None
@@ -157,24 +143,24 @@ class InputModule(AbstractInput):
 
         if measurements_success:
             if self.is_enabled(0):
-                return_dict[0]['value'] = temperature
+                self.value_set(0, temperature)
 
             if self.is_enabled(1):
-                return_dict[1]['value'] = humidity
+                self.value_set(1, humidity)
 
             if (self.is_enabled(2) and
                     self.is_enabled(0) and
                     self.is_enabled(1)):
-                return_dict[2]['value'] = calculate_dewpoint(
-                    return_dict[0]['value'], return_dict[1]['value'])
+                self.value_set(2, calculate_dewpoint(
+                    self.value_get(0), self.value_get(1)))
 
             if (self.is_enabled(3) and
                     self.is_enabled(0) and
                     self.is_enabled(1)):
-                return_dict[3]['value'] = calculate_vapor_pressure_deficit(
-                    return_dict[0]['value'], return_dict[1]['value'])
+                self.value_set(3, calculate_vapor_pressure_deficit(
+                    self.value_get(0), self.value_get(1)))
 
-            return return_dict
+            return self.return_dict
         else:
             self.logger.debug("Could not acquire a measurement")
 

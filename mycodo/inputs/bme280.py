@@ -3,14 +3,11 @@
 # Author: Tony DiCola
 # Based on the BMP280 driver with BME280 changes provided by
 # David J Taylor, Edinburgh (www.satsignal.eu)
-import logging
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_altitude
 from mycodo.inputs.sensorutils import calculate_dewpoint
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -80,54 +77,43 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.bme280")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from Adafruit_BME280 import BME280
-            self.logger = logging.getLogger(
-                "mycodo.bme280_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
-            self.sensor = BME280(address=self.i2c_address,
-                                 busnum=self.i2c_bus)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+            self.sensor = BME280(
+                address=self.i2c_address,
+                busnum=self.i2c_bus)
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.read_temperature()
+            self.value_set(0, self.sensor.read_temperature())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.sensor.read_humidity()
+            self.value_set(1, self.sensor.read_humidity())
 
         if self.is_enabled(2):
-            return_dict[2]['value'] = self.sensor.read_pressure()
+            self.value_set(2, self.sensor.read_pressure())
 
         if (self.is_enabled(3) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[3]['value'] = calculate_dewpoint(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(3, calculate_dewpoint(
+                self.value_get(0), self.value_get(1)))
 
         if self.is_enabled(4) and self.is_enabled(2):
-            return_dict[4]['value'] = calculate_altitude(return_dict[2]['value'])
+            self.value_set(4, calculate_altitude(self.value_get(2)))
 
         if (self.is_enabled(5) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[5]['value'] = calculate_vapor_pressure_deficit(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(5, calculate_vapor_pressure_deficit(
+                self.value_get(0), self.value_get(1)))
 
-        return return_dict
+        return self.return_dict

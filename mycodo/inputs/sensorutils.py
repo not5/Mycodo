@@ -11,7 +11,7 @@ import os
 from mycodo.databases.models import Conversion
 from mycodo.utils.database import db_retrieve_table_daemon
 
-logger = logging.getLogger("mycodo.sensor_utils")
+logger = logging.getLogger(__name__)
 
 
 def calculate_altitude(pressure_pa, sea_level_pa=101325.0):
@@ -80,6 +80,7 @@ def calculate_saturated_vapor_pressure(temperature):
 def calculate_vapor_pressure_deficit(temperature, relative_humidity):
     svp = calculate_saturated_vapor_pressure(temperature)
     return ((100 - relative_humidity) / 100) * svp
+
 
 def calculate_vapor_pressure_deficit_02(temperature_c, relative_humidity):
     import math

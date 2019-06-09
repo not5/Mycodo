@@ -21,12 +21,9 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-import logging
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -93,60 +90,48 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.max31856")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.max31856_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
-
             self.pin_clock = input_dev.pin_clock
             self.pin_cs = input_dev.pin_cs
             self.pin_miso = input_dev.pin_miso
             self.pin_mosi = input_dev.pin_mosi
             self.thermocouple_type = input_dev.thermocouple_type
-            self.sensor = max31856(self.logger,
-                                   self.pin_cs,
-                                   self.pin_miso,
-                                   self.pin_mosi,
-                                   self.pin_clock)
+            self.sensor = max31856(
+                self.logger,
+                self.pin_cs,
+                self.pin_miso,
+                self.pin_mosi,
+                self.pin_clock)
             if self.thermocouple_type == 'B':
-                self.sensor.writeRegister(1, 0x00) #for B Type
+                self.sensor.writeRegister(1, 0x00)  # B Type
             elif self.thermocouple_type == 'E':
-                self.sensor.writeRegister(1, 0x01) #for E Type
+                self.sensor.writeRegister(1, 0x01)  # E Type
             elif self.thermocouple_type == 'J':
-                self.sensor.writeRegister(1, 0x02) #for J Type
+                self.sensor.writeRegister(1, 0x02)  # J Type
             elif self.thermocouple_type == 'K':
-                self.sensor.writeRegister(1, 0x03) #for K Type
+                self.sensor.writeRegister(1, 0x03)  # K Type
             elif self.thermocouple_type == 'N':
-                self.sensor.writeRegister(1, 0x04) #for N Type
+                self.sensor.writeRegister(1, 0x04)  # N Type
             elif self.thermocouple_type == 'R':
-                self.sensor.writeRegister(1, 0x05) #for R Type
+                self.sensor.writeRegister(1, 0x05)  # R Type
             elif self.thermocouple_type == 'S':
-                self.sensor.writeRegister(1, 0x06) #for S Type
+                self.sensor.writeRegister(1, 0x06)  # S Type
             elif self.thermocouple_type == 'T':
-                self.sensor.writeRegister(1, 0x07) #for T Type
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+                self.sensor.writeRegister(1, 0x07)  # T Type
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.sensor.readThermocoupleTemp()
+            self.value_set(0, self.sensor.readThermocoupleTemp())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.sensor.readJunctionTemp()
+            self.value_set(1, self.sensor.readJunctionTemp())
 
-        return return_dict
+        return self.return_dict
 
 
 class max31856(object):

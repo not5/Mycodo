@@ -1,10 +1,7 @@
 # coding=utf-8
-import logging
 import subprocess
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -22,9 +19,9 @@ measurements_dict = {
 
 # Input information
 INPUT_INFORMATION = {
-    'input_name_unique': 'RPI_CPU_GPU_TEMPERATURE',
+    'input_name_unique': 'RPi',
     'input_manufacturer': 'Raspberry Pi',
-    'input_name': 'RPi CPU/GPU Temperature',
+    'input_name': 'CPU/GPU Temperature',
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
     'measurements_use_same_timestamp': True,
@@ -44,21 +41,7 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the raspberry pi's CPU and GPU temperatures """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.raspberry_pi_cpu_gpu_temp")
-
-        if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.raspi_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
     def get_measurement(self):
         """ Gets the Raspberry pi's CPU and GPU temperatures in Celsius """
@@ -72,7 +55,7 @@ class InputModule(AbstractInput):
         # soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
         # self.logger.info("LIMIT: Soft: {sft}, Hard: {hrd}".format(sft=soft, hrd=hard))
 
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         self.logger.debug("Acquiring Measurements...")
 
@@ -80,7 +63,7 @@ class InputModule(AbstractInput):
             # CPU temperature
             with open('/sys/class/thermal/thermal_zone0/temp') as cpu_temp_file:
                 temp_cpu = float(cpu_temp_file.read()) / 1000
-                self.set_value(return_dict, 0, temp_cpu)
+                self.value_set(0, temp_cpu)
                 self.logger.debug("CPU Temperature: {}".format(temp_cpu))
 
         if self.is_enabled(1):
@@ -88,7 +71,7 @@ class InputModule(AbstractInput):
             temperature_gpu = subprocess.check_output(
                 ('/opt/vc/bin/vcgencmd', 'measure_temp'))
             temp_gpu = float(temperature_gpu.split(b'=')[1].split(b"'")[0])
-            self.set_value(return_dict, 1, temp_gpu)
+            self.value_set(1, temp_gpu)
             self.logger.debug("GPU Temperature: {}".format(temp_gpu))
 
-        return return_dict
+        return self.return_dict

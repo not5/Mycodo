@@ -1,12 +1,9 @@
 # coding=utf-8
-import logging
 from collections import OrderedDict
 
 from flask_babel import lazy_gettext
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = OrderedDict()
@@ -94,10 +91,8 @@ INPUT_INFORMATION = {
 
 class InputModule(AbstractInput):
     """ ADC Read """
-    def __init__(self, input_dev, testing=False, run_main=True):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger('mycodo.ads1256')
-        self.run_main = run_main
+    def __init__(self, input_dev, testing=False):
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from ADS1256_definitions import POS_AIN0
@@ -120,15 +115,7 @@ class InputModule(AbstractInput):
             EXT5, EXT6, EXT7 = POS_AIN5 | NEG_AINCOM, POS_AIN6 | NEG_AINCOM, POS_AIN7 | NEG_AINCOM
             self.CH_SEQUENCE = (POTI, LDR, EXT2, EXT3, EXT4, EXT5, EXT6, EXT7)
 
-            self.logger = logging.getLogger(
-                'mycodo.ads1256_{id}'.format(id=input_dev.unique_id.split('-')[0]))
-
             self.adc_calibration = None
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
-
             self.adc_gain = input_dev.adc_gain
             self.adc_sample_speed = input_dev.adc_sample_speed
 
@@ -154,16 +141,10 @@ class InputModule(AbstractInput):
                 elif self.adc_calibration == 'SYSGCAL':
                     self.ads.cal_system_gain()
 
-                self.running = True
             else:
                 raise Exception(
                     "SPI device /dev/spi* not found. Ensure SPI is enabled "
                     "and the device is recognized/setup by linux.")
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         self._measurements = {}
@@ -171,7 +152,7 @@ class InputModule(AbstractInput):
         voltages_dict = {}
         count = 0
 
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         # 2 attempts to get valid measurement
         while (self.running and count < 2 and
@@ -186,11 +167,11 @@ class InputModule(AbstractInput):
                 "something is wrong).")
             return
 
-        for each_measure in self.device_measurements.all():
-            if each_measure.is_enabled:
-                return_dict[each_measure.channel]['value'] = voltages_list[each_measure.channel]
+        for channel in self.device_measurements:
+            if self.is_enabled(channel):
+                self.value_set(channel, voltages_list[channel])
 
-        return return_dict
+        return self.return_dict
 
 
 if __name__ == "__main__":
@@ -202,5 +183,5 @@ if __name__ == "__main__":
     settings.adc_sample_speed = '10'
     settings.channels = 8
 
-    measurements = InputModule(settings, run_main=True).next()
+    measurements = InputModule(settings).next()
     print("Measurements: {}".format(InputModule(settings).next()))

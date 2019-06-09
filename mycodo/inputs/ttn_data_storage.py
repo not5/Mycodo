@@ -1,6 +1,5 @@
 # coding=utf-8
 import datetime
-import logging
 import time
 
 import requests
@@ -93,21 +92,14 @@ class InputModule(AbstractInput):
     """ A sensor support class that retrieves stored data from The Things Network """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.ttn_data_storage")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.ttn_data_storage_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
             self.unique_id = input_dev.unique_id
             self.interface = input_dev.interface
             self.period = input_dev.period
             self.first_run = True
             self.latest_datetime = input_dev.datetime
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                DeviceMeasurements.device_id == input_dev.unique_id)
 
             if input_dev.custom_options:
                 for each_option in input_dev.custom_options.split(';'):
@@ -119,11 +111,6 @@ class InputModule(AbstractInput):
                         self.app_api_key = value
                     elif option == 'device_id':
                         self.device_id = value
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_new_data(self, past_seconds):
         # Basic implementation. Future development may use more complex library to access API
@@ -170,37 +157,40 @@ class InputModule(AbstractInput):
                 self.latest_datetime = datetime_utc
 
             measurements = {}
-            for each_meas in self.device_measurements.all():
-                if (self.is_enabled(each_meas.channel) and
-                        each_meas.name in each_resp and
-                        each_resp[each_meas.name] is not None):
+            for channel in self.channels_measurement:
+                if (self.is_enabled(channel) and
+                        self.channels_measurement[channel].name in each_resp and
+                        each_resp[self.channels_measurement[channel].name] is not None):
 
                     # Original value/unit
-                    measurements[each_meas.channel] = {}
-                    measurements[each_meas.channel]['measurement'] = each_meas.measurement
-                    measurements[each_meas.channel]['unit'] = each_meas.unit
-                    measurements[each_meas.channel]['value'] = each_resp[each_meas.name]
-                    measurements[each_meas.channel]['timestamp_utc'] = datetime_utc
+                    measurements[channel] = {}
+                    measurements[channel]['measurement'] = self.channels_measurement[channel].measurement
+                    measurements[channel]['unit'] = self.channels_measurement[channel].unit
+                    measurements[channel]['value'] = each_resp[self.channels_measurement[channel].name]
+                    measurements[channel]['timestamp_utc'] = datetime_utc
 
                     # Convert value/unit is conversion_id present and valid
-                    if each_meas.conversion_id:
+                    if self.channels_conversion[channel]:
                         conversion = db_retrieve_table_daemon(
-                            Conversion, unique_id=each_meas.conversion_id)
+                            Conversion, unique_id=self.channels_measurement[channel].conversion_id)
                         if conversion:
                             meas = parse_measurement(
-                                conversion,
-                                each_meas,
+                                self.channels_conversion[channel],
+                                self.channels_measurement[channel],
                                 measurements,
-                                each_meas.channel,
-                                measurements[each_meas.channel])
+                                channel,
+                                measurements[channel])
 
-                            measurements[each_meas.channel]['measurement'] = meas[each_meas.channel]['measurement']
-                            measurements[each_meas.channel]['unit'] = meas[each_meas.channel]['unit']
-                            measurements[each_meas.channel]['value'] = meas[each_meas.channel]['value']
+                            measurements[channel]['measurement'] = meas[channel]['measurement']
+                            measurements[channel]['unit'] = meas[channel]['unit']
+                            measurements[channel]['value'] = meas[channel]['value']
 
-            add_measurements_influxdb(
-                self.unique_id, measurements,
-                use_same_timestamp=INPUT_INFORMATION['measurements_use_same_timestamp'])
+            if measurements:
+                add_measurements_influxdb(
+                    self.unique_id, measurements,
+                    use_same_timestamp=INPUT_INFORMATION['measurements_use_same_timestamp'])
+            else:
+                self.logger.debug("No measurements to add to influxdb.")
 
         # set datetime to latest timestamp
         if self.running:

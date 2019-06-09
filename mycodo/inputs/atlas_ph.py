@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import time
 
 from flask_babel import lazy_gettext
@@ -88,8 +87,7 @@ class InputModule(AbstractInput):
     """A sensor support class that monitors the Atlas Scientific sensor pH"""
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.atlas_ph")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.atlas_sensor_ftdi = None
         self.atlas_sensor_uart = None
         self.atlas_sensor_i2c = None
@@ -99,9 +97,6 @@ class InputModule(AbstractInput):
         self.i2c_bus = None
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.inputs.atlas_ph_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
             self.input_dev = input_dev
             self.interface = input_dev.interface
             self.calibrate_sensor_measure = input_dev.calibrate_sensor_measure
@@ -119,32 +114,18 @@ class InputModule(AbstractInput):
             except Exception:
                 self.logger.exception("Exception while initializing sensor")
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def initialize_sensor(self):
         from mycodo.devices.atlas_scientific_ftdi import AtlasScientificFTDI
         from mycodo.devices.atlas_scientific_i2c import AtlasScientificI2C
         from mycodo.devices.atlas_scientific_uart import AtlasScientificUART
         if self.interface == 'FTDI':
             self.ftdi_location = self.input_dev.ftdi_location
-            self.logger = logging.getLogger(
-                "mycodo.inputs.atlas_ph_ftdi_{ftdi}".format(
-                    ftdi=self.ftdi_location))
             self.atlas_sensor_ftdi = AtlasScientificFTDI(self.ftdi_location)
         elif self.interface == 'UART':
             self.uart_location = self.input_dev.uart_location
-            self.logger = logging.getLogger(
-                "mycodo.inputs.atlas_ph_uart_{uart}".format(
-                    uart=self.uart_location))
             self.atlas_sensor_uart = AtlasScientificUART(self.uart_location)
         elif self.interface == 'I2C':
             self.i2c_address = int(str(self.input_dev.i2c_location), 16)
-            self.logger = logging.getLogger(
-                "mycodo.inputs.atlas_ph_i2c_{bus}_{add}".format(
-                    bus=self.i2c_bus, add=self.i2c_address))
             self.i2c_bus = self.input_dev.i2c_bus
             self.atlas_sensor_i2c = AtlasScientificI2C(
                 i2c_address=self.i2c_address, i2c_bus=self.i2c_bus)
@@ -152,8 +133,7 @@ class InputModule(AbstractInput):
     def get_measurement(self):
         """ Gets the sensor's pH measurement via UART/I2C """
         ph = None
-
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         # Calibrate the pH measurement based on a temperature measurement
         if (self.calibrate_sensor_measure and
@@ -163,7 +143,11 @@ class InputModule(AbstractInput):
             device_id = self.calibrate_sensor_measure.split(',')[0]
             measurement_id = self.calibrate_sensor_measure.split(',')[1]
 
-            device_measurement = self.device_measurements.filter(
+            all_device_measurements = db_retrieve_table_daemon(
+                DeviceMeasurements).filter(
+                DeviceMeasurements.device_id == self.input_dev.unique_id)
+
+            device_measurement = all_device_measurements.filter(
                 DeviceMeasurements.unique_id == measurement_id).first()
             if device_measurement:
                 conversion = db_retrieve_table_daemon(
@@ -290,6 +274,6 @@ class InputModule(AbstractInput):
                 self.logger.error(
                     'I2C device is not set up. Check the log for errors.')
 
-        return_dict[0]['value'] = ph
+        self.value_set(0, ph)
 
-        return return_dict
+        return self.return_dict

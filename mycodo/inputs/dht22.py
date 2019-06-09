@@ -1,8 +1,6 @@
 # coding=utf-8
-import logging
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import Output
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
@@ -89,8 +87,7 @@ class InputModule(AbstractInput):
         Taking readings more often than about once every two seconds will
         eventually cause the DHT22 to hang.  A 3 second interval seems OK.
         """
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger('mycodo.inputs.dht22')
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.temp_temperature = None
         self.temp_humidity = None
         self.temp_dew_point = None
@@ -102,12 +99,6 @@ class InputModule(AbstractInput):
         if not testing:
             import pigpio
             from mycodo.mycodo_client import DaemonControl
-            self.logger = logging.getLogger(
-                'mycodo.dht22_{id}'.format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.power_output_id = input_dev.power_output_id
 
@@ -129,16 +120,11 @@ class InputModule(AbstractInput):
             self.bit = None
             self.either_edge_cb = None
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
         self.start_sensor()
 
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if not self.pi.connected:  # Check if pigpiod is running
             self.logger.error('Could not connect to pigpiod. '
@@ -162,18 +148,18 @@ class InputModule(AbstractInput):
             self.measure_sensor()
             if self.temp_dew_point is not None:
                 if self.is_enabled(0):
-                    return_dict[0]['value'] = self.temp_temperature
+                    self.value_set(0, self.temp_temperature)
                 if self.is_enabled(1):
-                    return_dict[1]['value'] = self.temp_humidity
+                    self.value_set(1, self.temp_humidity)
                 if (self.is_enabled(2) and
                         self.is_enabled(0) and
                         self.is_enabled(1)):
-                    return_dict[2]['value'] = self.temp_dew_point
+                    self.value_set(2, self.temp_dew_point)
                 if (self.is_enabled(3) and
                         self.is_enabled(0) and
                         self.is_enabled(1)):
-                    return_dict[3]['value'] = self.temp_vpd
-                return return_dict  # success - no errors
+                    self.value_set(3, self.temp_vpd)
+                return self.return_dict  # success - no errors
             time.sleep(2)
 
         # Measurement failure, power cycle the sensor (if enabled)
@@ -186,18 +172,18 @@ class InputModule(AbstractInput):
                 self.measure_sensor()
                 if self.temp_dew_point is not None:
                     if self.is_enabled(0):
-                        return_dict[0]['value'] = self.temp_temperature
+                        self.value_set(0, self.temp_temperature)
                     if self.is_enabled(1):
-                        return_dict[1]['value'] = self.temp_humidity
+                        self.value_set(1, self.temp_humidity)
                     if (self.is_enabled(2) and
                             self.is_enabled(0) and
                             self.is_enabled(1)):
-                        return_dict[2]['value'] = self.temp_dew_point
+                        self.value_set(2, self.temp_dew_point)
                     if (self.is_enabled(3) and
                             self.is_enabled(0) and
                             self.is_enabled(1)):
-                        return_dict[3]['value'] = self.temp_vpd
-                    return return_dict  # success - no errors
+                        self.value_set(3, self.temp_vpd)
+                    return self.return_dict  # success - no errors
                 time.sleep(2)
 
         self.logger.debug("Could not acquire a measurement")

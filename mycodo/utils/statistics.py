@@ -2,7 +2,6 @@
 import csv
 import logging
 import pwd
-import resource
 import string
 import time
 from collections import OrderedDict
@@ -11,7 +10,9 @@ import geocoder
 import os
 import random
 import requests
+import resource
 from influxdb import InfluxDBClient
+from influxdb.exceptions import InfluxDBServerError
 from sqlalchemy import func
 
 from mycodo.config import ID_FILE
@@ -74,9 +75,7 @@ def add_update_csv(csv_file, key, value):
             try:
                 os.remove(temp_file_name)  # delete any existing temp file
             except OSError as e:
-                logger.debug(
-                    "OS error raised in 'add_update_csv' (no file to delete "
-                    "is normal): {err}".format(err=e))
+                pass  # no file to delete is normal
         os.rename(csv_file, temp_file_name)
 
         # create a temporary dictionary from the input file
@@ -209,7 +208,7 @@ def recreate_stat_file():
             write_csv.writerow(row)
 
 
-def send_anonymous_stats(start_time):
+def send_anonymous_stats(start_time, debug=False):
     """
     Send anonymous usage statistics
 
@@ -217,6 +216,11 @@ def send_anonymous_stats(start_time):
         current_stat = return_stat_file_dict(csv_file)
         add_update_csv(csv_file, 'stat', current_stat['stat'] + 5)
     """
+    if debug:
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
+
     try:
         client = InfluxDBClient(STATS_HOST, STATS_PORT, STATS_USER, STATS_PASSWORD, STATS_DATABASE)
         # Prepare stats before sending
@@ -290,6 +294,8 @@ def send_anonymous_stats(start_time):
         logger.debug("Could not send anonymous usage statistics: Connection "
                      "timed out (expected if there's no internet or the "
                      "server is down)")
+    except InfluxDBServerError as except_msg:
+        logger.error("Statistics: InfluxDB server error: {}".format(except_msg['error']))
     except Exception as except_msg:
         logger.exception(
             "Could not send anonymous usage statistics: {err}".format(

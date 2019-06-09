@@ -1,9 +1,6 @@
 # coding=utf-8
-import logging
-
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
-
 
 # Measurements
 measurements_dict = {
@@ -34,6 +31,7 @@ INPUT_INFORMATION = {
     'measurements_use_same_timestamp': True,
 
     'options_enabled': [
+        'measurements_select',
         'period',
         'pre_output',
         'log_level_debug'
@@ -56,34 +54,24 @@ INPUT_INFORMATION = {
 class InputModule(AbstractInput):
     """ Input support class """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.dummy_input")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.inputs.{name_lower}_{id}".format(
-                    name_lower=INPUT_INFORMATION['input_name_unique'].lower(),
-                    id=input_dev.unique_id.split('-')[0]))
-            self.interface = input_dev.interface
-
             # Load dependent modules
             import random
             self.random = random
+
+            self.interface = input_dev.interface
 
             # Retrieve options
             # These options can be used here to initialize an I2C device or elsewhere in this class
             self.i2c_address = input_dev.i2c_location
             self.i2c_bus = input_dev.i2c_bus
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Measures temperature and humidity """
         # Resetting these values ensures old measurements aren't mistaken for new measurements
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         # Actual input measurement code
         try:
@@ -93,25 +81,24 @@ class InputModule(AbstractInput):
             self.logger.info(
                 "This INFO message will always be displayed. "
                 "Acquiring measurements...")
-            self.logger.debug(
-                "This DEBUG message will only be displayed if the Debug "
-                "option is enabled. "
-                "Humidity: {hum}, Temperature: {temp}".format(
-                    hum=humidity, temp=temperature))
 
             if self.is_enabled(0):
-                self.set_value(return_dict, 0, temperature)
+                self.value_set(0, temperature)
 
             if self.is_enabled(1):
-                self.set_value(return_dict, 1, humidity)
+                self.value_set(1, humidity)
 
             if (self.is_enabled(2) and
                     self.is_enabled(0) and
                     self.is_enabled(1)):
                 dewpoint = calculate_dewpoint(
-                    self.get_value(0), self.get_value(1))
-                self.set_value(return_dict, 2, dewpoint)
+                    self.value_get(0), self.value_get(1))
+                self.value_set(2, dewpoint)
 
-            return return_dict
+            self.logger.debug(
+                "This DEBUG message will only be displayed if the Debug "
+                "option is enabled. {}".format(self.return_dict))
+
+            return self.return_dict
         except Exception as msg:
             self.logger.error("Exception: {}".format(msg))

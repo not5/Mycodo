@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import time
 
 from mycodo.inputs.base_input import AbstractInput
@@ -48,35 +47,30 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the DS28EA00's temperature """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.ds28ea00")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from w1thermsensor import W1ThermSensor
-            self.logger = logging.getLogger(
-                "mycodo.ds28ea00_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             self.location = input_dev.location
             self.resolution = input_dev.resolution
-            self.sensor = W1ThermSensor(W1ThermSensor.THERM_SENSOR_DS28EA00,
-                                        self.location)
+
+            self.sensor = W1ThermSensor(
+                W1ThermSensor.THERM_SENSOR_DS28EA00,
+                self.location)
+
             if self.resolution:
                 self.sensor.set_precision(self.resolution)
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the DS28EA00's temperature in Celsius """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         n = 2
         for i in range(n):
             try:
-                return_dict[0]['value'] = self.sensor.get_temperature()
-                return return_dict
+                self.value_set(0, self.sensor.get_temperature())
+                return self.return_dict
             except Exception as e:
                 if i == n:
                     self.logger.exception(

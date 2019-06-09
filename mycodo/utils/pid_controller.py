@@ -37,7 +37,7 @@ class PIDControl(object):
         if out_min >= out_max:
             raise ValueError('out_min must be less than out_max')
 
-        self._logger = logging.getLogger('mycodo.pid_controller')
+        self._logger = logging.getLogger(__name__)
         self._Kp = kp
         self._Ki = ki * sampletime
         self._Kd = kd / sampletime

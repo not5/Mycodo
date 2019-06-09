@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 from collections import OrderedDict
 
 from mycodo.databases.models import DeviceMeasurements
@@ -65,15 +64,11 @@ class InputModule(AbstractInput):
          -  16 = +/-0.
         See table 3 in the ADS1015/ADS1115 datasheet for more info on gain.
         """
-    def __init__(self, input_dev, testing=False, run_main=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger('mycodo.ads1x15')
-        self.run_main = run_main
+    def __init__(self, input_dev, testing=False,):
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             import Adafruit_ADS1x15
-            self.logger = logging.getLogger(
-                'mycodo.ads1x15_{id}'.format(id=input_dev.unique_id.split('-')[0]))
 
             self.device_measurements = db_retrieve_table_daemon(
                 DeviceMeasurements).filter(
@@ -82,25 +77,20 @@ class InputModule(AbstractInput):
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
             self.adc_gain = input_dev.adc_gain
-            self.adc = Adafruit_ADS1x15.ADS1115(address=self.i2c_address,
-                                                busnum=self.i2c_bus)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
-        self.running = True
+            self.adc = Adafruit_ADS1x15.ADS1115(
+                address=self.i2c_address,
+                busnum=self.i2c_bus)
 
     def get_measurement(self):
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
-        for each_measure in self.device_measurements.all():
-            if each_measure.is_enabled:
-                return_dict[each_measure.channel]['value'] = self.adc.read_adc(
-                    each_measure.channel, gain=self.adc_gain) / 10000.0
+        for channel in self.device_measurements:
+            if self.is_enabled(channel):
+                self.value_set(
+                    channel,
+                    self.adc.read_adc(channel, gain=self.adc_gain) / 10000.0)
 
-        return return_dict
+        return self.return_dict
 
 
 if __name__ == "__main__":
@@ -112,7 +102,6 @@ if __name__ == "__main__":
     settings.i2c_bus = 1
     settings.adc_gain = 1
     settings.channels = 4
-    settings.run_main = True
 
-    measurements = InputModule(settings, run_main=True).next()
+    measurements = InputModule(settings).next()
     print("Measurements: {}".format(measurements))

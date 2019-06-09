@@ -4,16 +4,13 @@
 #
 import array
 import fcntl
-import logging
 import time
 
 import io
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -107,24 +104,18 @@ class InputModule(AbstractInput):
 
     """
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.hdc1000")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.hdc1000_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
-
             self.resolution_temperature = input_dev.resolution
             self.resolution_humidity = input_dev.resolution_2
             self.i2c_bus = input_dev.i2c_bus
             self.i2c_address = 0x40  # HDC1000-F Address
 
-            self.HDC1000_fr = io.open("/dev/i2c-" + str(self.i2c_bus), "rb", buffering=0)
-            self.HDC1000_fw = io.open("/dev/i2c-" + str(self.i2c_bus), "wb", buffering=0)
+            self.HDC1000_fr = io.open(
+                "/dev/i2c-" + str(self.i2c_bus), "rb", buffering=0)
+            self.HDC1000_fw = io.open(
+                "/dev/i2c-" + str(self.i2c_bus), "wb", buffering=0)
 
             # set device address
             fcntl.ioctl(self.HDC1000_fr, I2C_SLAVE, self.i2c_address)
@@ -140,45 +131,45 @@ class InputModule(AbstractInput):
 
             # Set resolutions
             if self.resolution_temperature == 11:
-                self.set_temperature_resolution(HDC1000_CONFIG_TEMPERATURE_RESOLUTION_11BIT)
+                self.set_temperature_resolution(
+                    HDC1000_CONFIG_TEMPERATURE_RESOLUTION_11BIT)
             elif self.resolution_temperature == 14:
-                self.set_temperature_resolution(HDC1000_CONFIG_TEMPERATURE_RESOLUTION_14BIT)
+                self.set_temperature_resolution(
+                    HDC1000_CONFIG_TEMPERATURE_RESOLUTION_14BIT)
 
             if self.resolution_humidity == 8:
-                self.set_humidity_resolution(HDC1000_CONFIG_HUMIDITY_RESOLUTION_8BIT)
+                self.set_humidity_resolution(
+                    HDC1000_CONFIG_HUMIDITY_RESOLUTION_8BIT)
             elif self.resolution_humidity == 11:
-                self.set_humidity_resolution(HDC1000_CONFIG_HUMIDITY_RESOLUTION_11BIT)
+                self.set_humidity_resolution(
+                    HDC1000_CONFIG_HUMIDITY_RESOLUTION_11BIT)
             elif self.resolution_humidity == 14:
-                self.set_humidity_resolution(HDC1000_CONFIG_HUMIDITY_RESOLUTION_14BIT)
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+                self.set_humidity_resolution(
+                    HDC1000_CONFIG_HUMIDITY_RESOLUTION_14BIT)
 
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.read_temperature()
+            self.value_set(0, self.read_temperature())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.read_humidity()
+            self.value_set(1, self.read_humidity())
 
         if (self.is_enabled(2) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[2]['value'] = calculate_dewpoint(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(2, calculate_dewpoint(
+                self.value_get(0), self.value_get(1)))
 
         if (self.is_enabled(3) and
                 self.is_enabled(0) and
                 self.is_enabled(1)):
-            return_dict[3]['value'] = calculate_vapor_pressure_deficit(
-                return_dict[0]['value'], return_dict[1]['value'])
+            self.value_set(3, calculate_vapor_pressure_deficit(
+                self.value_get(0), self.value_get(1)))
 
-        return return_dict
+        return self.return_dict
 
     def read_temperature(self):
         s = [HDC1000_TEMPERATURE_REGISTER]  # temp

@@ -1,13 +1,10 @@
 # coding=utf-8
 # Copyright (c) 2016
 # Author: Vitally Tezhe
-import logging
 import time
 
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_altitude
-from mycodo.utils.database import db_retrieve_table_daemon
 
 # Measurements
 measurements_dict = {
@@ -96,17 +93,10 @@ class InputModule(AbstractInput):
     """
 
     def __init__(self, input_dev, mode=BMP280_STANDARD, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.bmp280")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             import Adafruit_GPIO.I2C as I2C
-            self.logger = logging.getLogger(
-                "mycodo.bmp280_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
@@ -121,32 +111,28 @@ class InputModule(AbstractInput):
             self._mode = mode
             # Create I2C device.
             i2c = I2C
-            self._device = i2c.get_i2c_device(self.i2c_address,
-                                              busnum=self.i2c_bus)
+            self._device = i2c.get_i2c_device(
+                self.i2c_address,
+                busnum=self.i2c_bus)
             # Load calibration values.
             self._load_calibration()
             self._tfine = 0
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         if self.is_enabled(0):
-            return_dict[0]['value'] = self.read_pressure()
+            self.value_set(0, self.read_pressure())
 
         if self.is_enabled(1):
-            return_dict[1]['value'] = self.read_temperature()
+            self.value_set(1, self.read_temperature())
 
         if self.is_enabled(2) and self.is_enabled(0):
-            return_dict[2]['value'] = calculate_altitude(
-                return_dict[0]['value'])
+            self.value_set(2, calculate_altitude(
+                self.value_get(0)))
 
-        return return_dict
+        return self.return_dict
 
     def _load_calibration(self):
         self.cal_REGISTER_DIG_T1 = self._device.readU16LE(BMP280_REGISTER_DIG_T1)  # UINT16

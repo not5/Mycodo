@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import subprocess
 import time
 
@@ -86,13 +85,10 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the DS18B20's temperature """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.ds18b20")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from w1thermsensor import W1ThermSensor
-            self.logger = logging.getLogger(
-                "mycodo.ds18b20_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             self.interface = input_dev.interface
             self.location = input_dev.location
@@ -107,21 +103,17 @@ class InputModule(AbstractInput):
                         self.library = value
 
             if self.library == 'w1thermsensor':
-                self.sensor = W1ThermSensor(W1ThermSensor.THERM_SENSOR_DS18B20,
-                                            self.location)
+                self.sensor = W1ThermSensor(
+                    W1ThermSensor.THERM_SENSOR_DS18B20,
+                    self.location)
                 if self.resolution:
                     self.sensor.set_precision(self.resolution)
             elif self.library == 'ow_shell':
                 pass
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the DS18B20's temperature in Celsius """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         temperature = None
         n = 2
@@ -170,6 +162,6 @@ class InputModule(AbstractInput):
                 "{temp} C".format(temp=temperature))
             return None
 
-        return_dict[0]['value'] = temperature
+        self.value_set(0, temperature)
 
-        return return_dict
+        return self.return_dict

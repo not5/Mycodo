@@ -32,16 +32,20 @@ from io import StringIO
 from sqlalchemy import and_
 from sqlalchemy import or_
 
+from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.databases.models import Misc
 from mycodo.databases.models import Output
 from mycodo.databases.models import SMTP
 from mycodo.databases.models import Trigger
+from mycodo.databases.utils import session_scope
 from mycodo.devices.atlas_scientific_i2c import AtlasScientificI2C
 from mycodo.devices.atlas_scientific_uart import AtlasScientificUART
 from mycodo.mycodo_client import DaemonControl
 from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.influx import write_influxdb_value
 from mycodo.utils.system_pi import cmd_output
+
+MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 
 
 class OutputController(threading.Thread):
@@ -52,7 +56,8 @@ class OutputController(threading.Thread):
     def __init__(self, debug):
         threading.Thread.__init__(self)
 
-        self.logger = logging.getLogger("mycodo.output")
+        self.logger = logging.getLogger(__name__)
+
         if debug:
             self.logger.setLevel(logging.DEBUG)
         else:
@@ -141,7 +146,10 @@ class OutputController(threading.Thread):
                     if (self.output_on_until[output_id] < current_time and
                             self.output_on_duration[output_id] and
                             not self.output_off_triggered[output_id] and
-                            (self.output_type[output_id] in ['command', 'command_pwn', 'python', 'python_pwm'] or
+                            (self.output_type[output_id] in ['command',
+                                                             'command_pwn',
+                                                             'python',
+                                                             'python_pwm'] or
                              self.output_pin[output_id] is not None)):
 
                         # Use threads to prevent a slow execution of a
@@ -205,6 +213,8 @@ class OutputController(threading.Thread):
             duty_cycle,
             trigger_conditionals))
 
+        current_time = datetime.datetime.now()
+
         # Check if output exists
         if output_id not in self.output_id:
             self.logger.warning(
@@ -240,11 +250,17 @@ class OutputController(threading.Thread):
                 self.atlas_command[output_id].write(write_cmd)
             else:
                 self.logger.error(
-                    "Invalid parameters: ID: {id}, State: {state}, volume: {vol}".format(
+                    "Invalid parameters: ID: {id}, "
+                    "State: {state}, "
+                    "volume: {vol}".format(
                         id=output_id, state=state, vol=volume_ml))
 
+        #
         # Signaled to turn output on
+        #
         if state == 'on':
+            off_until_datetime = db_retrieve_table_daemon(
+                Output, unique_id=self.output_unique_id[output_id]).off_until
 
             # Check if pin is valid
             if (self.output_type[output_id] in [
@@ -275,25 +291,18 @@ class OutputController(threading.Thread):
                             max_amps))
                     return 1
 
-                # If the output is used in a PID, a minimum off duration is set,
-                # and if the off duration has surpassed that amount of time (i.e.
-                # has it been off for longer then the minimum off duration?).
-                current_time = datetime.datetime.now()
-                if (min_off and not self.is_on(output_id) and
-                        current_time > self.output_on_until[output_id]):
-                    off_seconds = (current_time -
-                                   self.output_on_until[output_id]).total_seconds()
-                    if off_seconds < min_off:
-                        self.logger.debug(
-                            "Output {id} ({name}) instructed to turn on by PID, "
-                            "however the minimum off period of {min_off_sec} "
-                            "seconds has not been reached yet (it has only been "
-                            "off for {off_sec} seconds).".format(
-                                id=self.output_id[output_id],
-                                name=self.output_name[output_id],
-                                min_off_sec=min_off,
-                                off_sec=off_seconds))
-                        return 1
+                # Check if time is greater than off_until to allow an output on
+                if off_until_datetime and off_until_datetime > current_time and not self.is_on(output_id):
+                    off_seconds = (
+                        off_until_datetime - current_time).total_seconds()
+                    self.logger.debug(
+                        "Output {id} ({name}) instructed to turn on, however "
+                        "the output has been instructed to stay off for "
+                        "{off_sec:.2f} more seconds.".format(
+                            id=self.output_id[output_id],
+                            name=self.output_name[output_id],
+                            off_sec=off_seconds))
+                    return 1
 
             # Turn output on for a duration
             if (self.output_type[output_id] in ['command',
@@ -301,14 +310,18 @@ class OutputController(threading.Thread):
                                                 'raspberry_pi_gpio',
                                                 'wireless_rpi_rf'] and
                     duration != 0):
-                time_now = datetime.datetime.now()
+
+                # Set off_until if min_off is set
+                if min_off:
+                    dt_off_until = current_time + datetime.timedelta(seconds=abs(duration) + min_off)
+                    self.set_off_until(dt_off_until, output_id)
 
                 # Output is already on for a duration
                 if self.is_on(output_id) and self.output_on_duration[output_id]:
 
-                    if self.output_on_until[output_id] > time_now:
+                    if self.output_on_until[output_id] > current_time:
                         remaining_time = (self.output_on_until[output_id] -
-                                          time_now).total_seconds()
+                                          current_time).total_seconds()
                     else:
                         remaining_time = 0
 
@@ -326,7 +339,7 @@ class OutputController(threading.Thread):
                             rbeenon=time_on,
                             rnewon=abs(duration)))
                     self.output_on_until[output_id] = (
-                            time_now + datetime.timedelta(seconds=abs(duration)))
+                        current_time + datetime.timedelta(seconds=abs(duration)))
                     self.output_last_duration[output_id] = duration
 
                     # Write the duration the output was ON to the
@@ -357,7 +370,7 @@ class OutputController(threading.Thread):
                 elif self.is_on(output_id) and not self.output_on_duration:
                     self.output_on_duration[output_id] = True
                     self.output_on_until[output_id] = (
-                            time_now + datetime.timedelta(seconds=abs(duration)))
+                        current_time + datetime.timedelta(seconds=abs(duration)))
                     self.output_last_duration[output_id] = duration
                     self.logger.debug(
                         "Output {id} ({name}) is currently on without a "
@@ -469,7 +482,9 @@ class OutputController(threading.Thread):
                             'channel': 0})
                 write_db.start()
 
+        #
         # Signaled to turn output off
+        #
         elif state == 'off':
 
             if not self._is_setup(output_id):
@@ -516,11 +531,10 @@ class OutputController(threading.Thread):
                 timestamp = None
                 if self.output_on_duration[output_id]:
                     remaining_time = 0
-                    time_now = datetime.datetime.now()
 
-                    if self.output_on_until[output_id] > time_now:
+                    if self.output_on_until[output_id] > current_time:
                         remaining_time = (self.output_on_until[output_id] -
-                                          time_now).total_seconds()
+                                          current_time).total_seconds()
                     duration_sec = (abs(self.output_last_duration[output_id]) -
                                     remaining_time)
                     timestamp = (datetime.datetime.utcnow() -
@@ -1076,20 +1090,21 @@ output_id = '{}'
         if not self.is_on(output_id):
             return 0
         else:
-            time_now = datetime.datetime.now()
+            current_time = datetime.datetime.now()
             sec_currently_on = 0
             if self.output_on_duration[output_id]:
                 remaining_time = 0
-                if self.output_on_until[output_id] > time_now:
-                    remaining_time = (self.output_on_until[output_id] -
-                                      time_now).total_seconds()
+                if self.output_on_until[output_id] > current_time:
+                    remaining_time = (
+                        self.output_on_until[output_id] -
+                        current_time).total_seconds()
                 sec_currently_on = (
-                        abs(self.output_last_duration[output_id]) -
-                        remaining_time)
+                    abs(self.output_last_duration[output_id]) -
+                    remaining_time)
             elif self.output_time_turned_on[output_id]:
                 sec_currently_on = (
-                        time_now -
-                        self.output_time_turned_on[output_id]).total_seconds()
+                    current_time -
+                    self.output_time_turned_on[output_id]).total_seconds()
             return sec_currently_on
 
     def output_setup(self, action, output_id):
@@ -1206,6 +1221,13 @@ output_id = '{}'
                     return self.pwm_state[output_id]
         return 'off'
 
+    def set_off_until(self, dt_off_until, output_id):
+        with session_scope(MYCODO_DB_PATH) as new_session:
+            mod_cont = new_session.query(Output).filter(
+                Output.unique_id == self.output_unique_id[output_id]).first()
+            mod_cont.off_until = dt_off_until
+            new_session.commit()
+
     def is_on(self, output_id):
         """
         :param output_id: Unique ID for each output
@@ -1217,7 +1239,8 @@ output_id = '{}'
         if (self.output_type[output_id] == 'raspberry_pi_gpio' and
                 self._is_setup(output_id)):
             import RPi.GPIO as GPIO
-            return self.output_on_state[output_id] == GPIO.input(self.output_pin[output_id])
+            return self.output_on_state[output_id] == GPIO.input(
+                self.output_pin[output_id])
         elif self.output_type[output_id] in ['command',
                                              'command_pwm',
                                              'python',

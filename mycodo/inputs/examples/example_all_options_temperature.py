@@ -1,6 +1,4 @@
 # coding=utf-8
-import logging
-
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -65,7 +63,7 @@ INPUT_INFORMATION = {
 
     # For use with Inputs that store multiple measurements.
     # Set True if all measurements should be stored in the database with the same timestamp.
-    # Set False to use the timestamp generated when self.set_value() is used to save measurement.
+    # Set False to use the timestamp generated when self.value_set() is used to save measurement.
     'measurements_use_same_timestamp': True,
 
     # Web User Interface display options
@@ -234,15 +232,9 @@ class InputModule(AbstractInput):
     """ A dummy sensor support class """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.{name_lower}".format(
-            name_lower=INPUT_INFORMATION['input_name_unique'].lower()))
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
-            self.logger = logging.getLogger(
-                "mycodo.inputs.{name_lower}_{id}".format(
-                    name_lower=INPUT_INFORMATION['input_name_unique'].lower(),
-                    id=input_dev.unique_id.split('-')[0]))
             self.interface = input_dev.interface
 
             #
@@ -295,24 +287,19 @@ class InputModule(AbstractInput):
                 # No UART driver available for this input
                 pass
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the temperature and humidity """
         #
         # Copy measurements dictionary
         #
 
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         #
         # Begin sensor measurement code
         #
 
-        return_dict[0]['value'] = self.random.randint(50, 70)
+        self.value_set(0, self.random.randint(50, 70))
 
         #
         # End sensor measurement code
@@ -321,4 +308,4 @@ class InputModule(AbstractInput):
         self.logger.info("This INFO message will always be displayed.")
         self.logger.debug("This DEBUG message will only be displayed if the Debug option is enabled.")
 
-        return return_dict
+        return self.return_dict

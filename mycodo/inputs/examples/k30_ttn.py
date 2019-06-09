@@ -9,9 +9,9 @@
 #
 # Comment will be updated with other code to go along with this module
 #
-import logging
-import os
 import time
+
+import filelock
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -50,7 +50,6 @@ INPUT_INFORMATION = {
     'options_disabled': ['interface'],
 
     'dependencies_module': [
-        ('pip-pypi', 'locket', 'locket'),
         ('pip-pypi', 'serial', 'pyserial')
     ],
 
@@ -74,15 +73,11 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the K30's CO2 concentration """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.k30_ttn")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.timer = 0
 
         if not testing:
             import serial
-            import locket
-            self.logger = logging.getLogger(
-                "mycodo.k30_ttn_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             if input_dev.custom_options:
                 for each_option in input_dev.custom_options.split(';'):
@@ -110,46 +105,18 @@ class InputModule(AbstractInput):
 
             self.serial = serial
             self.serial_send = None
-            self.locket = locket
-            self.lock = None
             self.lock_file = "/var/lock/mycodo_ttn.lock"
-            self.locked = False
             self.ttn_serial_error = False
             self.logger.debug(
                 "Min time between transmissions: {} seconds".format(
                     min_seconds_between_transmissions))
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
-    def lock_setup(self):
-        self.lock = self.locket.lock_file(self.lock_file, timeout=10)
-        try:
-            self.lock.acquire()
-            self.locked = True
-        except self.locket.LockError:
-            self.logger.error("Could not acquire input lock. Breaking for future locking.")
-            try:
-                os.remove(self.lock_file)
-            except OSError:
-                self.logger.error("Can't delete lock file: Lock file doesn't exist.")
-
-    def lock_release(self):
-        try:
-            if self.locked:
-                self.lock.release()
-                self.locked = False
-        except AttributeError:
-            self.logger.error("Can't release lock: Lock file not present.")
 
     def get_measurement(self):
         """ Gets the K30's CO2 concentration in ppmv via UART"""
         if not self.uart_location:  # Don't measure if device isn't validated
             return None
 
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         co2 = None
 
@@ -163,19 +130,22 @@ class InputModule(AbstractInput):
             low = resp[4]
             co2 = (high * 256) + low
 
-        self.set_value(return_dict, 0, co2)
+        self.value_set(0, co2)
 
         try:
             now = time.time()
             if now > self.timer:
                 self.timer = now + min_seconds_between_transmissions
                 # "K" designates this data belonging to the K30
-                string_send = 'K,{}'.format(self.get_value(0))
-                self.lock_setup()
-                self.serial_send = self.serial.Serial(self.serial_device, 9600)
-                self.serial_send.write(string_send.encode())
-                time.sleep(4)
-                self.lock_release()
+                string_send = 'K,{}'.format(self.value_get(0))
+                self.lock_acquire(self.lock_file, timeout=10)
+                if self.locked:
+                    try:
+                        self.serial_send = self.serial.Serial(self.serial_device, 9600)
+                        self.serial_send.write(string_send.encode())
+                        time.sleep(4)
+                    finally:
+                        self.lock_release()
                 self.ttn_serial_error = False
         except:
             if not self.ttn_serial_error:
@@ -183,4 +153,4 @@ class InputModule(AbstractInput):
                 self.logger.error("TTN: Could not send serial")
                 self.ttn_serial_error = True
 
-        return return_dict
+        return self.return_dict

@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import subprocess
 import time
 
@@ -78,13 +77,10 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the DS18S20's temperature """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.ds18s20")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from w1thermsensor import W1ThermSensor
-            self.logger = logging.getLogger(
-                "mycodo.ds18s20_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             self.location = input_dev.location
             self.library = None
@@ -97,25 +93,21 @@ class InputModule(AbstractInput):
                         self.library = value
 
             if self.library == 'w1thermsensor':
-                self.sensor = W1ThermSensor(W1ThermSensor.THERM_SENSOR_DS18S20,
-                                            self.location)
+                self.sensor = W1ThermSensor(
+                    W1ThermSensor.THERM_SENSOR_DS18S20,
+                    self.location)
             elif self.library == 'ow_shell':
                 pass
 
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
-
     def get_measurement(self):
         """ Gets the DS18S20's temperature in Celsius """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         n = 2
         for i in range(n):
             try:
                 if self.library == 'w1thermsensor':
-                    return_dict[0]['value'] = self.sensor.get_temperature()
+                    self.value_set(0, self.sensor.get_temperature())
                 elif self.library == 'ow_shell':
                     try:
                         command = 'owread /{id}/temperature; echo'.format(
@@ -125,10 +117,10 @@ class InputModule(AbstractInput):
                         (owread_output, _) = owread.communicate()
                         owread.wait()
                         if owread_output:
-                            return_dict[0]['value'] = float(owread_output.decode("latin1"))
+                            self.value_set(0, float(owread_output.decode("latin1")))
                     except Exception:
                         self.logger.exception(1)
-                return return_dict
+                return self.return_dict
             except Exception as e:
                 if i == n:
                     self.logger.exception(

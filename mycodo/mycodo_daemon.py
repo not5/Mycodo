@@ -23,16 +23,23 @@
 #
 #  Contact at kylegabriel.com
 
+import sys
+
+import os
+
+sys.path.append(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir)))
+
 import argparse
 import logging
-import os
 import resource
-import rpyc
 import signal
-import sys
 import threading
 import time
 import timeit
+
+import rpyc
+from daemonize import Daemonize
 from pkg_resources import parse_version
 from rpyc.utils.server import ThreadedServer
 
@@ -290,15 +297,15 @@ def mycodo_service(mycodo):
             return mycodo.send_infrared_code_broadcast(code)
 
         @staticmethod
-        def exposed_trigger_action(action_id, message='', single_action=False):
+        def exposed_trigger_action(action_id, message='', single_action=False, debug=False):
             """Trigger action"""
             return mycodo.trigger_action(
-                action_id, message=message, single_action=single_action)
+                action_id, message=message, single_action=single_action, debug=debug)
 
         @staticmethod
-        def exposed_trigger_all_actions(function_id, message=''):
+        def exposed_trigger_all_actions(function_id, message='', debug=False):
             """Trigger all actions"""
-            return mycodo.trigger_all_actions(function_id, message=message)
+            return mycodo.trigger_all_actions(function_id, message=message, debug=debug)
 
         @staticmethod
         def exposed_terminate_daemon():
@@ -320,7 +327,7 @@ class ComThread(threading.Thread):
     def __init__(self, mycodo):
         threading.Thread.__init__(self)
 
-        self.logger = logging.getLogger("mycodo.rpyc")
+        self.logger = logging.getLogger('mycodo.rpyc')
         self.logger.setLevel(logging.WARNING)
         self.mycodo = mycodo
         self.server = None
@@ -396,11 +403,13 @@ class DaemonController:
     """
 
     def __init__(self, debug):
-        self.logger = logging.getLogger("mycodo.daemon")
+        self.logger = logging.getLogger('mycodo.daemon')
         if not debug:
             self.logger.setLevel(logging.INFO)
+
         self.logger.info("Mycodo daemon v{ver} starting".format(ver=MYCODO_VERSION))
 
+        self.log_level_debug = debug
         self.startup_timer = timeit.default_timer()
         self.daemon_startup_time = None
         self.daemon_run = True
@@ -1132,19 +1141,24 @@ class DaemonController:
                     args=(code,))
                 broadcast_ir.start()
 
-    def trigger_action(self, action_id, message='', single_action=False):
+    def trigger_action(self, action_id, message='', single_action=False, debug=False):
         try:
-            return trigger_action(action_id,
-                                  message=message,
-                                  single_action=single_action)
+            return trigger_action(
+                action_id,
+                message=message,
+                single_action=single_action,
+                debug=debug)
         except Exception as except_msg:
             message = "Could not trigger Conditional Actions:" \
                       " {err}".format(err=except_msg)
             self.logger.exception(message)
 
-    def trigger_all_actions(self, function_id, message=''):
+    def trigger_all_actions(self, function_id, message='', debug=False):
         try:
-            return trigger_function_actions(function_id, message=message)
+            return trigger_function_actions(
+                function_id,
+                message=message,
+                debug=debug)
         except Exception as except_msg:
             message = "Could not trigger Conditional Actions:" \
                       " {err}".format(err=except_msg)
@@ -1274,7 +1288,7 @@ class DaemonController:
 
         # Send stats
         try:
-            send_anonymous_stats(self.start_time)
+            send_anonymous_stats(self.start_time, self.log_level_debug)
         except Exception as except_msg:
             self.logger.exception(
                 "Could not send statistics: {err}".format(
@@ -1288,7 +1302,7 @@ class MycodoDaemon:
     """
 
     def __init__(self, mycodo, debug):
-        self.logger = logging.getLogger("mycodo.daemon")
+        self.logger = logging.getLogger('mycodo.daemon')
         if not debug:
             self.logger.setLevel(logging.INFO)
         self.mycodo = mycodo
@@ -1327,10 +1341,10 @@ if __name__ == '__main__':
     args = parse_args()
 
     # Set up logger
-    logger = logging.getLogger("mycodo")
-    fh = logging.FileHandler(DAEMON_LOG_FILE, 'a')
-
+    logger = logging.getLogger('mycodo')
     logger.setLevel(logging.DEBUG)
+    logger.propagate = False
+    fh = logging.handlers.WatchedFileHandler(DAEMON_LOG_FILE)
     fh.setLevel(logging.DEBUG)
 
     try:
@@ -1341,9 +1355,8 @@ if __name__ == '__main__':
         logger.exception(1)
 
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        "%(asctime)s - %(levelname)s - %(name)s - %(message)s")
     fh.setFormatter(formatter)
-    logger.propagate = False
     logger.addHandler(fh)
     keep_fds = [fh.stream.fileno()]
 

@@ -1,5 +1,4 @@
 # coding=utf-8
-import logging
 import time
 from collections import OrderedDict
 from datetime import datetime
@@ -7,9 +6,7 @@ from datetime import datetime
 import os
 
 from mycodo.config import PATH_CAMERAS
-from mycodo.databases.models import DeviceMeasurements
 from mycodo.inputs.base_input import AbstractInput
-from mycodo.utils.database import db_retrieve_table_daemon
 from mycodo.utils.image import generate_thermal_image_from_pixels
 from mycodo.utils.system_pi import assure_path_exists
 
@@ -59,8 +56,7 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the AMG8833's temperature """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.amg8833")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
         self.save_image = False
         self.temp_max = None
         self.temp_min = None
@@ -71,29 +67,19 @@ class InputModule(AbstractInput):
 
         if not testing:
             from Adafruit_AMG88xx import Adafruit_AMG88xx
-            self.logger = logging.getLogger(
-                "mycodo.ds18b20_{id}".format(id=input_dev.unique_id.split('-')[0]))
-
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                    DeviceMeasurements.device_id == input_dev.unique_id)
 
             self.Adafruit_AMG88xx = Adafruit_AMG88xx
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
             self.input_dev = input_dev
-            self.sensor = self.Adafruit_AMG88xx(address=self.i2c_address,
-                                                busnum=self.i2c_bus)
-            time.sleep(.1)  # wait for it to boot
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
+            self.sensor = self.Adafruit_AMG88xx(
+                address=self.i2c_address,
+                busnum=self.i2c_bus)
+            time.sleep(0.1)  # wait for it to boot
 
     def get_measurement(self):
         """ Gets the AMG8833's measurements """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         pixels = self.sensor.readPixels()
 
@@ -102,9 +88,9 @@ class InputModule(AbstractInput):
             self.logger.error("Max Pixel = {0} C".format(max(pixels)))
             self.logger.error("Thermistor = {0} C".format(self.sensor.readThermistor()))
 
-        for meas in self.device_measurements.all():
-            if meas.is_enabled:
-                return_dict[meas.channel]['value'] = pixels[meas.channel]
+        for channel in self.device_measurements:
+            if self.is_enabled(channel):
+                self.value_set(channel, pixels[channel])
 
         if self.save_image:
             timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
@@ -126,4 +112,4 @@ class InputModule(AbstractInput):
                 temp_min=self.temp_min,
                 temp_max=self.temp_max)
 
-        return return_dict
+        return self.return_dict

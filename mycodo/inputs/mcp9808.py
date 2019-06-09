@@ -1,6 +1,4 @@
 # coding=utf-8
-import logging
-
 from mycodo.inputs.base_input import AbstractInput
 
 # Measurements
@@ -59,32 +57,25 @@ class InputModule(AbstractInput):
     """ A sensor support class that monitors the MCP9808's temperature """
 
     def __init__(self, input_dev, testing=False):
-        super(InputModule, self).__init__()
-        self.logger = logging.getLogger("mycodo.inputs.mcp9808")
+        super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
         if not testing:
             from Adafruit_MCP9808 import MCP9808
-            self.logger = logging.getLogger(
-                "mycodo.mcp9808_{id}".format(id=input_dev.unique_id.split('-')[0]))
 
             self.i2c_address = int(str(input_dev.i2c_location), 16)
             self.i2c_bus = input_dev.i2c_bus
 
             self.sensor = MCP9808.MCP9808(
-                address=self.i2c_address, busnum=self.i2c_bus)
+                address=self.i2c_address,
+                busnum=self.i2c_bus)
             self.sensor.begin()
-
-        if input_dev.log_level_debug:
-            self.logger.setLevel(logging.DEBUG)
-        else:
-            self.logger.setLevel(logging.INFO)
 
     def get_measurement(self):
         """ Gets the MCP9808's temperature in Celsius """
-        return_dict = measurements_dict.copy()
+        self.return_dict = measurements_dict.copy()
 
         try:
-            return_dict[0]['value'] = self.sensor.readTempC()
-            return return_dict
+            self.value_set(0, self.sensor.readTempC())
+            return self.return_dict
         except Exception as msg:
             self.logger.exception("Inout read failure: {}".format(msg))
