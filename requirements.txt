@@ -1,6 +1,7 @@
 alembic == 1.0.8
 argparse == 1.4.0
 bcrypt == 3.1.6
+filelock == 3.0.12
 Flask == 1.0.2
 Flask_Babel == 0.12.2
 Flask_Compress == 1.4.0
@@ -14,7 +15,6 @@ Flask_WTF == 0.14.2
 geocoder == 1.38.1
 gunicorn == 19.9.0
 influxdb == 5.0.0
-locket == 0.2.0
 pylint
 pyserial
 python-dateutil == 2.8.0
