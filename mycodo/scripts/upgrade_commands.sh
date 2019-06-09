@@ -182,7 +182,7 @@ case "${1:-''}" in
                stable"
         fi
         apt-get update
-        apt-get install docker-ce docker-ce-cli
+        apt-get -y install docker-ce docker-ce-cli
     ;;
     'install-wiringpi')
         cd ${MYCODO_PATH}/install
