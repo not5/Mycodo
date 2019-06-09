@@ -970,18 +970,14 @@ def computer_command(action):
         return redirect(url_for('routes_general.home'))
 
     try:
-        if action == 'daemon_restart':
-            control = DaemonControl()
-            control.terminate_daemon()
-            flash(gettext("Command to restart the daemon sent"), "success")
-        elif action == 'frontend_reload':
-            cmd = 'docker exec -it flask docker restart flask'
-            subprocess.Popen(cmd, shell=True)
-            flash(gettext("Command to reload the frontend sent"), "success")
-        elif action not in ['restart', 'shutdown', 'frontend_reload']:
+        if action not in ['daemon_restart',
+                          'frontend_reload',
+                          'restart',
+                          'shutdown']:
             flash("Unrecognized command: {action}".format(
                 action=action), "success")
             return redirect('/settings')
+
         cmd = '{path}/mycodo/scripts/mycodo_wrapper {action} 2>&1'.format(
                 path=INSTALL_DIRECTORY, action=action)
         subprocess.Popen(cmd, shell=True)
@@ -989,6 +985,13 @@ def computer_command(action):
             flash(gettext("System rebooting in 10 seconds"), "success")
         elif action == 'shutdown':
             flash(gettext("System shutting down in 10 seconds"), "success")
+        if action == 'daemon_restart':
+            control = DaemonControl()
+            control.terminate_daemon()
+            flash(gettext("Command to restart the daemon sent"), "success")
+        elif action == 'frontend_reload':
+            subprocess.Popen('reboot', shell=True)
+            flash(gettext("Command to reload the frontend sent"), "success")
 
         return redirect('/settings')
     except Exception as e:

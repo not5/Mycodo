@@ -180,9 +180,12 @@ case "${1:-''}" in
                "deb [arch=arm64] https://download.docker.com/linux/debian \
                $(lsb_release -cs) \
                stable"
+        else
+            printf "\nCould not detect architecture\n"
+            exit 1
         fi
         apt-get update
-        apt-get -y install docker-ce docker-ce-cli
+        apt-get -y install docker-ce-cli
     ;;
     'install-wiringpi')
         cd ${MYCODO_PATH}/install
