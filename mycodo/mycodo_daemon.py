@@ -44,6 +44,7 @@ from pkg_resources import parse_version
 from rpyc.utils.server import ThreadedServer
 
 from mycodo.config import DAEMON_LOG_FILE
+from mycodo.config import DAEMON_PID_FILE
 from mycodo.config import MYCODO_VERSION
 from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.config import STATS_CSV
@@ -69,9 +70,6 @@ from mycodo.databases.models import Trigger
 from mycodo.databases.utils import session_scope
 from mycodo.utils.check_dependencies_installed import install_device_dependencies
 from mycodo.utils.database import db_retrieve_table_daemon
-from mycodo.utils.function_actions import get_condition_measurement
-from mycodo.utils.function_actions import trigger_action
-from mycodo.utils.function_actions import trigger_function_actions
 from mycodo.utils.github_release_info import github_releases
 from mycodo.utils.inputs import parse_input_information
 from mycodo.utils.statistics import add_update_csv
