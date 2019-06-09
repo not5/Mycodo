@@ -1160,8 +1160,6 @@ def page_logview():
                 logfile = DEPENDENCY_LOG_FILE
             elif form_log_view.logdaemon.data:
                 logfile = DAEMON_LOG_FILE
-            elif form_log_view.logkeepup.data:
-                logfile = KEEPUP_LOG_FILE
             elif form_log_view.logbackup.data:
                 logfile = BACKUP_LOG_FILE
             elif form_log_view.logrestore.data:

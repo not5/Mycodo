@@ -797,7 +797,6 @@ BACKUP_PATH = '/var/Mycodo-backups'  # Where Mycodo backups are stored
 LOG_PATH = '/var/mycodo/log'  # Where generated logs are stored
 LOGIN_LOG_FILE = os.path.join(LOG_PATH, 'login.log')
 DAEMON_LOG_FILE = os.path.join(LOG_PATH, 'mycodo.log')
-KEEPUP_LOG_FILE = os.path.join(LOG_PATH, 'mycodokeepup.log')
 BACKUP_LOG_FILE = os.path.join(LOG_PATH, 'backup.log')
 DEPENDENCY_LOG_FILE = os.path.join(LOG_PATH, 'dependency.log')
 UPGRADE_LOG_FILE = os.path.join(LOG_PATH, 'upgrade.log')

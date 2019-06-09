@@ -85,9 +85,6 @@ case "${1:-''}" in
         if [ ! -e /var/mycodo/log/backup.log ]; then
             touch /var/mycodo/log/backup.log
         fi
-        if [ ! -e /var/mycodo/log/keepup.log ]; then
-            touch /var/mycodo/log/keepup.log
-        fi
         if [ ! -e /var/mycodo/log/dependency.log ]; then
             touch /var/mycodo/log/dependency.log
         fi
