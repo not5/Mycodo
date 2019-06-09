@@ -985,12 +985,12 @@ def computer_command(action):
             flash(gettext("System rebooting in 10 seconds"), "success")
         elif action == 'shutdown':
             flash(gettext("System shutting down in 10 seconds"), "success")
-        if action == 'daemon_restart':
+        elif action == 'daemon_restart':
             control = DaemonControl()
             control.terminate_daemon()
             flash(gettext("Command to restart the daemon sent"), "success")
         elif action == 'frontend_reload':
-            subprocess.Popen('reboot', shell=True)
+            subprocess.Popen('docker restart flask', shell=True)
             flash(gettext("Command to reload the frontend sent"), "success")
 
         return redirect('/settings')

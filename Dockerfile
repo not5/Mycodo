@@ -7,6 +7,7 @@ WORKDIR /home/mycodo/mycodo
 
 RUN /home/mycodo/mycodo/scripts/upgrade_commands.sh create-files-directories
 RUN /home/mycodo/mycodo/scripts/upgrade_commands.sh update-apt-packages
+RUN /home/mycodo/mycodo/scripts/upgrade_commands.sh install-docker-ce-cli
 RUN /home/mycodo/mycodo/scripts/upgrade_commands.sh update-pip
 RUN /home/mycodo/mycodo/scripts/upgrade_commands.sh update-pip-packages
 RUN /home/mycodo/mycodo/scripts/upgrade_commands.sh ssl-certs-generate

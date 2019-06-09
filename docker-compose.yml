@@ -52,6 +52,7 @@ services:
     volumes:
       - /dev:/dev
       - mycodo_var:/var/mycodo
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Permits container to restart itself
       - /etc/localtime:/etc/localtime:ro  # Use timezone of the host (read-only)
     privileged: true
     command: gunicorn --workers 1 --bind unix:/var/mycodo/mycodoflask.sock start_flask_ui:app
