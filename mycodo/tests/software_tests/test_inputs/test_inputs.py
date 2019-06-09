@@ -21,8 +21,6 @@ from mycodo.inputs.ds18b20 import InputModule as DS18B20Sensor
 from mycodo.inputs.htu21d import InputModule as HTU21DSensor
 from mycodo.inputs.k30 import InputModule as K30Sensor
 from mycodo.inputs.linux_command import InputModule as LinuxCommand
-from mycodo.inputs.linux_cpu_load import InputModule as LinuxCPULoad
-from mycodo.inputs.linux_free_space import InputModule as LinuxFreeSpace
 from mycodo.inputs.mh_z16 import InputModule as MHZ16Sensor
 from mycodo.inputs.mh_z19 import InputModule as MHZ19Sensor
 from mycodo.inputs.mycodo_ram import InputModule as MycodoRam
@@ -57,8 +55,8 @@ input_classes = [
     MHZ19Sensor(None, testing=True),
     MycodoRam(None, testing=True),
     RaspberryPiCPUTemp(None, testing=True),
-    LinuxCPULoad(None, testing=True),
-    LinuxFreeSpace(None, testing=True),
+    RaspberryPiCPULoad(None, testing=True),
+    RaspberryPiFreeSpace(None, testing=True),
     SHT1x7xSensor(None, testing=True),
     SHT2xSensor(None, testing=True),
     SignalPWMInput(None, testing=True),
