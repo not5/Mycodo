@@ -132,8 +132,11 @@ def send_email(smtp_host, smtp_protocol, smtp_port, smtp_user, smtp_pass,
         logger.debug("Email send response: {}".format(response_send))
 
         return 0
-    except:
-        pass
+      
+    except Exception:
+        logger.exception(
+          "Could not send email to {add} with subject {sub}".format(
+            add=email_to, sub=subject))
 
         # Old code. It remains here to demonstrate how to encoding video for emailing
         # if smtp_ssl:
@@ -231,8 +234,8 @@ def pub_mqtt(mqtt_hostname, mqtt_port, mqtt_user, mqtt_pass,
         return 1
     try:
         mqttc.publish(mqtt_topic, mqtt_payload, 0, True)
-    except:
-        logger.error("Could not publish message ({}) on topic: {}".format(mqtt_payload, mqtt_topic))
+    except Exception:
+        logger.exception("Could not publish message ({}) on topic: {}".format(mqtt_payload, mqtt_topic))
         return 1
     mqttc.disconnect()
     return 0
