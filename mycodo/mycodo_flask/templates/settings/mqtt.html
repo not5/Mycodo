@@ -1,0 +1,72 @@
+{% extends "layout-settings.html" %}
+{% set active_page = "settings" %}
+{% set active_settings = "MQTT" %}
+{% set help_page = ["mqtt-settings", dict_translation['settings']['title'] + ': ' + dict_translation['mqtt']['title']] %}
+
+{% block title %} - {{dict_translation['settings']['title'] + ': ' + dict_translation['mqtt']['title']}}{% endblock %}
+
+{% block settings %}
+  <!-- Route: /settings/mqtt -->
+  <div class="container">
+    <h3 style="text-align: right; padding-bottom: 1.3em;"><a href="/static/manual/mycodo-manual.html#mqtt-settings" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a> {{_('MQTT Settings')}}</h3>
+
+    <form class="form-horizontal" method="post" action="/settings/mqtt">
+      <input type="hidden" name="form-name" value="MqttBroker">
+      {{form_mqtt_broker.hidden_tag()}}
+      <div class="form-group">
+        If a port is not specified, the default port (1883) for a MQTT broker will be used. If you require a non-standard port, enter it in the port field.
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_hostname.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_hostname(class_='form-control', value=mqtt.hostname)}}
+        </div>
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_port.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_port(class_='form-control',type="number", value=mqtt.port,**{'title':_('Leave blank to use default port for protocol')})}}
+        </div>
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_user.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_user(class_='form-control', value=mqtt.user,**{'title':_('Username used with your MQTT Broker')})}}
+        </div>
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_password.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_password(class_='form-control',**{'title':_('Only enter a password here if you wish to change it')})}}
+        </div>
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_clientid.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_clientid(class_='form-control', value=mqtt.clientid,**{'title':_('Client name for your mycodo instance')})}}
+        </div>
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_keep_alive.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_keep_alive(class_='form-control',type="number", value=mqtt.keep_alive, **{'title':_('The time in seconds between sending keep alive messages for this client.')})}}
+        </div>
+      </div>
+      <div class="form-group">
+        <div class="col-sm-offset-4 col-sm-8">
+          {{form_mqtt_broker.save(class_='btn btn-primary')}}
+        </div>
+      </div>
+      <div class="row" style="padding: 1.5em 0 1em 0">
+        <div class="col">
+          {{form_mqtt_broker.send_test_mqtt_topic(class_='form-control', **{'title':_('Topic to post test message to.')})}}
+        </div>
+        <div class="col">
+          {{form_mqtt_broker.send_test_mqtt(class_='btn btn-primary')}}
+        </div>
+      </div>
+    </form>
+
+  </div>
+
+{% endblock %}
