@@ -9,22 +9,26 @@ from flask_babel import lazy_gettext
 # Measurement information
 # First unit in list is the default unit when Input is created
 MEASUREMENTS = {
-    'acceleration_g_force': {
-        'name': lazy_gettext('Acceleration (G-Force)'),
-        'meas': 'g_force',
-        'units': ['g_force']},
-    'acceleration_x_g_force': {
-        'name': lazy_gettext('Acceleration (G-Force, X)'),
-        'meas': 'g_force',
-        'units': ['g_force']},
-    'acceleration_y_g_force': {
-        'name': lazy_gettext('Acceleration (G-Force, Y)'),
-        'meas': 'g_force',
-        'units': ['g_force']},
-    'acceleration_z_g_force': {
-        'name': lazy_gettext('Acceleration (G-Force, Z)'),
-        'meas': 'g_force',
-        'units': ['g_force']},
+    'acceleration': {
+        'name': lazy_gettext('Acceleration'),
+        'meas': 'acceleration',
+        'units': ['g_force', 'm_s_s']},
+    'acceleration_x': {
+        'name': lazy_gettext('Acceleration (X)'),
+        'meas': 'acceleration_x',
+        'units': ['g_force', 'm_s_s']},
+    'acceleration_y': {
+        'name': lazy_gettext('Acceleration (Y)'),
+        'meas': 'acceleration_y',
+        'units': ['g_force', 'm_s_s']},
+    'acceleration_z': {
+        'name': lazy_gettext('Acceleration (Z)'),
+        'meas': 'acceleration_z',
+        'units': ['g_force', 'm_s_s']},
+    'adc': {
+        'name': lazy_gettext('ADC'),
+        'meas': 'adc',
+        'units': ['unitless']},
     'altitude': {
         'name': lazy_gettext('Altitude'),
         'meas': 'altitude',
@@ -41,6 +45,30 @@ MEASUREMENTS = {
         'name': lazy_gettext('CO2'),
         'meas': 'co2',
         'units': ['ppm', 'ppb', 'percent']},
+    'color_red': {
+        'name': lazy_gettext('Color (Red)'),
+        'meas': 'color_red',
+        'units': ['eight_bit_color']},
+    'color_green': {
+        'name': lazy_gettext('Color (Green)'),
+        'meas': 'color_green',
+        'units': ['eight_bit_color']},
+    'color_blue': {
+        'name': lazy_gettext('Color (Blue)'),
+        'meas': 'color_blue',
+        'units': ['eight_bit_color']},
+    'color_x': {
+        'name': lazy_gettext('Color (x)'),
+        'meas': 'color_x',
+        'units': ['cie']},
+    'color_y': {
+        'name': lazy_gettext('Color (y)'),
+        'meas': 'color_y',
+        'units': ['cie']},
+    'color_Y': {
+        'name': lazy_gettext('Color (Y)'),
+        'meas': 'color_Y',
+        'units': ['cie']},
     'cpu_load_1m': {
         'name': lazy_gettext('CPU Load 1 min'),
         'meas': 'cpu_load',
@@ -109,6 +137,10 @@ MEASUREMENTS = {
         'name': lazy_gettext('Ion Concentration'),
         'meas': 'ion_concentration',
         'units': ['pH']},
+    'length': {
+        'name': lazy_gettext('Length'),
+        'meas': 'length',
+        'units': ['ft', 'cm', 'm', 'mm']},
     'light': {
         'name': lazy_gettext('Light'),
         'meas': 'light',
@@ -148,7 +180,7 @@ MEASUREMENTS = {
     'pressure': {
         'name': lazy_gettext('Pressure'),
         'meas': 'pressure',
-        'units': ['psi', 'Pa', 'kPa']},
+        'units': ['cm_water', 'psi', 'Pa', 'kPa']},
     'pulse_width': {
         'name': lazy_gettext('Pulse Width'),
         'meas': 'pulse_width',
@@ -157,6 +189,14 @@ MEASUREMENTS = {
         'name': lazy_gettext('Radiation Dose Rate'),
         'meas': 'radiation_dose_rate',
         'units': ['cpm', 'uSv_hr']},
+    'rate_volume': {
+        'name': lazy_gettext('Volume Flow Rate'),
+        'meas': 'rate_volume',
+        'units': ['l_hr', 'l_min', 'l_s']},
+    'resistance': {
+        'name': lazy_gettext('Resistance'),
+        'meas': 'resistance',
+        'units': ['Ohm']},
     'revolutions': {
         'name': lazy_gettext('Revolutions'),
         'meas': 'revolutions',
@@ -204,7 +244,7 @@ MEASUREMENTS = {
     'volume': {
         'name': lazy_gettext('Volume'),
         'meas': 'volume',
-        'units': ['ml']},
+        'units': ['l', 'ml']}
 }
 
 # Measurement units
@@ -230,6 +270,15 @@ UNITS = {
     'C': {
         'name': lazy_gettext('Celsius'),
         'unit': '°C'},
+    'cie': {
+        'name': lazy_gettext('CIE'),
+        'unit': 'cie'},
+    'cm': {
+        'name': lazy_gettext('Centimeter'),
+        'unit': 'cm'},
+    'cm_water': {
+        'name': lazy_gettext('Centimeters of water'),
+        'unit': 'cm_water'},
     'cpm': {
         'name': lazy_gettext('Counts per minute'),
         'unit': 'cpm'},
@@ -239,6 +288,9 @@ UNITS = {
     'decimal': {
         'name': lazy_gettext('Decimal'),
         'unit': ''},
+    'eight_bit_color': {
+        'name': lazy_gettext('8-Bit Color'),
+        'unit': '8-bit'},
     'F': {
         'name': lazy_gettext('Fahrenheit'),
         'unit': '°F'},
@@ -250,7 +302,7 @@ UNITS = {
         'unit': 'full'},
     'g_force': {
         'name': lazy_gettext('G-Force'),
-        'unit': 'G'},
+        'unit': 'g'},
     'GB': {
         'name': lazy_gettext('Gigabyte'),
         'unit': 'GB'},
@@ -281,12 +333,27 @@ UNITS = {
     'kPa': {
         'name': lazy_gettext('Kilopascal'),
         'unit': 'kPa'},
+    'l': {
+        'name': lazy_gettext('Liter'),
+        'unit': 'l'},
+    'l_hr': {
+        'name': lazy_gettext('Liters per Hour'),
+        'unit': 'l/hr'},
+    'l_min': {
+        'name': lazy_gettext('Liters per Minute'),
+        'unit': 'l/min'},
+    'l_s': {
+        'name': lazy_gettext('Liters Per Second'),
+        'unit': 'l/s'},
     'lux': {
         'name': lazy_gettext('Lux'),
         'unit': 'lx'},
     'm': {
         'name': lazy_gettext('Meter'),
         'unit': 'm'},
+    'm_s_s': {
+        'name': lazy_gettext('Meters per second per second'),
+        'unit': 'm/s/s'},
     'mg_L': {
         'name': lazy_gettext('Milligram per Liter'),
         'unit': 'mg/L'},
@@ -296,6 +363,9 @@ UNITS = {
     'ml': {
         'name': lazy_gettext('Milliliter'),
         'unit': 'ml'},
+    'mm': {
+        'name': lazy_gettext('Millimeter'),
+        'unit': 'mm'},
     'mV': {
         'name': lazy_gettext('Millivolt'),
         'unit': 'mV'},
@@ -311,6 +381,9 @@ UNITS = {
     'none': {
         'name': lazy_gettext('Unitless'),
         'unit': ''},
+    'Ohm': {
+        'name': lazy_gettext('Ohm'),
+        'unit': 'Ω'},
     'Pa': {
         'name': lazy_gettext('Pascal'),
         'unit': 'Pa'},
@@ -353,6 +426,10 @@ UNITS = {
 # These are added to the SQLite database when it's created
 # Users may add or delete after that
 UNIT_CONVERSIONS = [
+    # Acceleration
+    ('g_force', 'm_s_s', 'x*9.80665'),
+    ('m_s_s', 'g_force', 'x/9.80665'),
+
     # Temperature
     ('C', 'F', 'x*(9/5)+32'),
     ('C', 'K', 'x+273.15'),
@@ -370,8 +447,14 @@ UNIT_CONVERSIONS = [
     ('MHz', 'kHz', 'x*1000'),
 
     # Length
-    ('m', 'ft', 'x*3.2808399'),
     ('ft', 'm', 'x/3.2808399'),
+    ('m', 'ft', 'x*3.2808399'),
+    ('m', 'cm', 'x*100'),
+    ('m', 'mm', 'x*1000'),
+    ('mm', 'cm', 'x/10'),
+    ('mm', 'm', 'x/1000'),
+    ('cm', 'mm', 'x*10'),
+    ('cm', 'm', 'x/100'),
 
     # Disk size
     ('kB', 'MB', 'x/1000'),
@@ -396,6 +479,17 @@ UNIT_CONVERSIONS = [
     # Pressure
     ('Pa', 'kPa', 'x/1000'),
     ('kPa', 'Pa', 'x*1000'),
+    ('psi', 'cm_water', 'x*70.306957964239'),
+    ('psi', 'kPa', 'x*6.8947572932'),
+    ('kPa', 'psi', 'x/6.8947572932'),
+
+    # Rate - Volume
+    ('l_s', 'l_min', 'x*60'),
+    ('l_s', 'l_hr', 'x*60*60'),
+    ('l_min', 'l_s', 'x/60'),
+    ('l_min', 'l_hr', 'x*60'),
+    ('l_hr', 'l_s', 'x/60/60'),
+    ('l_hr', 'l_min', 'x/60'),
 
     # Time
     ('s', 'minute', 'x/60'),
@@ -403,5 +497,9 @@ UNIT_CONVERSIONS = [
 
     # Volt
     ('V', 'mV', 'x*1000'),
-    ('mV', 'V', 'x/1000')
+    ('mV', 'V', 'x/1000'),
+
+    # Volume
+    ('l', 'ml', 'x*1000'),
+    ('ml', 'l', 'x/1000')
 ]

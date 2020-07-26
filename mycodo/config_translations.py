@@ -21,6 +21,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Alert')},
     'average': {
         'title': lazy_gettext('Average')},
+    'bus': {
+        'title': lazy_gettext('Bus')},
     'calibration': {
         'title': lazy_gettext('Calibration')},
     'calculate': {
@@ -29,6 +31,10 @@ TRANSLATIONS = {
         'title': lazy_gettext('Camera')},
     'cancel': {
         'title': lazy_gettext('Cancel')},
+    'clear': {
+        'title': lazy_gettext('Clear')},
+    'completed': {
+        'title': lazy_gettext('Completed')},
     'conditional': {
         'title': lazy_gettext('Conditional')},
     'controller': {
@@ -47,6 +53,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Default')},
     'delete': {
         'title': lazy_gettext('Delete')},
+    'device': {
+        'title': lazy_gettext('Device')},
     'diagnostic': {
         'title': lazy_gettext('Diagnostic')},
     'display': {
@@ -67,6 +75,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Error')},
     'export': {
         'title': lazy_gettext('Export')},
+    'fail': {
+        'title': lazy_gettext('Fail')},
     'function': {
         'title': lazy_gettext('Function')},
     'general': {
@@ -145,8 +155,14 @@ TRANSLATIONS = {
         'title': lazy_gettext('Settings')},
     'single': {
         'title': lazy_gettext('Single')},
+    'stops': {
+        'title': lazy_gettext('Stops')},
+    'success': {
+        'title': lazy_gettext('Success')},
     'sum': {
         'title': lazy_gettext('Sum')},
+    'system': {
+        'title': lazy_gettext('System')},
     'tag': {
         'title': lazy_gettext('Tag')},
     'text': {
@@ -161,6 +177,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Upload')},
     'user': {
         'title': lazy_gettext('User')},
+    'volume': {
+        'title': lazy_gettext('Volume')},
     'widget': {
         'title': lazy_gettext('Widget')},
 
@@ -185,13 +203,13 @@ TRANSLATIONS = {
         'phrase': lazy_gettext('The UART baud rate')},
     'bt_location': {
         'title': lazy_gettext('MAC (XX:XX:XX:XX:XX:XX)'),
-        'phrase': lazy_gettext('The MAC address of the input')},
+        'phrase': lazy_gettext('The MAC address of the Bluetooth device')},
     'bt_adapter': {
-        'title': lazy_gettext('BT Adapter'),
-        'phrase': lazy_gettext('The Bluetooth adapter of the input')},
+        'title': lazy_gettext('BT Adapter (hci[X])'),
+        'phrase': lazy_gettext('The adapter of the Bluetooth device')},
     'cmd_command': {
         'title': lazy_gettext('Command'),
-        'phrase': lazy_gettext('The command to executed (as user mycodo) to return a measurement value')},
+        'phrase': lazy_gettext('The command to be executed to return a measurement value')},
     'convert_unit': {
         'title': None,
         'phrase': lazy_gettext('Select the unit of the measurement to be stored in the database')},
@@ -203,32 +221,35 @@ TRANSLATIONS = {
     'deadline': {
         'title': lazy_gettext('Deadline'),
         'phrase': lazy_gettext('Time (seconds) to wait until failure')},
-    'duration_on_seconds': {
-        'title': lazy_gettext('Duration On (seconds)'),
-        'phrase': lazy_gettext('Turn on for a duration of time (seconds)')},
     'duty_cycle': {
         'title': lazy_gettext('Duty Cycle'),
         'phrase': lazy_gettext('Duty cycle for the PWM (percent, 0.0 - 100.0)')},
     'flow_rate': {
-        'title': lazy_gettext('Flow Rate (ml/min)'),
-        'phrase': lazy_gettext('Flow rate in ml/minute (0.5 min, 105 max)')},
+        'title': lazy_gettext('Desired Flow Rate (ml/min)'),
+        'phrase': lazy_gettext('Desired flow rate in ml/minute when Specify Flow Rate set')},
     'font_em_name': {
         'title': lazy_gettext('Name Font Size (em)'),
         'phrase': lazy_gettext('The font size of the Name text')},
+    'force_command': {
+        'title': lazy_gettext('Force Command'),
+        'phrase': lazy_gettext('Always send the command if instructed, regardless of the current state')},
     'ftdi_location': {
         'title': lazy_gettext('FTDI Device'),
-        'phrase': lazy_gettext('The FTDI device (e.g. /dev/ttyUSB1)')},
+        'phrase': lazy_gettext('The FTDI device connected to the input/output/etc.')},
     'gpio_location': {
         'title': lazy_gettext('Pin (GPIO)'),
         'phrase': lazy_gettext('The GPIO pin using BCM numbering')},
+    'flow_rate_method': {
+        'title': lazy_gettext('Flow Rate Method'),
+        'phrase': lazy_gettext('The flow rate to use when pumping a volume')},
     'host': {
         'title': lazy_gettext('Host'),
         'phrase': lazy_gettext('Host address or IP')},
     'i2c_bus': {
-        'title': lazy_gettext('I<sup>2</sup>C Bus'),
+        'title': lazy_gettext('I2C Bus'),
         'phrase': lazy_gettext('The I2C bus the device is connected to')},
     'i2c_location': {
-        'title': lazy_gettext('I<sup>2</sup>C Address'),
+        'title': lazy_gettext('I2C Address'),
         'phrase': lazy_gettext('The I2C address of the device')},
     'interface': {
         'title': lazy_gettext('Interface'),
@@ -236,6 +257,9 @@ TRANSLATIONS = {
     'invert_scale': {
         'title': lazy_gettext('Invert Scale'),
         'phrase': lazy_gettext('Invert the scale')},
+    'linux_command_user': {
+        'title': lazy_gettext('Execute as User'),
+        'phrase': lazy_gettext('The user to execute the command')},
     'log_level_debug': {
         'title': lazy_gettext('Log Level: Debug'),
         'phrase': lazy_gettext('Show debug lines in the Daemon Log')},
@@ -248,33 +272,27 @@ TRANSLATIONS = {
     'measurements_enabled': {
         'title': lazy_gettext('Measurements Enabled'),
         'phrase': lazy_gettext('The measurements to record')},
+    'message_include_code': {
+        'title': lazy_gettext('Message Includes Code'),
+        'phrase': lazy_gettext('Include the code in the message variable')},
     'name': {
         'title': lazy_gettext('Name'),
         'phrase': lazy_gettext('A name to distinguish this from others')},
     'off_command': {
         'title': lazy_gettext('Off Command'),
-        'phrase': lazy_gettext('Command to execute (as user mycodo) when the output is instructed to turn off')},
+        'phrase': lazy_gettext('Command to execute when the output is instructed to turn off')},
     'on_state': {
         'title': lazy_gettext('On State'),
         'phrase': lazy_gettext('What state triggers the output to turn on? High or Low?')},
-    'output_mode': {
-        'title': lazy_gettext('Output Mode'),
-        'phrase': lazy_gettext('Mode to run the output')},
-    'shutdown_value': {
-        'title': lazy_gettext('Shutdown Value'),
-        'phrase': lazy_gettext('The output value to set when Mycodo shuts down')},
-    'startup_value': {
-        'title': lazy_gettext('Startup Value'),
-        'phrase': lazy_gettext('The output value to set when Mycodo starts up')},
-    'state_shutdown': {
-        'title': lazy_gettext('Shutdown State'),
-        'phrase': lazy_gettext('When Mycodo shuts down, set the output state')},
-    'state_startup': {
-        'title': lazy_gettext('Startup State'),
-        'phrase': lazy_gettext('When Mycodo starts, set the output state')},
+    'output_amount_duration': {
+        'title': lazy_gettext('Duration'),
+        'phrase': lazy_gettext('Duration to send to output controller')},
+    'output_amount_volume': {
+        'title': lazy_gettext('Volume'),
+        'phrase': lazy_gettext('Volume to send to output controller')},
     'on_command': {
         'title': lazy_gettext('On Command'),
-        'phrase': lazy_gettext('Command to execute (as user mycodo) when the output is instructed to turn on')},
+        'phrase': lazy_gettext('Command to execute when the output is instructed to turn on')},
     'period': {
         'title': lazy_gettext('Period (seconds)'),
         'phrase': lazy_gettext('The duration (seconds) between measurements or actions')},
@@ -310,12 +328,9 @@ TRANSLATIONS = {
     'pulse_length': {
         'title': lazy_gettext('Pulse Length'),
         'phrase': lazy_gettext('Wireless 433 MHz pulse length')},
-    'pump_amount': {
-        'title': lazy_gettext('Amount to Dispense (ml)'),
-        'phrase': lazy_gettext('Volume in ml to pump')},
     'pwm_command': {
         'title': lazy_gettext('PWM Command'),
-        'phrase': lazy_gettext('Command to execute (as user mycodo) to set the PWM duty cycle (%%)')},
+        'phrase': lazy_gettext('Command to execute to set the PWM duty cycle (%)')},
     'pwm_hertz': {
         'title': lazy_gettext('Frequency (Hertz)'),
         'phrase': lazy_gettext('The Hertz to output the PWM signal (0 - 70,000)')},
@@ -364,9 +379,21 @@ TRANSLATIONS = {
     'sht_voltage': {
         'title': lazy_gettext('Voltage'),
         'phrase': lazy_gettext('The input voltage to the sensor')},
+    'shutdown_value': {
+        'title': lazy_gettext('Shutdown Value'),
+        'phrase': lazy_gettext('The output value to set when Mycodo shuts down')},
     'start_offset': {
         'title': lazy_gettext('Start Offset (seconds)'),
         'phrase': lazy_gettext('The duration (seconds) to wait before the first operation')},
+    'startup_value': {
+        'title': lazy_gettext('Startup Value'),
+        'phrase': lazy_gettext('The output value to set when Mycodo starts up')},
+    'state_shutdown': {
+        'title': lazy_gettext('Shutdown State'),
+        'phrase': lazy_gettext('When Mycodo shuts down, set the output state')},
+    'state_startup': {
+        'title': lazy_gettext('Startup State'),
+        'phrase': lazy_gettext('When Mycodo starts, set the output state')},
     'switch_edge': {
         'title': lazy_gettext('Edge'),
         'phrase': lazy_gettext('Edge detection: low to high (rising), high to low (falling), or both')},
@@ -393,6 +420,14 @@ TRANSLATIONS = {
         'phrase': lazy_gettext(
             'The weighting of the previous measurement on the current measurement. '
             'Range: 0.0 - 1.0. Used for smoothing measurements. 0.0 means no weighting.')},
+
+    # PID
+    'raise_always_min_pwm': {
+        'title': lazy_gettext('Always Min (Raise)'),
+        'phrase': lazy_gettext('Never allow duty cycle to go below Min.')},
+    'lower_always_min_pwm': {
+        'title': lazy_gettext('Always Min (Lower)'),
+        'phrase': lazy_gettext('Never allow duty cycle to go below Min.')},
 
     # '': {
     #     'title': lazy_gettext(''),

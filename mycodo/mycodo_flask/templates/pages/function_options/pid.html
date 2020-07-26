@@ -1,3 +1,10 @@
+{% set dict_output_type = ({
+    "on_off": "On/Off",
+    "pwm": "PWM",
+    "volume": "Volume"
+    })
+%}
+
 {%- for each_pid in pid if each_pid.unique_id == order -%}
 
 <div class="container" style="border: 2px solid #ddd; border-radius: 5px;">
@@ -22,7 +29,7 @@
       {{form_mod_pid_base.name(class_='form-control', value=each_pid.name, **{'title': dict_translation['name']['phrase']})}}
     </div>
     <div class="col-5 col-sm-4 col-md-2 col-lg-4">
-      <input class="form-control btn btn-sm" type="button" onclick="setClipboard('{{each_pid.unique_id}}')" title="UUID: {{each_pid.unique_id}}, {{dict_translation['copy_to_clipboard']['phrase']}}" value="PID Controller
+      <input class="form-control btn btn-primary btn-sm" type="button" onclick="setClipboard('{{each_pid.unique_id}}')" title="UUID: {{each_pid.unique_id}}, {{dict_translation['copy_to_clipboard']['phrase']}}" value="PID Controller
       {%- if each_pid.is_activated and not each_pid.is_paused %} [{{_('Active')}}]
       {%- elif each_pid.is_activated and each_pid.is_paused %} [{{_('Paused')}}]
       {%- elif each_pid.is_held %} [{{_('On Hold')}}]
@@ -32,23 +39,23 @@
     </div>
   {%- if each_pid.is_activated %}
     <div class="col-6 col-sm-4 col-md-2 col-lg-2">
-      {{form_mod_pid_base.pid_deactivate(class_='form-control btn btn-sm')}}
+      {{form_mod_pid_base.pid_deactivate(class_='form-control btn btn-primary btn-sm')}}
     </div>
     {%- if each_pid.is_paused or each_pid.is_held %}
     <div class="col-6 col-sm-12 col-md-4 col-lg-2">
-      {{form_mod_pid_base.pid_resume(class_='form-control btn btn-sm')}}
+      {{form_mod_pid_base.pid_resume(class_='form-control btn btn-primary btn-sm')}}
     </div>
     {%- else %}
     <div class="col-6 col-sm-6 col-md-2 col-lg-1">
-      {{form_mod_pid_base.pid_pause(class_='form-control btn btn-sm')}}
+      {{form_mod_pid_base.pid_pause(class_='form-control btn btn-primary btn-sm')}}
     </div>
     <div class="col-6 col-sm-6 col-md-2 col-lg-1">
-      {{form_mod_pid_base.pid_hold(class_='form-control btn btn-sm')}}
+      {{form_mod_pid_base.pid_hold(class_='form-control btn btn-primary btn-sm')}}
     </div>
     {%- endif -%}
   {%- else %}
     <div class="col-6 col-sm-4 col-md-6 col-lg-4">
-      {{form_mod_pid_base.pid_activate(class_='form-control btn btn-sm')}}
+      {{form_mod_pid_base.pid_activate(class_='form-control btn btn-primary btn-sm')}}
     </div>
   {%- endif -%}
   </div>
@@ -57,16 +64,22 @@
 
     <div class="row small-gutters" style="padding: 0.5em;">
       <div class="col-auto small-gutters">
-        {{form_mod_pid_base.pid_mod(class_='form-control btn btn-sm')}}
+        {{form_mod_pid_base.pid_mod(class_='form-control btn btn-primary btn-sm')}}
       </div>
       <div class="col-auto small-gutters">
-        {{form_mod_pid_base.pid_delete(class_='form-control btn btn-sm',**{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
+        {{form_mod_pid_base.pid_delete(class_='form-control btn btn-primary btn-sm',**{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
       </div>
       <div class="col-auto small-gutters">
-        {{form_mod_pid_base.order_up(class_='form-control btn btn-sm')}}
+        {{form_mod_pid_base.order_up(class_='form-control btn btn-primary btn-sm')}}
       </div>
       <div class="col-auto small-gutters">
-        {{form_mod_pid_base.order_down(class_='form-control btn btn-sm')}}
+        {{form_mod_pid_base.order_down(class_='form-control btn btn-primary btn-sm')}}
+      </div>
+    </div>
+
+    <div class="row small-gutters">
+      <div class="col-12" style="padding-top: 0.5em; padding-bottom: 0.5em">
+        After selecting the Raise and/or Lower Outputs, additional options will appear for each Output and will need to be configured. What options appear will be determined by the type of output that's selected. Therefore, review all settings after saving to ensure the PID controller has been fully-configured prior to activating it.
       </div>
     </div>
 
@@ -179,7 +192,7 @@
       <div class="col-auto">
         {{form_mod_pid_base.raise_output_id.label(class_='control-label')}}
         <div>
-          <select class="form-control form-tooltip form-dropdown" id="raise_output_id" name="raise_output_id" title="" data-original-title="{{_('The output that will raise the selected environmental condition (Measure Type)')}}.">
+          <select class="form-control form-tooltip form-dropdown" id="raise_output_id" name="raise_output_id" title="" data-original-title="{{_('The output that will raise the selected environmental condition (Measurement)')}}.">
             <option value="">{{_('Disabled')}}</option>
             {%- for each_output in output -%}
               <option value="{{each_output.unique_id}}"{% if each_pid.raise_output_id == each_output.unique_id %} selected{% endif %}>[{{'%02d' % each_output.id}}] {{each_output.name}}</option>
@@ -189,10 +202,34 @@
       </div>
 
   {% for each_output in output if each_pid.raise_output_id == each_output.unique_id %}
-    {% if each_output.output_type in OUTPUTS_PWM %}
-      {% include 'pages/function_options/pid_options/pwm_raise.html' %}
+
+    {% if 'output_types' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['output_types']|length > 1 %}
+      <div class="col-auto">
+        {{form_mod_pid_base.raise_output_type.label(class_='control-label')}}
+        <div>
+          <select class="form-control form-tooltip form-dropdown" id="raise_output_type" name="raise_output_type" title="" data-original-title="{{_('The output action (on/off, PWM, volume, etc.)')}}.">
+            <option value="">{{_('Select One')}}</option>
+            {%- for each_type in dict_outputs[each_output.output_type]['output_types'] -%}
+              <option value="{{each_type}}"{% if each_pid.raise_output_type == each_type %} selected{% endif %}>{{dict_output_type[each_type]}}</option>
+            {%- endfor -%}
+          </select>
+        </div>
+      </div>
     {% else %}
-      {% include 'pages/function_options/pid_options/output_raise.html' %}
+      <div class="col-auto">
+        {{form_mod_pid_base.raise_output_type.label(class_='control-label')}}
+        <div>
+          <input class="form-control" disabled="" value="{{dict_output_type[dict_outputs[each_output.output_type]['output_types'][0]]}}" type="text">
+        </div>
+      </div>
+    {% endif %}
+
+    {% if each_pid.raise_output_type == 'pwm' %}
+      {% include 'pages/function_options/pid_options/output_pwm_raise.html' %}
+    {% elif each_pid.raise_output_type == 'on_off' %}
+      {% include 'pages/function_options/pid_options/output_on_off_raise.html' %}
+    {% elif each_pid.raise_output_type == 'volume' %}
+      {% include 'pages/function_options/pid_options/output_volume_raise.html' %}
     {% endif %}
   {% endfor %}
 
@@ -202,7 +239,7 @@
       <div class="col-auto">
         {{form_mod_pid_base.lower_output_id.label(class_='control-label')}}
         <div>
-          <select class="form-control form-tooltip form-dropdown" id="lower_output_id" name="lower_output_id" title="" data-original-title="{{_('The output that will lower the selected environmental condition (Measure Type)')}}.">
+          <select class="form-control form-tooltip form-dropdown" id="lower_output_id" name="lower_output_id" title="" data-original-title="{{_('The output that will lower the selected environmental condition (Measurement)')}}.">
             <option value="">{{_('Disabled')}}</option>
             {%- for each_output in output -%}
               <option value="{{each_output.unique_id}}"{% if each_pid.lower_output_id == each_output.unique_id %} selected{% endif %}>[{{'%02d' % each_output.id}}] {{each_output.name}}</option>
@@ -212,10 +249,34 @@
       </div>
 
   {% for each_output in output if each_pid.lower_output_id == each_output.unique_id %}
-    {% if each_output.output_type in OUTPUTS_PWM %}
-      {% include 'pages/function_options/pid_options/pwm_lower.html' %}
+
+    {% if 'output_types' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['output_types']|length > 1 %}
+      <div class="col-auto">
+        {{form_mod_pid_base.lower_output_type.label(class_='control-label')}}
+        <div>
+          <select class="form-control form-tooltip form-dropdown" id="lower_output_type" name="lower_output_type" title="" data-original-title="{{_('The output action (on/off, PWM, volume, etc.)')}}.">
+            <option value="">{{_('Select One')}}</option>
+            {%- for each_type in dict_outputs[each_output.output_type]['output_types'] -%}
+              <option value="{{each_type}}"{% if each_pid.lower_output_type == each_type %} selected{% endif %}>{{dict_output_type[each_type]}}</option>
+            {%- endfor -%}
+          </select>
+        </div>
+      </div>
     {% else %}
-      {% include 'pages/function_options/pid_options/output_lower.html' %}
+      <div class="col-auto">
+        {{form_mod_pid_base.lower_output_type.label(class_='control-label')}}
+        <div>
+          <input class="form-control" disabled="" value="{{dict_output_type[dict_outputs[each_output.output_type]['output_types'][0]]}}" type="text">
+        </div>
+      </div>
+    {% endif %}
+
+    {% if each_pid.lower_output_type == 'pwm' %}
+      {% include 'pages/function_options/pid_options/output_pwm_lower.html' %}
+    {% elif each_pid.lower_output_type == 'on_off' %}
+      {% include 'pages/function_options/pid_options/output_on_off_lower.html' %}
+    {% elif each_pid.lower_output_type == 'volume' %}
+      {% include 'pages/function_options/pid_options/output_volume_lower.html' %}
     {% endif %}
   {% endfor %}
 
@@ -226,7 +287,7 @@
         <div>
           {{form_mod_pid_base.setpoint_tracking_type.label(class_='control-label')}}
         </div>
-        <select class="form-control form-tooltip form-dropdown" id="setpoint_tracking_type_{{each_pid.unique_id}}" name="setpoint_tracking_type" title="" data-original-title="{{dict_translation['start_offset']['phrase']}}">
+        <select class="form-control form-tooltip form-dropdown" id="setpoint_tracking_type_{{each_pid.unique_id}}" name="setpoint_tracking_type" title="" data-original-title="{{dict_translation['setpoint_tracking_type']['phrase']}}">
           <option value="">{{_('Disabled')}}</option>
           <option value="method"{% if each_pid.setpoint_tracking_type == 'method' %} selected{% endif %}>{{_('Method')}}</option>
           <option value="input-math"{% if each_pid.setpoint_tracking_type == 'input-math' %} selected{% endif %}>{{_('Input/Math')}}</option>
@@ -307,7 +368,7 @@
 
     <div class="row align-items-end small-gutters" style="padding-bottom: 0.5em;">
       <div class="col-12">
-        <h5>{{_('Autotune')}} <a href="/help#pid-autotune" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a></h5>
+        <h5>{{_('Autotune')}} <a href="/static/manual/mycodo-manual.html#pid-autotune" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a></h5>
       </div>
       <div class="col-auto">
         {{form_mod_pid_base.pid_autotune_noiseband.label(class_='control-label')}}
@@ -322,7 +383,7 @@
         </div>
       </div>
       <div class="col-auto small-gutters">
-        {{form_mod_pid_base.pid_autotune(class_='form-control btn btn-sm')}}
+        {{form_mod_pid_base.pid_autotune(class_='form-control btn btn-primary btn-sm')}}
       </div>
     </div>
 

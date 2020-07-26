@@ -1,8 +1,9 @@
 # coding=utf-8
+from marshmallow_sqlalchemy import ModelSchema
+
 from mycodo.databases import CRUDMixin
 from mycodo.databases import set_uuid
 from mycodo.mycodo_flask.extensions import db
-from mycodo.mycodo_flask.extensions import ma
 
 
 class Output(CRUDMixin, db.Model):
@@ -12,16 +13,11 @@ class Output(CRUDMixin, db.Model):
     id = db.Column(db.Integer, unique=True, primary_key=True)
     unique_id = db.Column(db.String, nullable=False, unique=True, default=set_uuid)  # ID for influxdb entries
     output_type = db.Column(db.Text, default='wired')  # Options: 'command', 'wired', 'wireless_rpi_rf', 'pwm'
-    output_mode = db.Column(db.Text, default=None)
+    log_level_debug = db.Column(db.Boolean, default=False)
+    output_mode = db.Column(db.Text, default=None)  # TODO: Rename to flow_rate_method
     interface = db.Column(db.Text, default='')
     location = db.Column(db.Text, default='')
-    i2c_bus = db.Column(db.Integer, default=None)
-    baud_rate = db.Column(db.Integer, default=None)
     name = db.Column(db.Text, default='Output')
-    measurement = db.Column(db.Text, default=None)
-    unit = db.Column(db.Text, default=None)
-    conversion_id = db.Column(db.Text, db.ForeignKey('conversion.unique_id'), default='')
-    channel = db.Column(db.Integer, default=None)
     pin = db.Column(db.Integer, default=None)  # Pin connected to the device/output
     on_state = db.Column(db.Boolean, default=True)  # GPIO output to turn output on (True=HIGH, False=LOW)
     amps = db.Column(db.Float, default=0.0)  # The current drawn by the device connected to the output
@@ -31,15 +27,28 @@ class Output(CRUDMixin, db.Model):
     on_duration = db.Column(db.Boolean, default=None)  # Stores if the output is currently on for a duration
     protocol = db.Column(db.Integer, default=None)
     pulse_length = db.Column(db.Integer, default=None)
+    linux_command_user = db.Column(db.Text, default=None)
     on_command = db.Column(db.Text, default=None)
     off_command = db.Column(db.Text, default=None)
     pwm_command = db.Column(db.Text, default=None)
+    force_command = db.Column(db.Boolean, default=False)
     trigger_functions_at_start = db.Column(db.Boolean, default=True)
 
     state_startup = db.Column(db.Text, default=None)
     startup_value = db.Column(db.Float, default=0)
     state_shutdown = db.Column(db.Text, default=None)
     shutdown_value = db.Column(db.Float, default=0)
+
+    # I2C
+    i2c_location = db.Column(db.Text, default=None)  # Address location for I2C communication
+    i2c_bus = db.Column(db.Integer, default='')  # I2C bus the sensor is connected to
+
+    # FTDI
+    ftdi_location = db.Column(db.Text, default=None)  # Device location for FTDI communication
+
+    # Communication (SPI)
+    uart_location = db.Column(db.Text, default=None)  # Device location for UART communication
+    baud_rate = db.Column(db.Integer, default=None)  # Baud rate for UART communication
 
     # PWM
     pwm_hertz = db.Column(db.Integer, default=None)  # PWM Hertz
@@ -49,10 +58,18 @@ class Output(CRUDMixin, db.Model):
     # Atlas EZO-PMP
     flow_rate = db.Column(db.Float, default=None)  # example: ml per minute
 
+    custom_options = db.Column(db.Text, default='')
+
+    # TODO: Remove because no longer used
+    # measurement = db.Column(db.Text, default=None)
+    # unit = db.Column(db.Text, default=None)
+    # channel = db.Column(db.Integer, default=None)
+    # conversion_id = db.Column(db.Text, db.ForeignKey('conversion.unique_id'), default='')
+
     def __repr__(self):
         return "<{cls}(id={s.id})>".format(s=self, cls=self.__class__.__name__)
 
-    def _is_setup(self):
+    def is_setup(self):
         """
         This function checks to see if the GPIO pin is setup and ready to use.  This is for safety
         and to make sure we don't blow anything.
@@ -80,15 +97,7 @@ class Output(CRUDMixin, db.Model):
         except:
             print("RPi.GPIO and Raspberry Pi required for this action")
 
-    def is_on(self):
-        """
-        :return: Whether the output is currently "ON"
-        :rtype: bool
-        """
-        if self.output_type == 'wired' and self._is_setup():
-            return self.on_state == GPIO.input(self.pin)
 
-
-class OutputSchema(ma.ModelSchema):
+class OutputSchema(ModelSchema):
     class Meta:
         model = Output

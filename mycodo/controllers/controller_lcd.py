@@ -94,17 +94,12 @@ class LCDController(AbstractController, threading.Thread):
         self.lcd_out = None
         self.lcd_type = None
         self.lcd_name = None
-        self.lcd_i2c_address = None
-        self.lcd_i2c_bus = None
         self.lcd_period = None
         self.lcd_x_characters = None
         self.lcd_y_lines = None
         self.timer = None
         self.backlight_timer = None
         self.log_level_debug = None
-
-        self.list_pids = None
-        self.list_outputs = None
 
         self.list_inputs = None
         self.dict_units = None
@@ -180,8 +175,6 @@ class LCDController(AbstractController, threading.Thread):
         lcd_dev = db_retrieve_table_daemon(LCD, unique_id=self.unique_id)
         self.lcd_type = lcd_dev.lcd_type
         self.lcd_name = lcd_dev.name
-        self.lcd_i2c_address = int(lcd_dev.location, 16)
-        self.lcd_i2c_bus = lcd_dev.i2c_bus
         self.lcd_period = lcd_dev.period
         self.lcd_x_characters = lcd_dev.x_characters
         self.lcd_y_lines = lcd_dev.y_lines
@@ -190,9 +183,6 @@ class LCDController(AbstractController, threading.Thread):
         self.log_level_debug = lcd_dev.log_level_debug
 
         self.set_log_level_debug(self.log_level_debug)
-
-        self.list_pids = ['setpoint', 'pid_time']
-        self.list_outputs = ['duration_time', 'output_time', 'output_state']
 
         # Add custom measurement and units to list
         self.list_inputs = add_custom_measurements(
@@ -317,6 +307,7 @@ class LCDController(AbstractController, threading.Thread):
     def get_measurement(self, display_id, i):
         try:
             if self.lcd_line[display_id][i]['measure'] == 'TEXT':
+                # Display custom, user-entered text
                 self.lcd_line[display_id][i]['name'] = ''
                 self.lcd_line[display_id][i]['unit'] = ''
                 if len(self.lcd_text[display_id][i]) > self.lcd_x_characters:
@@ -325,11 +316,13 @@ class LCDController(AbstractController, threading.Thread):
                     self.lcd_line[display_id][i]['measure_val'] = self.lcd_text[display_id][i]
                 return True
             elif self.lcd_line[display_id][i]['measure'] == 'BLANK':
+                # Display an empty line
                 self.lcd_line[display_id][i]['name'] = ''
                 self.lcd_line[display_id][i]['unit'] = ''
                 self.lcd_line[display_id][i]['measure_val'] = ''
                 return True
             elif self.lcd_line[display_id][i]['measure'] == 'IP':
+                # Display the device's IP address
                 str_ip_cmd = "ip addr | grep 'state UP' -A2 | tail -n1 | awk '{print $2}' | cut -f1  -d'/'"
                 ip_out, _, _ = cmd_output(str_ip_cmd)
                 self.lcd_line[display_id][i]['name'] = ''
@@ -337,11 +330,14 @@ class LCDController(AbstractController, threading.Thread):
                 self.lcd_line[display_id][i]['measure_val'] = ip_out.rstrip().decode("utf-8")
                 return True
             elif self.lcd_line[display_id][i]['measure'] == 'output_state':
+                # Display the GPIO state
+                # TODO: Currently not a selectable option in the LCD Line dropdown
                 self.lcd_line[display_id][i]['measure_val'] = self.output_state(
                     self.lcd_line[display_id][i]['id'])
                 return True
             else:
                 if self.lcd_line[display_id][i]['measure'] == 'time':
+                    # Display the time of the last measurement
                     last_measurement = read_last_influxdb(
                         self.lcd_line[display_id][i]['id'],
                         '/.*/',

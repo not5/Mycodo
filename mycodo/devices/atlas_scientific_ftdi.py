@@ -1,5 +1,7 @@
 # coding=utf-8
 import logging
+import os
+import sys
 import time
 
 import pylibftdi
@@ -7,17 +9,35 @@ from pylibftdi import Driver
 from pylibftdi.device import Device
 from pylibftdi.driver import FtdiError
 
+sys.path.append(os.path.abspath(os.path.join(os.path.realpath(__file__), '../../..')))
 
-class AtlasScientificFTDI(Device):
+from mycodo.devices.base_atlas import AbstractBaseAtlasScientific
+
+
+class AtlasScientificFTDI(AbstractBaseAtlasScientific, Device):
     """A Class to communicate with Atlas Scientific sensors via FTDI"""
 
     def __init__(self, serial_device):
         Device.__init__(self, mode='t', device_id=serial_device)
+        super(AtlasScientificFTDI, self).__init__(interface='FTDI', name=serial_device.replace("/", "_"))
+
         self.logger = logging.getLogger(
             "{}_{}".format(__name__, serial_device))
 
+        self.send_cmd("C,0")  # turn off continuous mode
         time.sleep(1)
         self.flush()
+
+        (board,
+         revision,
+         firmware_version) = self.get_board_version()
+
+        self.logger.info(
+            "Atlas Scientific Board: {brd}, Rev: {rev}, Firmware: {fw}".format(
+                brd=board,
+                rev=revision,
+                fw=firmware_version))
+
         self.setup = True
 
     def query(self, query_str):
@@ -26,12 +46,12 @@ class AtlasScientificFTDI(Device):
             self.send_cmd(query_str)
             time.sleep(1.3)
             response = self.read_lines()
-            return response
+            return 'success', response
         except Exception as err:
             self.logger.exception(
                 "{cls} raised an exception when taking a reading: "
                 "{err}".format(cls=type(self).__name__, err=err))
-            return None
+            return 'error', err
 
     def read_line(self, size=0):
         """
@@ -60,7 +80,7 @@ class AtlasScientificFTDI(Device):
                 line = self.read_line()
                 if not line:
                     break
-                    self.flush_input()
+                    # self.flush_input()
                 lines.append(line)
             return lines
 
@@ -94,7 +114,7 @@ def get_ftdi_device_list():
 
     for device in Driver().list_devices():
         # list_devices returns bytes rather than strings
-        dev_info = map(lambda x: x.decode('latin1'), device)
+        dev_info = map(lambda x: x, device)
         # device must always be this triple
         vendor, product, serial = dev_info
         dev_list.append(serial)

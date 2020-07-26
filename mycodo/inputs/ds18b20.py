@@ -1,27 +1,9 @@
 # coding=utf-8
-import subprocess
 import time
 
-from flask_babel import lazy_gettext
+import copy
 
 from mycodo.inputs.base_input import AbstractInput
-
-
-def constraints_pass_measure_range(mod_input, value):
-    """
-    Check if the user input is acceptable
-    :param mod_input: SQL object with user-saved Input options
-    :param value: str
-    :return: tuple: (bool, list of strings)
-    """
-    errors = []
-    all_passed = True
-    # Ensure valid range is selected
-    if value not in ['w1thermsensor', 'ow_shell']:
-        all_passed = False
-        errors.append("Invalid range")
-    return all_passed, errors, mod_input
-
 
 # Measurements
 measurements_dict = {
@@ -36,22 +18,31 @@ INPUT_INFORMATION = {
     'input_name_unique': 'DS18B20',
     'input_manufacturer': 'MAXIM',
     'input_name': 'DS18B20',
+    'input_library': 'w1thermsensor',
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.maximintegrated.com/en/products/sensors/DS18B20.html',
+    'url_datasheet': 'https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf',
+    'url_product_purchase': [
+        'https://www.adafruit.com/product/374',
+        'https://www.adafruit.com/product/381',
+        'https://www.sparkfun.com/products/245'
+    ],
+    'url_additional': 'https://github.com/cpetrich/counterfeit_DS18B20',
+
+    'message': 'Warning: Counterfeit DS18B20 sensors are common and can cause a host of issues. Review the Additional '
+               'URL for more information about how to determine if your sensor is authentic.',
 
     'options_enabled': [
         'location',
-        'custom_options',
         'resolution',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
     'dependencies_module': [
         ('pip-pypi', 'w1thermsensor', 'w1thermsensor'),
-        ('apt', 'ow-shell', 'ow-shell')
     ],
 
     'interfaces': ['1WIRE'],
@@ -61,22 +52,6 @@ INPUT_INFORMATION = {
         (10, '10-bit, 0.25 °C, 187.5 ms'),
         (11, '11-bit, 0.125 °C, 375 ms'),
         (12, '12-bit, 0.0625 °C, 750 ms')
-    ],
-
-    'custom_options': [
-        {
-            'id': 'library',
-            'type': 'select',
-            'default_value': 'w1thermsensor',
-            'options_select': [
-                ('w1thermsensor', 'w1thermsensor'),
-                ('ow_shell', 'ow-shell')
-            ],
-            'required': True,
-            'constraints_pass': constraints_pass_measure_range,
-            'name': lazy_gettext('Library'),
-            'phrase': lazy_gettext('Select the library used to communicate')
-        }
     ]
 }
 
@@ -87,79 +62,50 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        # Initialize custom options
-        self.library = None
-        # Set custom options
-        self.setup_custom_options(
-            INPUT_INFORMATION['custom_options'], input_dev)
+        self.sensor = None
 
         if not testing:
-            from w1thermsensor import W1ThermSensor
+            self.initialize_input()
 
-            self.interface = input_dev.interface
-            self.location = input_dev.location
-            self.resolution = input_dev.resolution
+    def initialize_input(self):
+        from w1thermsensor import W1ThermSensor
 
-            if self.library == 'w1thermsensor':
-                self.sensor = W1ThermSensor(
-                    W1ThermSensor.THERM_SENSOR_DS18B20,
-                    self.location)
-                if self.resolution:
-                    self.sensor.set_precision(self.resolution)
-            elif self.library == 'ow_shell':
-                pass
+        try:
+            self.sensor = W1ThermSensor(
+                W1ThermSensor.THERM_SENSOR_DS18B20, self.input_dev.location)
+            if self.input_dev.resolution:
+                self.sensor.set_resolution(self.input_dev.resolution)
+        except:
+            self.logger.exception("Input initialization")
 
     def get_measurement(self):
         """ Gets the DS18B20's temperature in Celsius """
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         temperature = None
         n = 2
         for i in range(n):
             try:
-                if self.library == 'w1thermsensor':
-                    temperature = self.sensor.get_temperature()
-                elif self.library == 'ow_shell':
-                    str_temperature = 'temperature'
-                    if self.resolution == 9:
-                        str_temperature = 'temperature9'
-                    if self.resolution == 10:
-                        str_temperature = 'temperature10'
-                    if self.resolution == 11:
-                        str_temperature = 'temperature11'
-                    if self.resolution == 12:
-                        str_temperature = 'temperature12'
-                    try:
-                        command = 'owread /{id}/{temp}; echo'.format(
-                            id=self.location,
-                            temp=str_temperature)
-                        owread = subprocess.Popen(
-                            command, stdout=subprocess.PIPE, shell=True)
-                        (owread_output, _) = owread.communicate()
-                        owread.wait()
-                        if owread_output:
-                            temperature = float(owread_output.decode("latin1"))
-                    except Exception:
-                        self.logger.exception(1)
-                break
+                temperature = self.sensor.get_temperature()
             except Exception as e:
                 if i == n:
                     self.logger.exception(
-                        "{cls} raised an exception when taking a reading: "
-                        "{err}".format(cls=type(self).__name__, err=e))
+                        "{cls} raised an exception when taking a reading: {err}".format(cls=type(self).__name__, err=e))
+                    return None
                 time.sleep(1)
 
         if temperature == 85:
-            self.logger.error(
-                "Measurement returned 85 C, "
-                "indicating an issue communicating with the sensor.")
+            self.logger.error("Measurement returned 85 C, indicating an issue communicating with the sensor.")
             return None
         elif temperature is not None and not -55 < temperature < 125:
             self.logger.error(
-                "Measurement outside the expected range of -55 C to 125 C: "
-                "{temp} C".format(temp=temperature))
+                "Measurement outside the expected range of -55 C to 125 C: {temp} C".format(temp=temperature))
             return None
-
-        self.value_set(0, temperature)
+        elif temperature is not None:
+            self.value_set(0, temperature)
 
         return self.return_dict

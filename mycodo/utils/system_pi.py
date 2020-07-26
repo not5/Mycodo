@@ -1,7 +1,10 @@
 # coding=utf-8
+import base64
+import copy
 import datetime
 import grp
 import logging
+import os
 import pwd
 import signal
 import socket
@@ -10,9 +13,6 @@ import time
 import traceback
 from collections import OrderedDict
 from threading import Timer
-
-import base64
-import os
 
 from mycodo.config import INSTALL_DIRECTORY
 from mycodo.config_devices_units import MEASUREMENTS
@@ -27,7 +27,7 @@ if logging.getLevelName(logging.getLogger().getEffectiveLevel()) == 'INFO':
     logger.setLevel(logging.INFO)
 
 
-def parse_custom_option_values(controllers):
+def parse_custom_option_values(controllers, dict_controller=None):
     # Check if controllers is iterable or a single controller
     try:
         _ = iter(controllers)
@@ -48,11 +48,31 @@ def parse_custom_option_values(controllers):
                     value = each_option.split(',')[1]
                 custom_options_values[each_controller.unique_id][option] = value
 
+        if dict_controller:
+            # Set default values if option not saved in database entry
+            if each_controller.__tablename__ in ['custom_controller', 'input']:
+                dev_name = each_controller.device
+            elif each_controller.__tablename__ == 'output':
+                dev_name = each_controller.output_type
+            else:
+                logger.error("Table name not recognized: {}".format(each_controller.__tablename__))
+                continue
+
+            if 'custom_options' in dict_controller[dev_name]:
+                dict_custom_options = dict_controller[dev_name]['custom_options']
+            else:
+                dict_custom_options = {}
+            for each_option in dict_custom_options:
+                if ('id' in each_option and
+                        'default_value' in each_option and
+                        each_option['id'] not in custom_options_values[each_controller.unique_id]):
+                    custom_options_values[each_controller.unique_id][each_option['id']] = each_option['default_value']
+
     return custom_options_values
 
 
 def add_custom_units(units):
-    return_units = UNITS.copy()
+    return_units = copy.deepcopy(UNITS)
 
     for each_unit in units:
         return_units.update(
@@ -227,11 +247,20 @@ def cmd_output(command, stdout_pipe=True, timeout=360, user='pi', cwd='/home/pi'
     cmd_success = True
 
     def report_ids(msg):
-        logger.debug('uid, gid = {}, {}; {}'.format(os.getuid(), os.getgid(), msg))
+        logger.debug('{msg}: uid={uid}, gid={gid}, groups={grp}'.format(
+            msg=msg, uid=os.getuid(), gid=os.getgid(), grp=os.getgroups()))
 
-    def demote(user_uid, user_gid):
+    def getgroups(user):
+        gids = [g.gr_gid for g in grp.getgrall() if user in g.gr_mem]
+        gid = pwd.getpwnam(user).pw_gid
+        if grp.getgrgid(gid).gr_gid not in gids:
+            gids.append(int(grp.getgrgid(gid).gr_gid))
+        return gids
+
+    def demote(user_uid, user_gid, user_groups):
         def result():
             report_ids('starting demotion')
+            os.setgroups(user_groups)
             os.setgid(user_gid)
             os.setuid(user_uid)
             report_ids('finished demotion')
@@ -242,6 +271,7 @@ def cmd_output(command, stdout_pipe=True, timeout=360, user='pi', cwd='/home/pi'
     user_home_dir = pw_record.pw_dir
     user_uid = pw_record.pw_uid
     user_gid = pw_record.pw_gid
+    user_groups = getgroups(user)
     env = os.environ.copy()
     env['HOME'] = user_home_dir
     env['LOGNAME'] = user_name
@@ -252,13 +282,13 @@ def cmd_output(command, stdout_pipe=True, timeout=360, user='pi', cwd='/home/pi'
         cmd = subprocess.Popen(command,
                                stdout=subprocess.PIPE,
                                shell=True,
-                               preexec_fn=demote(user_uid, user_gid),
+                               preexec_fn=demote(user_uid, user_gid, user_groups),
                                cwd=cwd,
                                env=env)
     else:
         cmd = subprocess.Popen(command,
                                shell=True,
-                               preexec_fn=demote(user_uid, user_gid),
+                               preexec_fn=demote(user_uid, user_gid, user_groups),
                                cwd=cwd,
                                env=env)
 

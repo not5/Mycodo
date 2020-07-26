@@ -17,6 +17,7 @@ from wtforms import validators
 from wtforms import widgets
 from wtforms.fields.html5 import EmailField
 from wtforms.validators import DataRequired
+from wtforms.validators import Optional
 from wtforms.widgets.html5 import NumberInput
 
 from mycodo.config_translations import TRANSLATIONS
@@ -34,13 +35,11 @@ class SettingsEmail(FlaskForm):
     )
     smtp_port = IntegerField(
         lazy_gettext('SMTP Port'),
-        render_kw={"placeholder": lazy_gettext('SMTP Port')},
-        validators=[validators.NumberRange(
-            min=1,
-            max=65535,
-            message=lazy_gettext('Port should be between 1 and 65535')
-        )],
-        widget=NumberInput()
+        validators=[Optional()]
+    )
+    smtp_protocol = StringField(
+        lazy_gettext('SMTP Protocol'),
+        validators=[DataRequired()]
     )
     smtp_ssl = BooleanField('Enable SSL')
     smtp_user = StringField(
@@ -158,17 +157,35 @@ class InputDel(FlaskForm):
 
 
 #
+# Settings (Output)
+#
+
+class Output(FlaskForm):
+    import_output_file = FileField(lazy_gettext('Upload'))
+    import_output_upload = SubmitField(lazy_gettext('Import Output Module'))
+
+
+class OutputDel(FlaskForm):
+    output_id = StringField(widget=widgets.HiddenInput())
+    delete_output = SubmitField(TRANSLATIONS['delete']['title'])
+
+
+#
 # Settings (Measurement)
 #
 
 class MeasurementAdd(FlaskForm):
-    name = StringField(lazy_gettext('Measurement Name'))
+    id = StringField(
+        lazy_gettext('Measurement ID'), validators=[DataRequired()])
+    name = StringField(
+        lazy_gettext('Measurement Name'), validators=[DataRequired()])
     units = SelectMultipleField(lazy_gettext('Measurement Units'))
     add_measurement = SubmitField(lazy_gettext('Add Measurement'))
 
 
 class MeasurementMod(FlaskForm):
     measurement_id = StringField('Measurement ID', widget=widgets.HiddenInput())
+    id = StringField(lazy_gettext('Measurement ID'))
     name = StringField(lazy_gettext('Measurement Name'))
     units = SelectMultipleField(lazy_gettext('Measurement Units'))
     save_measurement = SubmitField(TRANSLATIONS['save']['title'])
@@ -176,6 +193,7 @@ class MeasurementMod(FlaskForm):
 
 
 class UnitAdd(FlaskForm):
+    id = StringField(lazy_gettext('Unit ID'), validators=[DataRequired()])
     name = StringField(
         lazy_gettext('Unit Name'), validators=[DataRequired()])
     unit = StringField(
@@ -185,6 +203,7 @@ class UnitAdd(FlaskForm):
 
 class UnitMod(FlaskForm):
     unit_id = StringField('Unit ID', widget=widgets.HiddenInput())
+    id = StringField(lazy_gettext('Unit ID'))
     name = StringField(lazy_gettext('Unit Name'))
     unit = StringField(lazy_gettext('Unit Abbreviation'))
     save_unit = SubmitField(TRANSLATIONS['save']['title'])
@@ -224,6 +243,7 @@ class UserRoles(FlaskForm):
     edit_users = BooleanField(lazy_gettext('Edit Users'))
     edit_controllers = BooleanField(lazy_gettext('Edit Controllers'))
     edit_settings = BooleanField(lazy_gettext('Edit Settings'))
+    reset_password = BooleanField(lazy_gettext('Reset Password'))
     role_id = StringField('Role ID', widget=widgets.HiddenInput())
     add_role = SubmitField(lazy_gettext('Add Role'))
     save_role = SubmitField(TRANSLATIONS['save']['title'])
@@ -345,7 +365,7 @@ class SettingsPi(FlaskForm):
 #
 
 class SettingsDiagnostic(FlaskForm):
-    delete_dashboard_elements = SubmitField(lazy_gettext('Delete All Dashboard Elements'))
+    delete_dashboard_elements = SubmitField(lazy_gettext('Delete All Dashboards'))
     delete_inputs = SubmitField(lazy_gettext('Delete All Inputs'))
     delete_maths = SubmitField(lazy_gettext('Delete All Maths'))
     delete_notes_tags = SubmitField(lazy_gettext('Delete All Notes and Note Tags'))

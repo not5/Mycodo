@@ -14,6 +14,7 @@ from mycodo.config_translations import TRANSLATIONS
 from mycodo.databases.models import Actions
 from mycodo.databases.models import Camera
 from mycodo.databases.models import Conditional
+from mycodo.databases.models import ConditionalConditions
 from mycodo.databases.models import CustomController
 from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import DisplayOrder
@@ -27,7 +28,7 @@ from mycodo.mycodo_flask.utils.utils_general import delete_entry_with_id
 from mycodo.mycodo_flask.utils.utils_general import flash_success_errors
 from mycodo.mycodo_flask.utils.utils_general import reorder
 from mycodo.mycodo_flask.utils.utils_general import return_dependencies
-from mycodo.mycodo_flask.utils.utils_misc import save_conditional_code
+from mycodo.utils.conditional import save_conditional_code
 from mycodo.utils.controllers import parse_controller_information
 from mycodo.utils.system_pi import csv_to_list_of_str
 from mycodo.utils.system_pi import list_to_csv
@@ -96,6 +97,8 @@ if measurement is not None:  # If a measurement exists
                     error,
                     new_func.conditional_statement,
                     new_func.unique_id,
+                    ConditionalConditions.query.all(),
+                    Actions.query.all(),
                     test=False)
 
         elif function_name.startswith('pid_'):
@@ -193,6 +196,7 @@ def function_mod(form):
             Function.unique_id == form.function_id.data).first()
 
         func_mod.name = form.name.data
+        func_mod.log_level_debug = form.log_level_debug.data
 
         if not error:
             db.session.commit()
@@ -325,18 +329,20 @@ def action_mod(form):
             mod_action.do_action_string = form.do_action_string.data
             mod_action.do_output_duration = form.do_output_duration.data
 
-        elif mod_action.action_type in ['activate_controller',
-                                        'deactivate_controller']:
+        elif mod_action.action_type == 'output_volume':
             mod_action.do_unique_id = form.do_unique_id.data
+            mod_action.do_output_amount = form.do_output_amount.data
 
-        elif mod_action.action_type in ['activate_pid',
+        elif mod_action.action_type in ['activate_controller',
+                                        'deactivate_controller',
+                                        'activate_pid',
                                         'deactivate_pid',
                                         'resume_pid',
-                                        'pause_pid']:
-            mod_action.do_unique_id = form.do_unique_id.data
-
-        elif mod_action.action_type in ['activate_timer',
-                                        'deactivate_timer']:
+                                        'pause_pid'
+                                        'activate_timer',
+                                        'deactivate_timer',
+                                        'clear_total_volume',
+                                        'input_force_measurements']:
             mod_action.do_unique_id = form.do_unique_id.data
 
         elif mod_action.action_type in ['setpoint_pid',
@@ -382,6 +388,10 @@ def action_mod(form):
         elif mod_action.action_type in ['command',
                                         'create_note']:
             mod_action.do_action_string = form.do_action_string.data
+
+        elif mod_action.action_type in ['system_restart',
+                                        'system_shutdown']:
+            pass  # No options
 
         if not error:
             db.session.commit()
@@ -461,11 +471,19 @@ def action_execute_all(form):
 
     try:
         if not error:
+            if hasattr(form, 'log_level_debug') and form.log_level_debug.data:
+                debug = True
+            else:
+                debug = False
             control = DaemonControl()
             trigger_all_actions = threading.Thread(
                 target=control.trigger_all_actions,
                 args=(form.function_id.data,),
-                kwargs={'message': "Triggering all actions of function {}".format(form.function_id.data)})
+                kwargs={
+                    'message': "Triggering all actions of function {}".format(form.function_id.data),
+                    'debug': debug
+                }
+            )
             trigger_all_actions.start()
     except Exception as except_msg:
         error.append(except_msg)
@@ -508,6 +526,11 @@ def check_form_actions(form, error):
             error.append("Output must be set")
         if form.do_output_pwm.data < 0 or form.do_output_pwm.data > 100 or form.do_output_pwm.data == '':
             error.append("Duty Cycle must be set (0 <= duty cycle <= 100)")
+    elif action.action_type == 'output_volume':
+        if not form.do_unique_id.data or form.do_unique_id.data == '':
+            error.append("Output must be set")
+        if not form.do_output_amount.data:
+            error.append("Volume must be set")
     elif action.action_type in ['activate_pid',
                                 'deactivate_pid',
                                 'resume_pid',

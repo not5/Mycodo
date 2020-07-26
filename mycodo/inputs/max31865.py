@@ -20,9 +20,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
-
 import math
 import time
+
+import copy
 
 from mycodo.inputs.base_input import AbstractInput
 
@@ -41,8 +42,12 @@ INPUT_INFORMATION = {
     'input_name_unique': 'MAX31865',
     'input_manufacturer': 'MAXIM',
     'input_name': 'MAX31865',
+    'input_library': 'RPi.GPIO',
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.maximintegrated.com/en/products/interface/sensor-interface/MAX31865.html',
+    'url_datasheet': 'https://datasheets.maximintegrated.com/en/ds/MAX31865.pdf',
+    'url_product_purchase': 'https://www.adafruit.com/product/3328',
 
     'options_enabled': [
         'thermocouple_type',
@@ -52,8 +57,7 @@ INPUT_INFORMATION = {
         'pin_clock',
         'ref_ohm',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -75,34 +79,37 @@ INPUT_INFORMATION = {
 
 
 class InputModule(AbstractInput):
-    """
-    A sensor support class that measures the MAX31865's temperature
-
-    """
-
+    """ A sensor support class that measures the MAX31865's temperature """
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.sensor = None
+        self.thermocouple_type = None
+        self.ref_ohm = None
+
         if not testing:
-            self.pin_clock = input_dev.pin_clock
-            self.pin_cs = input_dev.pin_cs
-            self.pin_miso = input_dev.pin_miso
-            self.pin_mosi = input_dev.pin_mosi
-            self.thermocouple_type = input_dev.thermocouple_type
-            self.ref_ohm = input_dev.ref_ohm
-            self.sensor = max31865_sen(
-                self.logger,
-                self.pin_cs,
-                self.pin_miso,
-                self.pin_mosi,
-                self.pin_clock)
+            self.initialize_input()
+
+    def initialize_input(self):
+        self.thermocouple_type = self.input_dev.thermocouple_type
+        self.ref_ohm = self.input_dev.ref_ohm
+
+        self.sensor = max31865_sen(
+            self.logger,
+            self.input_dev.pin_cs,
+            self.input_dev.pin_miso,
+            self.input_dev.pin_mosi,
+            self.input_dev.pin_clock)
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
 
-        self.value_set(0, self.sensor.readTemp(
-            self.thermocouple_type, self.ref_ohm))
+        self.return_dict = copy.deepcopy(measurements_dict)
+
+        self.value_set(0, self.sensor.readTemp(self.thermocouple_type, self.ref_ohm))
 
         return self.return_dict
 

@@ -1,4 +1,5 @@
 # coding=utf-8
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -30,17 +31,18 @@ def constraints_pass_measure_range(mod_input, value):
     errors = []
     all_passed = True
     # Ensure valid range is selected
-    if value not in ['1000', '2000', '3000', '5000']:
+    range_pass = ['1000', '2000', '3000', '5000']
+    if value not in range_pass:
         all_passed = False
-        errors.append("Invalid rage")
+        errors.append("Invalid range. Need one of {}".format(range_pass))
     return all_passed, errors, mod_input
 
 
 # Measurements
 measurements_dict = {
     0: {
-        'measurement': 'temperature',
-        'unit': 'C'
+        'measurement': 'temperature',  # Note: This is the "Measurement ID" on the measurements configuration page
+        'unit': 'C'  # Note: This is the "Unit ID" on the measurements configuration page
     }
 }
 
@@ -62,14 +64,18 @@ INPUT_INFORMATION = {
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
 
+    # Links to documentation. Can be a URL string or a list of URL strings
+    'url_manufacturer': 'https://www.st.com/en/imaging-and-photonics-solutions/vl53l0x.html',
+    'url_datasheet': 'https://www.st.com/resource/en/datasheet/vl53l0x.pdf',
+    'url_product_purchase': [
+        'https://www.adafruit.com/product/3317',
+        'https://www.pololu.com/product/2490'
+    ],
+
     # For use with Inputs that store multiple measurements.
     # Set True if all measurements should be stored in the database with the same timestamp.
     # Set False to use the timestamp generated when self.value_set() is used to save measurement.
     'measurements_use_same_timestamp': True,
-
-    # Add a message that the user can see when they view the options of the Input.
-    # This will be displayed at the top of the options when the user expands the input with the "+" icon.
-    'message': "Note: Don't forget to do x and y before activating this Input",
 
     # Web User Interface display options
     # Options that are enabled will be editable from the input options page.
@@ -80,17 +86,18 @@ INPUT_INFORMATION = {
         'i2c_location',
         'ftdi_location',
         'uart_location',
-        'custom_options',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
-
 
     #
     # Non-required options
     #
+
+    # Add a message that the user can see when they view the options of the Input.
+    # This will be displayed at the top of the options when the user expands the input with the "+" icon.
+    'message': "Don't forget to do x and y before activating this Input",
 
     # Python module dependencies
     # This must be a module that is able to be installed with pip or apt (pypi, git, and apt examples below)
@@ -193,11 +200,8 @@ INPUT_INFORMATION = {
         ('5.0', '5.0V')
     ],
 
-    # Custom options
-    # Values are stored as text, therefore if you require a float or integer,
-    # cast it as such in the "Load custom options" section in __init__
-    # Example: self.another_option = int(value)
-    # Make sure your string represents the type you're attempting to cast
+    # Custom options that can be set by the user in the web interface.
+    'custom_options_message': 'This is a message displayed for custom options.',
     'custom_options': [
         {
             'id': 'fan_modulate',
@@ -214,6 +218,11 @@ INPUT_INFORMATION = {
             'name': lazy_gettext('Fan On Duration'),
             'phrase': lazy_gettext('How long to turn the fan on (seconds) before acquiring measurements')
         },
+        {'type': 'new_line'},  # This starts a new line for the next options
+        {
+            'type': 'message',
+            'default_value': 'Another message between options',  # This message will be displayed after the new line
+        },
         {
             'id': 'measure_range',
             'type': 'select',
@@ -228,7 +237,39 @@ INPUT_INFORMATION = {
             'name': lazy_gettext('Measurement Range'),
             'phrase': lazy_gettext('Set the measuring range of the sensor')
         }
+    ],
 
+    # Custom actions are buttons and input fields that appear on the web UI for users to
+    # execute functions within the Input class, such as to perform calibration. See the
+    # button_one() and button_two() functions at the end of the class.
+    'custom_actions_message': 'This is a message displayed for custom actions.',
+    'custom_actions': [
+        {
+            'id': 'button_one_value',
+            'type': 'integer',
+            'default_value': 650,
+            'name': lazy_gettext('Button One Value'),
+            'phrase': 'Value for button one.'
+        },
+        {
+            'id': 'button_one',
+            'type': 'button',
+            'name': lazy_gettext('Button One'),
+            'phrase': "This is button one"
+        },
+        {
+            'id': 'button_two_value',
+            'type': 'integer',
+            'default_value': 1500,
+            'name': lazy_gettext('Button Two Value'),
+            'phrase': 'Value for button two.'
+        },
+        {
+            'id': 'button_two',
+            'type': 'button',
+            'name': lazy_gettext('Button Two'),
+            'phrase': "This is button two"
+        }
     ]
 }
 
@@ -238,6 +279,16 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
+
+        #
+        # Initialize variables (set to None)
+        #
+
+        self.random = None
+        self.interface = None
+        self.resolution = None
+        self.i2c_address = None
+        self.i2c_bus = None
 
         #
         # Set variables to custom options
@@ -252,37 +303,38 @@ class InputModule(AbstractInput):
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
-        if not testing:
-            self.interface = input_dev.interface
+    def initialize_input(self):
+        self.interface = self.input_dev.interface
 
-            #
-            # Begin dependent modules loading
-            #
+        #
+        # Begin dependent modules loading
+        #
 
-            import random
-            self.random = random
+        import random
+        self.random = random
 
-            #
-            # Load optional settings
-            #
+        #
+        # Load optional settings
+        #
 
-            self.resolution = input_dev.resolution
+        self.resolution = self.input_dev.resolution
 
-            #
-            # Initialize the sensor class
-            #
+        #
+        # Initialize the sensor class
+        #
 
-            if self.interface == 'I2C':
-                self.i2c_address = int(str(input_dev.i2c_location), 16)
-                self.i2c_bus = input_dev.i2c_bus
-                # self.sensor = dependent_module.MY_SENSOR_CLASS(
-                #     i2c_address=self.i2c_address,
-                #     i2c_bus=self.i2c_bus,
-                #     resolution=self.resolution)
+        if self.interface == 'I2C':
+            self.i2c_address = int(str(self.input_dev.i2c_location), 16)
+            self.i2c_bus = self.input_dev.i2c_bus
+            # Intitialize this particular interface for the Input
+            # self.sensor = dependent_module.MY_SENSOR_CLASS(
+            #     i2c_address=self.i2c_address,
+            #     i2c_bus=self.i2c_bus,
+            #     resolution=self.resolution)
 
-            elif self.interface == 'UART':
-                # No UART driver available for this input
-                pass
+        elif self.interface == 'UART':
+            # No UART driver available for this input
+            pass
 
     def get_measurement(self):
         """ Gets the temperature and humidity """
@@ -290,7 +342,7 @@ class InputModule(AbstractInput):
         # Copy measurements dictionary
         #
 
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         #
         # Begin sensor measurement code
@@ -302,7 +354,21 @@ class InputModule(AbstractInput):
         # End sensor measurement code
         #
 
-        self.logger.info("This INFO message will always be displayed.")
-        self.logger.debug("This DEBUG message will only be displayed if the Debug option is enabled.")
+        self.logger.info(
+            "This INFO message will always be displayed. "
+            "self.fan_modulate: {}, "
+            "self.fan_seconds: {}, "
+            "self.measure_range: {}.".format(
+                self.fan_modulate, self.fan_seconds, self.measure_range))
+
+        self.logger.debug(
+            "This DEBUG message will only be displayed if the "
+            "Debug option is enabled.")
 
         return self.return_dict
+
+    def button_one(self, args_dict):
+        self.logger.error("Button One Pressed!: {}".format(int(args_dict['button_one_value'])))
+
+    def button_two(self, args_dict):
+        self.logger.error("Button Two Pressed!: {}".format(int(args_dict['button_two_value'])))

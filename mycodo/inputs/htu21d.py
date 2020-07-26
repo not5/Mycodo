@@ -19,8 +19,9 @@
 # AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-
 import time
+
+import copy
 
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
@@ -49,17 +50,20 @@ measurements_dict = {
 # Input information
 INPUT_INFORMATION = {
     'input_name_unique': 'HTU21D',
-    'input_manufacturer': 'Measurement Specialties',
+    'input_manufacturer': 'TE Connectivity',
     'input_name': 'HTU21D',
+    'input_library': 'pigpio',
     'measurements_name': 'Humidity/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.te.com/usa-en/product-CAT-HSC0004.html',
+    'url_datasheet': 'https://www.te.com/commerce/DocumentDelivery/DDEController?Action=showdoc&DocId=Data+Sheet%7FHPC199_6%7FA6%7Fpdf%7FEnglish%7FENG_DS_HPC199_6_A6.pdf%7FCAT-HSC0004',
+    'url_product_purchase': 'https://www.adafruit.com/product/1899',
 
     'options_enabled': [
         'i2c_location',
         'measurements_select',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -83,21 +87,26 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            import pigpio
+        self.pi = None
+        self.i2c_bus = None
+        self.i2c_address = 0x40  # HTU21D-F Address
 
-            self.i2c_bus = input_dev.i2c_bus
-            self.i2c_address = 0x40  # HTU21D-F Address
-            self.pi = pigpio.pi()
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        import pigpio
+
+        self.i2c_bus = self.input_dev.i2c_bus
+        self.pi = pigpio.pi()
 
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        self.return_dict = measurements_dict.copy()
+        if not self.pi.connected:
+            self.logger.error("Could not connect to pigpiod. Ensure it is running and try again.")
+            return None
 
-        if not self.pi.connected:  # Check if pigpiod is running
-            self.logger.error("Could not connect to pigpiod."
-                              "Ensure it is running and try again.")
-            return None, None, None
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         self.htu_reset()
         # wtreg = 0xE6
@@ -134,17 +143,11 @@ class InputModule(AbstractInput):
         if self.is_enabled(1):
             self.value_set(1, humidity)
 
-        if (self.is_enabled(2) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(2, calculate_dewpoint(
-                self.value_get(0), self.value_get(1)))
+        if (self.is_enabled(2) and self.is_enabled(0) and self.is_enabled(1)):
+            self.value_set(2, calculate_dewpoint(self.value_get(0), self.value_get(1)))
 
-        if (self.is_enabled(3) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(3, calculate_vapor_pressure_deficit(
-                self.value_get(0), self.value_get(1)))
+        if (self.is_enabled(3) and self.is_enabled(0) and self.is_enabled(1)):
+            self.value_set(3, calculate_vapor_pressure_deficit(self.value_get(0), self.value_get(1)))
 
         return self.return_dict
 

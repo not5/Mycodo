@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import datetime
 import logging
-import time
-
 import os
+import time
 
 from mycodo.config import PATH_CAMERAS
 from mycodo.databases.models import Camera
@@ -75,10 +74,14 @@ def camera_record(record_type, unique_id, duration_sec=None, tmp_filename=None):
     path_file = os.path.join(save_path, filename)
 
     # Turn on output, if configured
+    output_already_on = False
     if settings.output_id:
         daemon_control = DaemonControl()
-        daemon_control.output_on(
-            settings.output_id)
+        if daemon_control.output_state(settings.output_id) == "on":
+            output_already_on = True
+        else:
+            daemon_control.output_on(
+                settings.output_id)
 
     # Pause while the output remains on for the specified duration.
     # Used for instance to allow fluorescent lights to fully turn on before
@@ -225,6 +228,112 @@ def camera_record(record_type, unique_id, duration_sec=None, tmp_filename=None):
                     "{err}".format(err=e))
         else:
             return
+
+    elif settings.library == 'http_address':
+        import cv2
+        import imutils
+        from urllib.error import HTTPError
+        from urllib.parse import urlparse
+        from urllib.request import urlretrieve
+
+        if record_type in ['photo', 'timelapse']:
+            # Images can be of different extensions
+            # Find extension, convert to jpg
+            a = urlparse(settings.url_still)
+            # print(a.path)  # Output: /kyle/09-09-201315-47-571378756077.jpg
+            filename = os.path.basename(a.path)  # Output: 09-09-201315-47-571378756077.jpg
+            path_tmp = "/tmp/{}".format(filename)
+
+            try:
+                urlretrieve(settings.url_still, path_tmp)
+            except HTTPError as err:
+                logger.error(err)
+            except Exception as err:
+                logger.exception(err)
+
+            try:
+                img_orig = cv2.imread(path_tmp)
+
+                if img_orig is not None and img_orig.shape is not None:
+                    if any((settings.hflip, settings.vflip, settings.rotation)):
+                        if settings.hflip and settings.vflip:
+                            img_edited = cv2.flip(img_orig, -1)
+                        elif settings.hflip:
+                            img_edited = cv2.flip(img_orig, 1)
+                        elif settings.vflip:
+                            img_edited = cv2.flip(img_orig, 0)
+
+                        if settings.rotation:
+                            img_edited = imutils.rotate_bound(img_orig, settings.rotation)
+
+                        cv2.imwrite(path_file, img_edited)
+                    else:
+                        cv2.imwrite(path_file, img_orig)
+                else:
+                    os.rename(path_tmp, path_file)
+            except Exception as err:
+                logger.error("Could not convert, rotate, or invert image: {}".format(err))
+                try:
+                    os.rename(path_tmp, path_file)
+                except FileNotFoundError:
+                    logger.error("Camera image not found")
+
+        elif record_type == 'video':
+            pass  # No video (yet)
+
+    elif settings.library == 'http_address_requests':
+        import cv2
+        import imutils
+        import requests
+
+        if record_type in ['photo', 'timelapse']:
+            path_tmp = "/tmp/tmpimg.jpg"
+            try:
+                os.remove(path_tmp)
+            except FileNotFoundError:
+                pass
+
+            try:
+                r = requests.get(settings.url_still)
+                if r.status_code == 200:
+                    open(path_tmp, 'wb').write(r.content)
+                else:
+                    logger.error("Could not download image. Status code: {}".format(r.status_code))
+            except requests.HTTPError as err:
+                logger.error("HTTPError: {}".format(err))
+            except Exception as err:
+                logger.exception(err)
+
+            try:
+                img_orig = cv2.imread(path_tmp)
+
+                if img_orig is not None and img_orig.shape is not None:
+                    if any((settings.hflip, settings.vflip, settings.rotation)):
+                        if settings.hflip and settings.vflip:
+                            img_edited = cv2.flip(img_orig, -1)
+                        elif settings.hflip:
+                            img_edited = cv2.flip(img_orig, 1)
+                        elif settings.vflip:
+                            img_edited = cv2.flip(img_orig, 0)
+
+                        if settings.rotation:
+                            img_edited = imutils.rotate_bound(img_orig, settings.rotation)
+
+                        cv2.imwrite(path_file, img_edited)
+                    else:
+                        cv2.imwrite(path_file, img_orig)
+                else:
+                    os.rename(path_tmp, path_file)
+            except Exception as err:
+                logger.error("Could not convert, rotate, or invert image: {}".format(err))
+                try:
+                    os.rename(path_tmp, path_file)
+                except FileNotFoundError:
+                    logger.error("Camera image not found")
+
+        elif record_type == 'video':
+            pass  # No video (yet)
+
     try:
         set_user_grp(path_file, 'mycodo', 'mycodo')
     except Exception as e:
@@ -234,7 +343,8 @@ def camera_record(record_type, unique_id, duration_sec=None, tmp_filename=None):
 
     # Turn off output, if configured
     if settings.output_id and daemon_control:
-        daemon_control.output_off(settings.output_id)
+        if not output_already_on:
+            daemon_control.output_off(settings.output_id)
 
     try:
         set_user_grp(path_file, 'mycodo', 'mycodo')

@@ -37,7 +37,7 @@ import time
 import timeit
 
 import resource
-from Pyro5.api import Daemon
+from Pyro5.api import serve
 from Pyro5.api import Proxy
 from Pyro5.api import expose
 from daemonize import Daemonize
@@ -74,7 +74,7 @@ from mycodo.utils.function_actions import get_condition_value
 from mycodo.utils.function_actions import get_condition_value_dict
 from mycodo.utils.function_actions import trigger_action
 from mycodo.utils.function_actions import trigger_function_actions
-from mycodo.utils.github_release_info import github_upgrade_exists
+from mycodo.utils.github_release_info import MycodoRelease
 from mycodo.utils.modules import load_module_from_file
 from mycodo.utils.statistics import add_update_csv
 from mycodo.utils.statistics import recreate_stat_file
@@ -299,8 +299,8 @@ class DaemonController:
             elif cont_type == 'Custom':
                 controller_manage['type'] = CustomController
 
-                custom_controller = db_retrieve_table_daemon(controller_manage['type'],
-                                                             unique_id=cont_id)
+                custom_controller = db_retrieve_table_daemon(
+                    controller_manage['type'], unique_id=cont_id)
                 dict_controllers = parse_controller_information()
                 if custom_controller and custom_controller.device in dict_controllers:
                     input_loaded = load_module_from_file(
@@ -454,6 +454,40 @@ class DaemonController:
             self.logger.exception(message)
             return "Exception: {msg}".format(msg=except_msg)
 
+    def custom_button(self, controller_type, unique_id, button_id, args_dict):
+        """
+        Force function to be executed from UI
+
+        :return: success or error message
+        :rtype: str
+
+        :param controller_type: Which controller is to be affected. Options: "Input", "Output"
+        :type controller_type: str
+        :param unique_id: Which controller ID is to be affected?
+        :type unique_id: str
+        :param button_id: ID of button pressed
+        :type button_id: str
+        :param args_dict: dict of arguments to pass to function
+        :type args_dict: dict
+
+        """
+        try:
+            if controller_type == "Input":
+                return self.controller["Input"][unique_id].custom_button_exec_function(
+                    button_id, args_dict)
+            elif controller_type == "Output":
+                return self.controller["Output"].custom_button_exec_function(
+                    unique_id, button_id, args_dict)
+            else:
+                msg = "Unknown controller: {}".format(controller_type)
+                self.logger.error(msg)
+                return 1, msg
+        except Exception as except_msg:
+            message = "Cannot execute Input function from custom action:" \
+                      " {err}".format(err=except_msg)
+            self.logger.exception(message)
+            return 1, message
+
     def input_force_measurements(self, input_id):
         """
         Force Input measurements to be acquired
@@ -533,18 +567,22 @@ class DaemonController:
         try:
             return self.controller['LCD'][lcd_id].lcd_flash(state)
         except KeyError:
-            message = "Cannot modulate flashing ({state}): " \
-                      "LCD not running".format(state=state)
-            self.logger.exception(message)
+            message = "LCD not running"
+            self.logger.error(message)
             return 0, message
         except Exception as except_msg:
             message = "Could not flash LCD ({state}): {e}".format(
                 state=state, e=except_msg)
             self.logger.exception(message)
+            return 0, message
 
     def pid_hold(self, pid_id):
         try:
             return self.controller['PID'][pid_id].pid_hold()
+        except KeyError:
+            message = "PID not running"
+            self.logger.error(message)
+            return message
         except Exception as except_msg:
             message = "Could not hold PID: {e}".format(e=except_msg)
             self.logger.exception(message)
@@ -552,6 +590,10 @@ class DaemonController:
     def pid_mod(self, pid_id):
         try:
             return self.controller['PID'][pid_id].pid_mod()
+        except KeyError:
+            message = "PID not running"
+            self.logger.error(message)
+            return message
         except Exception as except_msg:
             message = "Could not modify PID: {e}".format(e=except_msg)
             self.logger.exception(message)
@@ -559,6 +601,10 @@ class DaemonController:
     def pid_pause(self, pid_id):
         try:
             return self.controller['PID'][pid_id].pid_pause()
+        except KeyError:
+            message = "PID not running"
+            self.logger.error(message)
+            return message
         except Exception as except_msg:
             message = "Could not pause PID: {e}".format(e=except_msg)
             self.logger.exception(message)
@@ -566,14 +612,22 @@ class DaemonController:
     def pid_resume(self, pid_id):
         try:
             return self.controller['PID'][pid_id].pid_resume()
+        except KeyError:
+            message = "PID not running"
+            self.logger.error(message)
+            return message
         except Exception as except_msg:
             message = "Could not resume PID: {e}".format(e=except_msg)
             self.logger.exception(message)
 
     def pid_get(self, pid_id, setting):
         try:
-            if setting == 'setpoint':
+            if pid_id not in self.controller['PID']:
+                return None
+            elif setting == 'setpoint':
                 return self.controller['PID'][pid_id].get_setpoint()
+            elif setting == 'setpoint_band':
+                return self.controller['PID'][pid_id].get_setpoint_band()
             elif setting == 'error':
                 return self.controller['PID'][pid_id].get_error()
             elif setting == 'integrator':
@@ -587,7 +641,7 @@ class DaemonController:
             elif setting == 'kd':
                 return self.controller['PID'][pid_id].get_kd()
         except Exception as except_msg:
-            message = "Could not set PID {opt}: {e}".format(
+            message = "Could not get PID {opt}: {e}".format(
                 opt=setting, e=except_msg)
             self.logger.exception(message)
 
@@ -666,23 +720,6 @@ class DaemonController:
                 e=except_msg)
             self.logger.exception(message)
 
-    def output_duty_cycle(self, output_id, duty_cycle, trigger_conditionals=True):
-        """
-        Set the output duty cycle
-
-        :param output_id: Unique ID for output
-        :param duty_cycle: pwm duty cycle, in percent
-        :param trigger_conditionals: allow triggers to respond to a duty cycle change
-        :return:
-        """
-        try:
-            return self.controller['Output'].output_duty_cycle(
-                output_id, duty_cycle, trigger_conditionals)
-        except Exception as except_msg:
-            message = "Could set output duty cycle: {e}".format(e=except_msg)
-            self.logger.exception(message)
-            return 1, message
-
     def output_off(self, output_id, trigger_conditionals=True):
         """
         Turn output off using default output controller
@@ -702,7 +739,7 @@ class DaemonController:
             self.logger.exception(message)
             return 1, message
 
-    def output_on(self, output_id, amount=0.0, min_off=0.0,
+    def output_on(self, output_id, amount=0.0, output_type=None, min_off=0.0,
                   duty_cycle=0.0, trigger_conditionals=True):
         """
         Turn output on using default output controller
@@ -711,6 +748,8 @@ class DaemonController:
         :type output_id: str
         :param amount: How long to turn the output on or how much volume to dispense
         :type amount: float
+        :param output_type: The type of output ('sec', 'vol', 'pwm')
+        :type output_type: str
         :param min_off: Don't turn on if not off for at least this duration (0 = disabled)
         :type min_off: float
         :param duty_cycle: PWM duty cycle % (0-100)
@@ -727,6 +766,7 @@ class DaemonController:
                     output_id,
                     'on',
                     amount=amount,
+                    output_type=output_type,
                     min_off=min_off,
                     duty_cycle=duty_cycle,
                     trigger_conditionals=trigger_conditionals)
@@ -755,13 +795,23 @@ class DaemonController:
 
     def output_state(self, output_id):
         """
-        Return the output state, wither "on" or "off"
+        Return the output state, whether "on" or "off"
 
         :param output_id: Unique ID for output
         :type output_id: str
         """
         try:
             return self.controller['Output'].output_state(output_id)
+        except Exception as except_msg:
+            message = "Could not query output state: {e}".format(e=except_msg)
+            self.logger.exception(message)
+
+    def output_states_all(self):
+        """
+        Return all output states, whether "on" or "off"
+        """
+        try:
+            return self.controller['Output'].output_states_all()
         except Exception as except_msg:
             message = "Could not query output state: {e}".format(e=except_msg)
             self.logger.exception(message)
@@ -930,7 +980,9 @@ class DaemonController:
     def check_mycodo_upgrade_exists(self, now):
         """Check for any new Mycodo releases on github"""
         try:
-            upgrade_exists, _, _, errors = github_upgrade_exists()
+            mycodo_releases = MycodoRelease()
+            (upgrade_exists,
+             _, _, _, errors) = mycodo_releases.github_upgrade_exists()
 
             if errors:
                 for each_error in errors:
@@ -1059,6 +1111,11 @@ class PyroServer(object):
     def get_condition_measurement_dict(self, condition_id):
         return self.mycodo.get_condition_measurement_dict(condition_id)
 
+    def custom_button(self, controller_type, unique_id, button_id, args_dict):
+        """execute custom button function"""
+        return self.mycodo.custom_button(
+            controller_type, unique_id, button_id, args_dict)
+
     def controller_activate(self, cont_id):
         """Activates a controller"""
         return self.mycodo.controller_activate(cont_id)
@@ -1123,16 +1180,17 @@ class PyroServer(object):
         """Return the output state (not pin but whether output is on or off)"""
         return self.mycodo.output_state(output_id)
 
-    def output_duty_cycle(self, output_id, duty_cycle, trigger_conditionals=True):
-        """Sets the output duty cycle"""
-        return self.mycodo.output_duty_cycle(output_id, duty_cycle, trigger_conditionals)
+    def output_states_all(self):
+        """Return all output states"""
+        return self.mycodo.output_states_all()
 
-    def output_on(self, output_id, amount=0.0, min_off=0.0,
+    def output_on(self, output_id, amount=0.0, output_type=None, min_off=0.0,
                   duty_cycle=0.0, trigger_conditionals=True):
         """Turns output on from the client"""
         return self.mycodo.output_on(
             output_id,
             amount=amount,
+            output_type=output_type,
             min_off=min_off,
             duty_cycle=duty_cycle,
             trigger_conditionals=trigger_conditionals)
@@ -1184,9 +1242,7 @@ class PyroServer(object):
     @staticmethod
     def is_in_virtualenv():
         """Returns True if this script is running in a virtualenv"""
-        if hasattr(sys, 'real_prefix'):
-            return True
-        return False
+        return hasattr(sys, 'real_prefix') or sys.base_prefix != sys.prefix
 
     @staticmethod
     def ram_use():
@@ -1217,9 +1273,9 @@ class PyroDaemon(threading.Thread):
     def run(self):
         try:
             self.logger.info("Starting Pyro5 daemon")
-            Daemon.serveSimple({
+            serve({
                 PyroServer(self.mycodo): 'mycodo.pyro_server',
-            }, host="0.0.0.0", port=9090, ns=False)
+            }, host="0.0.0.0", port=9090, use_ns=False)
         except Exception as err:
             self.logger.exception(
                 "ERROR: PyroDaemon: {msg}".format(msg=err))

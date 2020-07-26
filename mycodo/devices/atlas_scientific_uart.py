@@ -1,27 +1,53 @@
 # coding=utf-8
 import logging
+import os
+import sys
 import time
 
-import filelock
 import serial
 from serial import SerialException
+from serial.serialutil import SerialTimeoutException
 
-from mycodo.config import ATLAS_PH_LOCK_FILE
+sys.path.append(os.path.abspath(os.path.join(os.path.realpath(__file__), '../../..')))
+
+from mycodo.utils.lockfile import LockFile
+from mycodo.devices.base_atlas import AbstractBaseAtlasScientific
 
 
-class AtlasScientificUART:
+class AtlasScientificUART(AbstractBaseAtlasScientific):
     """A Class to communicate with Atlas Scientific sensors via UART"""
 
     def __init__(self, serial_device, baudrate=9600):
+        super(AtlasScientificUART, self).__init__(interface='UART', name=serial_device.replace("/", "_"))
+
         self.logger = logging.getLogger(
-            "{}_{}".format(__name__, serial_device))
+            "{}{}".format(__name__, serial_device.replace("/", "_")))
+
         self.setup = False
         self.serial_device = serial_device
+        self.lockfile = LockFile()
+
         try:
-            self.ser = serial.Serial(port=serial_device,
-                                     baudrate=baudrate,
-                                     timeout=5)
-            self.setup = True
+            self.atlas_device = serial.Serial(
+                port=serial_device,
+                baudrate=baudrate,
+                timeout=5,
+                writeTimeout=5)
+
+            cmd_return = self.send_cmd('C,0')  # Disable continuous measurements
+
+            if cmd_return:
+                (board,
+                 revision,
+                 firmware_version) = self.get_board_version()
+
+                self.logger.info(
+                    "Atlas Scientific Board: {brd}, Rev: {rev}, Firmware: {fw}".format(
+                        brd=board,
+                        rev=revision,
+                        fw=firmware_version))
+                self.setup = True
+
         except serial.SerialException as err:
             self.logger.exception(
                 "{cls} raised an exception when initializing: "
@@ -36,8 +62,8 @@ class AtlasScientificUART:
         lsl = len('\r')
         line_buffer = []
         while True:
-            next_char = self.ser.read(1)
-            if next_char == b'':
+            next_char = self.atlas_device.read(1)
+            if next_char in [b'', b'\r', '']:
                 break
             line_buffer.append(next_char)
             if (len(line_buffer) >= lsl and
@@ -47,24 +73,18 @@ class AtlasScientificUART:
 
     def query(self, query_str):
         """ Send command and return reply """
-        lock_file_amend = '{lf}.{dev}'.format(
-            lf=ATLAS_PH_LOCK_FILE,
+        lock_file_amend = '/var/lock/sensor-atlas.{dev}'.format(
             dev=self.serial_device.replace("/", "-"))
 
-        try:
-            with filelock.FileLock(lock_file_amend, timeout=3600):
+        if self.lockfile.lock_acquire(lock_file_amend, timeout=3600):
+            try:
                 self.send_cmd(query_str)
                 time.sleep(1.3)
                 response = self.read_lines()
                 return 'success', response
-        except filelock.Timeout:
-            self.logger.error("Lock timeout")
-            return None, None
-        except Exception as err:
-            self.logger.exception(
-                "{cls} raised an exception when taking a reading: "
-                "{err}".format(cls=type(self).__name__, err=err))
-            return None, None
+            finally:
+                self.lockfile.lock_release(lock_file_amend)
+        return None, None
 
     def read_lines(self):
         """
@@ -73,13 +93,12 @@ class AtlasScientificUART:
         lines = []
         try:
             while True:
-                line = self.read_line()
+                line = self.read_line().decode()
                 if not line:
                     break
-                    # self.ser.flush_input()
+                    # self.atlas_device.flush_input()
                 lines.append(line)
             return lines
-
         except SerialException:
             self.logger.exception('Read Lines')
             return None
@@ -98,11 +117,12 @@ class AtlasScientificUART:
         :return:
         """
         buf = "{cmd}\r".format(cmd=cmd)  # add carriage return
-        if isinstance(buf, str):
-            buf = buf.encode()
         try:
-            self.ser.write(buf)
+            self.atlas_device.write(buf.encode())
             return True
+        except SerialTimeoutException:
+            self.logger.error("SerialTimeoutException: Write timeout. This indicates "
+                              "you may not have the correct device configured.")
         except SerialException:
             self.logger.exception('Send CMD')
             return None
@@ -112,7 +132,7 @@ class AtlasScientificUART:
 
 
 def main():
-    device_str = input("Device? (e.g. '/dev/ttyS0'): ")
+    device_str = input("Device? (e.g. '/dev/ttyAMA1'): ")
     baud_str = input("Baud rate? (e.g. '9600'): ")
 
     device = AtlasScientificUART(device_str, baudrate=int(baud_str))

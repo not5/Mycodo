@@ -1,11 +1,11 @@
 # coding=utf-8
 import bcrypt
 from flask_login import UserMixin
+from marshmallow_sqlalchemy import ModelSchema
 
 from mycodo.databases import CRUDMixin
 from mycodo.databases import set_uuid
 from mycodo.mycodo_flask.extensions import db
-from mycodo.mycodo_flask.extensions import ma
 
 
 class User(UserMixin, CRUDMixin, db.Model):
@@ -22,6 +22,9 @@ class User(UserMixin, CRUDMixin, db.Model):
     theme = db.Column(db.VARCHAR(64))
     landing_page = db.Column(db.Text, default='live')
     language = db.Column(db.Text, default=None)  # Force the web interface to use a specific language
+    password_reset_code = db.Column(db.Text, default=None)
+    password_reset_code_expiration = db.Column(db.DateTime, default=None)
+    password_reset_last_request = db.Column(db.DateTime, default=None)
 
     # roles = db.relationship("Role", back_populates="user")
 
@@ -49,7 +52,7 @@ class User(UserMixin, CRUDMixin, db.Model):
         return hashes_match
 
 
-class UserSchema(ma.ModelSchema):
+class UserSchema(ModelSchema):
     class Meta:
         model = User
         exclude = ('api_key', 'password_hash',)

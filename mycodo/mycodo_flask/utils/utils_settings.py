@@ -16,11 +16,12 @@ from flask_babel import gettext
 from sqlalchemy import and_
 from sqlalchemy import or_
 
-from mycodo.config import BACKUP_LOG_FILE
+from mycodo.config import DAEMON_LOG_FILE
 from mycodo.config import DEPENDENCY_INIT_FILE
 from mycodo.config import INSTALL_DIRECTORY
 from mycodo.config import PATH_CONTROLLERS_CUSTOM
 from mycodo.config import PATH_INPUTS_CUSTOM
+from mycodo.config import PATH_OUTPUTS_CUSTOM
 from mycodo.config import UPGRADE_INIT_FILE
 from mycodo.config_devices_units import MEASUREMENTS
 from mycodo.config_devices_units import UNITS
@@ -43,8 +44,10 @@ from mycodo.databases.models import Role
 from mycodo.databases.models import SMTP
 from mycodo.databases.models import Unit
 from mycodo.databases.models import User
+from mycodo.databases.models import Widget
 from mycodo.mycodo_client import DaemonControl
 from mycodo.mycodo_flask.extensions import db
+from mycodo.mycodo_flask.utils import utils_general
 from mycodo.mycodo_flask.utils.utils_general import choices_measurements
 from mycodo.mycodo_flask.utils.utils_general import choices_units
 from mycodo.mycodo_flask.utils.utils_general import controller_activate_deactivate
@@ -56,6 +59,7 @@ from mycodo.utils.controllers import parse_controller_information
 from mycodo.utils.database import db_retrieve_table
 from mycodo.utils.inputs import parse_input_information
 from mycodo.utils.modules import load_module_from_file
+from mycodo.utils.outputs import parse_output_information
 from mycodo.utils.send_data import send_email
 from mycodo.utils.system_pi import all_conversions
 from mycodo.utils.system_pi import assure_path_exists
@@ -95,6 +99,7 @@ def user_roles(form):
             new_role.edit_users = form.edit_users.data
             new_role.edit_settings = form.edit_settings.data
             new_role.edit_controllers = form.edit_controllers.data
+            new_role.reset_password = form.reset_password.data
             try:
                 new_role.save()
             except sqlalchemy.exc.OperationalError as except_msg:
@@ -111,6 +116,7 @@ def user_roles(form):
             mod_role.edit_users = form.edit_users.data
             mod_role.edit_settings = form.edit_settings.data
             mod_role.edit_controllers = form.edit_controllers.data
+            mod_role.reset_password = form.reset_password.data
             db.session.commit()
         elif form.delete_role.data:
             user = User().query.filter(User.role_id == form.role_id.data)
@@ -210,6 +216,8 @@ def user_mod(form):
         # Only change the password if it's entered in the form
         logout_user = False
         if form.password_new.data != '':
+            if not utils_general.user_has_permission('reset_password'):
+                error.append("Cannot change user password")
             if not test_password(form.password_new.data):
                 error.append(gettext("Invalid password"))
             if form.password_new.data != form.password_repeat.data:
@@ -559,6 +567,21 @@ def settings_input_import(form):
                     pass
                 else:
                     error.append("'measurements_dict' list is empty")
+            else:
+                # Check that units and measurements exist in database
+                for _, each_unit_measure in input_info.INPUT_INFORMATION['measurements_dict'].items():
+                    if (each_unit_measure['unit'] not in UNITS and
+                            not Unit.query.filter(Unit.name_safe == each_unit_measure['unit']).count()):
+                        error.append(
+                            "Unit not found in database. "
+                            "Add the unit '{}' to the database before importing.".format(
+                                each_unit_measure['unit']))
+                    if (each_unit_measure['measurement'] not in MEASUREMENTS and
+                            not Measurement.query.filter(Measurement.name_safe == each_unit_measure['measurement']).count()):
+                        error.append(
+                            "Measurement not found in database. "
+                            "Add the measurement '{}' to the database before importing.".format(
+                                each_unit_measure['measurement']))
 
             if 'dependencies_module' in input_info.INPUT_INFORMATION:
                 if not isinstance(input_info.INPUT_INFORMATION['dependencies_module'], list):
@@ -635,6 +658,166 @@ def settings_input_delete(form):
     flash_success_errors(error, action, url_for('routes_settings.settings_input'))
 
 
+def settings_output_import(form):
+    """
+    Receive an output module file, check it for errors, add it to Mycodo output list
+    """
+    action = '{action} {controller}'.format(
+        action=gettext("Import"),
+        controller=TRANSLATIONS['output']['title'])
+    error = []
+
+    output_info = None
+
+    try:
+        # correct_format = 'Mycodo_MYCODOVERSION_Settings_DBVERSION_HOST_DATETIME.zip'
+        install_dir = os.path.abspath(INSTALL_DIRECTORY)
+        tmp_directory = os.path.join(install_dir, 'mycodo/outputs/tmp_outputs')
+        assure_path_exists(tmp_directory)
+        assure_path_exists(PATH_OUTPUTS_CUSTOM)
+        tmp_name = 'tmp_output_testing.py'
+        full_path_tmp = os.path.join(tmp_directory, tmp_name)
+
+        if not form.import_output_file.data:
+            error.append('No file present')
+        elif form.import_output_file.data.filename == '':
+            error.append('No file name')
+        else:
+            form.import_output_file.data.save(full_path_tmp)
+
+        try:
+            output_info = load_module_from_file(full_path_tmp, 'outputs')
+            if not hasattr(output_info, 'OUTPUT_INFORMATION'):
+                error.append("Could not load OUTPUT_INFORMATION dictionary from "
+                             "the uploaded output module")
+        except Exception:
+            error.append("Could not load uploaded file as a python module:\n"
+                         "{}".format(traceback.format_exc()))
+
+        dict_outputs = parse_output_information()
+        list_outputs = []
+        for each_key in dict_outputs.keys():
+            list_outputs.append(each_key.lower())
+
+        if not error:
+            if 'output_name_unique' not in output_info.OUTPUT_INFORMATION:
+                error.append(
+                    "'output_name_unique' not found in "
+                    "OUTPUT_INFORMATION dictionary")
+            elif output_info.OUTPUT_INFORMATION['output_name_unique'] == '':
+                error.append("'output_name_unique' is empty")
+            elif output_info.OUTPUT_INFORMATION['output_name_unique'].lower() in list_outputs:
+                error.append(
+                    "'output_name_unique' is not unique, there "
+                    "is already an output with that name ({})".format(
+                        output_info.OUTPUT_INFORMATION['output_name_unique']))
+
+            if 'output_name' not in output_info.OUTPUT_INFORMATION:
+                error.append(
+                    "'output_name' not found in OUTPUT_INFORMATION dictionary")
+            elif output_info.OUTPUT_INFORMATION['output_name'] == '':
+                error.append("'output_name' is empty")
+
+            if 'measurements_dict' not in output_info.OUTPUT_INFORMATION:
+                error.append(
+                    "'measurements_dict' not found in "
+                    "OUTPUT_INFORMATION dictionary")
+            elif not output_info.OUTPUT_INFORMATION['measurements_dict']:
+                if ('measurements_variable_amount' in output_info.OUTPUT_INFORMATION and
+                   output_info.OUTPUT_INFORMATION['measurements_variable_amount']):
+                    pass
+                else:
+                    error.append("'measurements_dict' list is empty")
+            else:
+                # Check that units and measurements exist in database
+                for _, each_unit_measure in output_info.OUTPUT_INFORMATION['measurements_dict'].items():
+                    if (each_unit_measure['unit'] not in UNITS and
+                            not Unit.query.filter(Unit.name_safe == each_unit_measure['unit']).count()):
+                        error.append(
+                            "Unit not found in database. "
+                            "Add the unit '{}' to the database before importing.".format(
+                                each_unit_measure['unit']))
+                    if (each_unit_measure['measurement'] not in MEASUREMENTS and
+                            not Measurement.query.filter(Measurement.name_safe == each_unit_measure['measurement']).count()):
+                        error.append(
+                            "Measurement not found in database. "
+                            "Add the measurement '{}' to the database before importing.".format(
+                                each_unit_measure['measurement']))
+
+            if 'dependencies_module' in output_info.OUTPUT_INFORMATION:
+                if not isinstance(output_info.OUTPUT_INFORMATION['dependencies_module'], list):
+                    error.append("'dependencies_module' must be a list of tuples")
+                else:
+                    for each_dep in output_info.OUTPUT_INFORMATION['dependencies_module']:
+                        if not isinstance(each_dep, tuple):
+                            error.append(
+                                "'dependencies_module' must be a list of "
+                                "tuples")
+                        elif len(each_dep) != 3:
+                            error.append(
+                                "'dependencies_module': tuples in list must "
+                                "have 3 items")
+                        elif not each_dep[0] or not each_dep[1] or not each_dep[2]:
+                            error.append(
+                                "'dependencies_module': tuples in list must "
+                                "not be empty")
+                        elif each_dep[0] not in ['internal', 'pip-pypi', 'pip-git', 'apt']:
+                            error.append(
+                                "'dependencies_module': first in tuple "
+                                "must be 'internal', 'pip-pypi', 'pip-git', "
+                                "or 'apt'")
+
+        if not error:
+            # Determine filename
+            unique_name = '{}.py'.format(output_info.OUTPUT_INFORMATION['output_name_unique'].lower())
+
+            # Move module from temp directory to custom_output directory
+            full_path_final = os.path.join(PATH_OUTPUTS_CUSTOM, unique_name)
+            os.rename(full_path_tmp, full_path_final)
+
+            # Reload frontend to refresh the outputs
+            cmd = '{path}/mycodo/scripts/mycodo_wrapper frontend_reload 2>&1'.format(
+                path=install_dir)
+            subprocess.Popen(cmd, shell=True)
+            flash('Frontend reloaded to scan for new Output Modules', 'success')
+
+    except Exception as err:
+        error.append("Exception: {}".format(err))
+
+    flash_success_errors(error, action, url_for('routes_settings.settings_output'))
+
+
+def settings_output_delete(form):
+    action = '{action} {controller}'.format(
+        action=gettext("Import"),
+        controller=TRANSLATIONS['output']['title'])
+    error = []
+
+    output_device_name = form.output_id.data
+    file_name = '{}.py'.format(form.output_id.data.lower())
+    full_path_file = os.path.join(PATH_OUTPUTS_CUSTOM, file_name)
+
+    if not error:
+        # Check if any Output entries exist
+        output_dev = Output.query.filter(
+            Output.output_type == output_device_name).count()
+        if output_dev:
+            error.append("Cannot delete Output Module if there are still "
+                         "Output entries using it. Delete all Output entries "
+                         "that use this module before deleting the module.")
+
+    if not error:
+        os.remove(full_path_file)
+
+        # Reload frontend to refresh the outputs
+        cmd = '{path}/mycodo/scripts/mycodo_wrapper frontend_reload 2>&1'.format(
+            path=os.path.abspath(INSTALL_DIRECTORY))
+        subprocess.Popen(cmd, shell=True)
+        flash('Frontend reloaded to scan for new Output Modules', 'success')
+
+    flash_success_errors(error, action, url_for('routes_settings.settings_output'))
+
+
 def settings_measurement_add(form):
     action = '{action} {controller}'.format(
         action=TRANSLATIONS['add']['title'],
@@ -646,7 +829,7 @@ def settings_measurement_add(form):
     new_measurement.name = form.name.data
     new_measurement.units = ",".join(form.units.data)
 
-    name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.name.data).lower()
+    name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.id.data)
     if name_safe.endswith('_'):
         name_safe = name_safe[:-1]
     if name_safe in choices_meas:
@@ -683,17 +866,29 @@ def settings_measurement_mod(form):
         mod_measurement.name = form.name.data
         mod_measurement.units = ",".join(form.units.data)
 
-        name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.name.data).lower()
+        name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.id.data)
         if name_safe.endswith('_'):
             name_safe = name_safe[:-1]
-        if (Measurement.query.filter(
-                and_(Measurement.name_safe == name_safe,
-                     Measurement.unique_id != mod_measurement.unique_id)).count() or
-                name_safe in MEASUREMENTS):
-            error.append("Measurement name already exists: {name}".format(
-                name=name_safe))
-        else:
-            mod_measurement.name_safe = name_safe
+
+        if name_safe != mod_measurement.name_safe:  # Change measurement name
+            # Ensure no Inputs depend on this measurement
+            for _, each_data in parse_input_information().items():
+                if 'measurements_dict' in each_data:
+                    for _, each_channel_data in each_data['measurements_dict'].items():
+                        if ('measurement' in each_channel_data and
+                                each_channel_data['measurement'] == mod_measurement.name_safe):
+                            error.append(
+                                "Cannot change the name of this measurement "
+                                "because an Input depends on it.")
+            # Ensure a measurement doesn't already exist with the new name
+            if (Measurement.query.filter(
+                    and_(Measurement.name_safe == name_safe,
+                         Measurement.unique_id != mod_measurement.unique_id)).count() or
+                    name_safe in MEASUREMENTS):
+                error.append("Measurement name already exists: {name}".format(
+                    name=name_safe))
+            else:
+                mod_measurement.name_safe = name_safe
 
         if not error:
             db.session.commit()
@@ -710,8 +905,21 @@ def settings_measurement_del(unique_id):
         controller=TRANSLATIONS['measurement']['title'])
     error = []
 
+    measurement = Measurement.query.filter(
+        Measurement.unique_id == unique_id).first()
+
+    # Ensure no Inputs depend on this measurement
+    for _, each_data in parse_input_information().items():
+        if 'measurements_dict' in each_data:
+            for _, each_channel_data in each_data['measurements_dict'].items():
+                if ('measurement' in each_channel_data and
+                        each_channel_data['measurement'] == measurement.name_safe):
+                    error.append("Cannot delete this measurement because "
+                                 "an Input depends on it.")
+
     try:
-        delete_entry_with_id(Measurement, unique_id)
+        if not error:
+            delete_entry_with_id(Measurement, unique_id)
     except Exception as except_msg:
         error.append(except_msg)
 
@@ -724,11 +932,10 @@ def settings_unit_add(form):
         action=TRANSLATIONS['add']['title'],
         controller=gettext("Unit"))
     error = []
-    units = Unit.query.all()
-    choices_unit = choices_units(units)
+    choices_unit = choices_units(Unit.query.all())
 
     if form.validate():
-        name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.name.data).lower()
+        name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.id.data)
         if name_safe.endswith('_'):
             name_safe = name_safe[:-1]
 
@@ -769,7 +976,7 @@ def settings_unit_mod(form):
         mod_unit = Unit.query.filter(
             Unit.unique_id == form.unit_id.data).first()
 
-        name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.name.data).lower()
+        name_safe = re.sub('[^0-9a-zA-Z]+', '_', form.id.data)
         if name_safe.endswith('_'):
             name_safe = name_safe[:-1]
 
@@ -784,14 +991,25 @@ def settings_unit_mod(form):
                 name_safe in UNITS):
             error.append("Unit name already exists: {name}".format(
                 name=name_safe))
-        elif mod_unit.name_safe != name_safe and conversions:
-            error.append(
-                "Unit belongs to a conversion."
-                "Delete conversion(s) before changing unit.")
-        else:
-            mod_unit.name = form.name.data
-            mod_unit.unit = form.unit.data
-            mod_unit.name_safe = name_safe
+        elif mod_unit.name_safe != name_safe:
+            if conversions:
+                error.append(
+                    "Unit belongs to a conversion."
+                    "Delete conversion(s) before changing unit.")
+            else:
+                # Ensure no Inputs depend on this measurement
+                for _, each_data in parse_input_information().items():
+                    if 'measurements_dict' in each_data:
+                        for _, each_channel_data in each_data['measurements_dict'].items():
+                            if ('unit' in each_channel_data and
+                                    each_channel_data['unit'] == mod_unit.name_safe):
+                                error.append(
+                                    "Cannot change the name of this unit "
+                                    "because an Input depends on it.")
+
+        mod_unit.name = form.name.data
+        mod_unit.unit = form.unit.data
+        mod_unit.name_safe = name_safe
 
         if not error:
             db.session.commit()
@@ -820,6 +1038,15 @@ def settings_unit_del(unique_id):
         error.append(
             "Unit belongs to a conversion."
             "Delete conversion(s) before deleting unit.")
+
+    # Ensure no Inputs depend on this unit
+    for _, each_data in parse_input_information().items():
+        if 'measurements_dict' in each_data:
+            for _, each_channel_data in each_data['measurements_dict'].items():
+                if ('unit' in each_channel_data and
+                        each_channel_data['unit'] == del_unit.name_safe):
+                    error.append("Cannot delete this unit because an "
+                                 "Input depends on it.")
 
     try:
         if not error:
@@ -1139,7 +1366,7 @@ def settings_alert_mod(form_mod_alert):
             mod_smtp = SMTP.query.one()
             if form_mod_alert.send_test.data:
                 send_email(
-                    mod_smtp.host, mod_smtp.ssl, mod_smtp.port,
+                    mod_smtp.host, mod_smtp.protocol, mod_smtp.port,
                     mod_smtp.user, mod_smtp.passw, mod_smtp.email_from,
                     form_mod_alert.send_test_to_email.data,
                     "This is a test email from Mycodo")
@@ -1150,8 +1377,11 @@ def settings_alert_mod(form_mod_alert):
                 return redirect(url_for('routes_settings.settings_alerts'))
             else:
                 mod_smtp.host = form_mod_alert.smtp_host.data
-                mod_smtp.port = form_mod_alert.smtp_port.data
-                mod_smtp.ssl = form_mod_alert.smtp_ssl.data
+                if form_mod_alert.smtp_port.data:
+                    mod_smtp.port = form_mod_alert.smtp_port.data
+                else:
+                    mod_smtp.port = None
+                mod_smtp.protocol = form_mod_alert.smtp_protocol.data
                 mod_smtp.user = form_mod_alert.smtp_user.data
                 if form_mod_alert.smtp_password.data:
                     mod_smtp.passw = form_mod_alert.smtp_password.data
@@ -1236,15 +1466,19 @@ def settings_diagnostic_delete_dashboard_elements():
     error = []
 
     dashboard = db_retrieve_table(Dashboard)
-    display_order = db_retrieve_table(DisplayOrder, entry='first')
+    widget = db_retrieve_table(Widget)
 
     if not error:
         try:
             for each_dash in dashboard:
                 db.session.delete(each_dash)
                 db.session.commit()
-            display_order.dashboard = ''
-            db.session.commit()
+
+            for each_widget in widget:
+                db.session.delete(each_widget)
+                db.session.commit()
+
+            Dashboard(id=1, name='Default').save()
         except Exception as except_msg:
             error.append(except_msg)
 
@@ -1303,10 +1537,10 @@ def settings_diagnostic_delete_settings_database():
     if not error:
         try:
             os.remove('/var/mycodo-root/databases/mycodo.db')
-            cmd = "{pth}/mycodo/scripts/mycodo_wrapper frontend_restart" \
+            cmd = "{pth}/mycodo/scripts/mycodo_wrapper frontend_reload" \
                   " | ts '[%Y-%m-%d %H:%M:%S]'" \
                   " >> {log} 2>&1".format(pth=INSTALL_DIRECTORY,
-                                          log=BACKUP_LOG_FILE)
+                                          log=DAEMON_LOG_FILE)
             subprocess.Popen(cmd, shell=True)
         except Exception as except_msg:
             error.append(except_msg)

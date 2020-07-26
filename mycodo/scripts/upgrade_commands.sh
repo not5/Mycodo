@@ -10,6 +10,15 @@ if [[ "$EUID" -ne 0 ]]; then
     exit 1
 fi
 
+# Current Mycodo major version number
+MYCODO_MAJOR_VERSION="8"
+
+# Dependency versions/URLs
+PIGPIO_URL="https://github.com/joan2937/pigpio/archive/v77.tar.gz"
+MCB2835_URL="http://www.airspayce.com/mikem/bcm2835/bcm2835-1.50.tar.gz"
+WIRINGPI_URL="https://project-downloads.drogon.net/wiringpi-latest.deb"
+INFLUXDB_VERSION="1.8.0"
+
 # Required apt packages. This has only been tested with Raspbian for the
 # Raspberry Pi but should work with most Debian-based systems.
 APT_PKGS="gawk gcc git libffi-dev libi2c-dev logrotate moreutils nginx sqlite3 wget python3 python3-dev python3-setuptools python3-smbus python3-pylint-common rng-tools"
@@ -43,6 +52,7 @@ Options:
   initialize                    Issues several commands to set up directories/files/permissions
   restart-daemon                Restart the Mycodo daemon
   setup-virtualenv              Create a Python virtual environment
+  setup-virtualenv-full         Create a Python virtual environment and installs dependencies
   ssl-certs-generate            Generate SSL certificates for the web user interface
   ssl-certs-regenerate          Regenerate SSL certificates
   uninstall-apt-pip             Uninstall the apt version of pip
@@ -69,6 +79,7 @@ Options:
   update-pip3                   Update pip
   update-pip3-packages          Update required pip packages
   update-swap-size              Ensure sqap size is sufficiently large (512 MB)
+  upgrade-mycodo                Upgrade Mycodo to latest compatible release and preserve database and virtualenv
   upgrade-release-major {ver}   Upgrade Mycodo to a major version release {ver} and preserve database and virtualenv
   upgrade-release-wipe {ver}    Upgrade Mycodo to a major version release {ver} and wipe database and virtualenv
   upgrade-master                Upgrade Mycodo to the master branch at https://github.com/kizniche/Mycodo
@@ -186,6 +197,12 @@ case "${1:-''}" in
             printf "#### Virtualenv already exists, skipping creation\n"
         fi
     ;;
+    'setup-virtualenv-full')
+        /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_commands.sh setup-virtualenv
+        /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_commands.sh update-pip3-packages
+        /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_commands.sh update-dependencies
+        /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_commands.sh update-permissions
+    ;;
     'ssl-certs-generate')
         printf "\n#### Generating SSL certificates at %s/mycodo/mycodo_flask/ssl_certs (replace with your own if desired)\n" "${MYCODO_PATH}"
         mkdir -p "${MYCODO_PATH}"/mycodo/mycodo_flask/ssl_certs
@@ -241,19 +258,21 @@ case "${1:-''}" in
         printf "\n#### Installing bcm2835\n"
         cd "${MYCODO_PATH}"/install || return
         apt-get install -y automake libtool
-        wget http://www.airspayce.com/mikem/bcm2835/bcm2835-1.50.tar.gz
-        tar zxvf bcm2835-1.50.tar.gz
-        cd bcm2835-1.50 || return
+        wget ${MCB2835_URL} -O bcm2835.tar.gz
+        mkdir bcm2835
+        tar xzf bcm2835.tar.gz -C bcm2835 --strip-components=1
+        cd bcm2835 || return
         autoreconf -vfi
         ./configure
         make
         sudo make check
         sudo make install
         cd "${MYCODO_PATH}"/install || return
-        rm -rf ./bcm2835-1.50
+        rm -rf ./bcm2835
     ;;
     'install-wiringpi')
         cd "${MYCODO_PATH}"/install || return
+        wget ${WIRINGPI_URL} -O wiringpi-latest.deb
         dpkg -i wiringpi-latest.deb
     ;;
     'install-pigpiod')
@@ -261,12 +280,15 @@ case "${1:-''}" in
         apt-get install -y python3-pigpio
         cd "${MYCODO_PATH}"/install || return
         # wget --quiet -P "${MYCODO_PATH}"/install abyz.co.uk/rpi/pigpio/pigpio.zip
-        tar xf pigpio.tar
+        wget ${PIGPIO_URL} -O pigpio.tar.gz
+        mkdir PIGPIO
+        tar xzf pigpio.tar.gz -C PIGPIO --strip-components=1
         cd "${MYCODO_PATH}"/install/PIGPIO || return
         make -j4
         make install
         cd "${MYCODO_PATH}"/install || return
         rm -rf ./PIGPIO
+        rm -rf pigpio-latest.tar.gz
         /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_commands.sh disable-pigpiod
         /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_commands.sh enable-pigpiod-high
         mkdir -p /opt/mycodo
@@ -275,13 +297,17 @@ case "${1:-''}" in
     'uninstall-pigpiod')
         printf "\n#### Uninstalling pigpiod\n"
         apt-get remove -y python3-pigpio
+        apt-get install -y jq
         cd "${MYCODO_PATH}"/install || return
         # wget --quiet -P "${MYCODO_PATH}"/install abyz.co.uk/rpi/pigpio/pigpio.zip
-        tar xf pigpio.tar
+        wget ${PIGPIO_URL} -O pigpio.tar.gz
+        mkdir PIGPIO
+        tar xzf pigpio.tar.gz -C PIGPIO --strip-components=1
         cd "${MYCODO_PATH}"/install/PIGPIO || return
         make uninstall
         cd "${MYCODO_PATH}"/install || return
         rm -rf ./PIGPIO
+        rm -rf pigpio-latest.tar.gz
         touch /etc/systemd/system/pigpiod_uninstalled.service
         rm -f /opt/mycodo/pigpio_installed
     ;;
@@ -338,8 +364,8 @@ case "${1:-''}" in
     'update-influxdb')
         printf "\n#### Ensuring compatible version of influxdb is installed ####\n"
         INSTALL_ADDRESS="https://dl.influxdata.com/influxdb/releases/"
-        INSTALL_FILE="influxdb_1.7.9_armhf.deb"
-        CORRECT_VERSION="1.7.9-1"
+        INSTALL_FILE="influxdb_${INFLUXDB_VERSION}_armhf.deb"
+        CORRECT_VERSION="${INFLUXDB_VERSION}-1"
         CURRENT_VERSION=$(apt-cache policy influxdb | grep 'Installed' | gawk '{print $2}')
         if [[ "${CURRENT_VERSION}" != "${CORRECT_VERSION}" ]]; then
             echo "#### Incorrect InfluxDB version (v${CURRENT_VERSION}) installed. Installing v${CORRECT_VERSION}..."
@@ -353,8 +379,8 @@ case "${1:-''}" in
     ;;
     'update-influxdb-db-user')
         printf "\n#### Creating InfluxDB database and user\n"
-        # Attempt to connect to influxdb 3 times, sleeping 60 seconds every fail
-        for _ in {1..3}; do
+        # Attempt to connect to influxdb 10 times, sleeping 60 seconds every fail
+        for _ in {1..10}; do
             # Check if influxdb has successfully started and be connected to
             printf "#### Attempting to connect...\n" &&
             curl -sL -I localhost:8086/ping > /dev/null &&
@@ -362,10 +388,10 @@ case "${1:-''}" in
             influx -database mycodo_db -execute "CREATE USER mycodo WITH PASSWORD 'mmdu77sj3nIoiajjs'" &&
             printf "#### Influxdb database and user successfully created\n" &&
             break ||
-            # Else wait 30 seconds if the influxd port is not accepting connections
+            # Else wait 60 seconds if the influxd port is not accepting connections
             # Everything below will begin executing if an error occurs before the break
             printf "#### Could not connect to Influxdb. Waiting 30 seconds then trying again...\n" &&
-            sleep 30
+            sleep 60
         done
     ;;
     'update-logrotate')
@@ -386,7 +412,7 @@ case "${1:-''}" in
     ;;
     'update-packages')
         printf "\n#### Installing prerequisite apt packages and update pip\n"
-        apt-get remove -y apache2
+        apt-get remove -y apache2 python-cffi-backend python3-cffi-backend
         apt-get install -y ${APT_PKGS}
         python3 /usr/lib/python3/dist-packages/easy_install.py pip
         pip install --upgrade pip
@@ -430,6 +456,9 @@ case "${1:-''}" in
             printf "#### Swap not currently set to 100 MB. Not changing.\n"
         fi
     ;;
+    'upgrade-mycodo')
+        /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_download.sh upgrade-release-major "${MYCODO_MAJOR_VERSION}"
+    ;;
     'upgrade-release-major')
         /bin/bash "${MYCODO_PATH}"/mycodo/scripts/upgrade_download.sh upgrade-release-major "${2}"
     ;;
@@ -444,8 +473,8 @@ case "${1:-''}" in
     ;;
     'web-server-connect')
         printf "\n#### Connecting to http://localhost (creates Mycodo database if it doesn't exist)\n"
-        # Attempt to connect to localhost 5 times, sleeping 60 seconds every fail
-        for _ in {1..5}; do
+        # Attempt to connect to localhost 10 times, sleeping 60 seconds every fail
+        for _ in {1..10}; do
             wget --quiet --no-check-certificate -p http://localhost/ -O /dev/null &&
             printf "#### Successfully connected to http://localhost\n" &&
             break ||

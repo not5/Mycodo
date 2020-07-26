@@ -1,6 +1,8 @@
 # coding=utf-8
 import time
 
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 
 list_sensitivity = []
@@ -20,16 +22,18 @@ INPUT_INFORMATION = {
     'input_name_unique': 'BH1750',
     'input_manufacturer': 'ROHM',
     'input_name': 'BH1750',
+    'input_library': 'smbus2',
     'measurements_name': 'Light',
     'measurements_dict': measurements_dict,
+    'url_datasheet': 'http://rohmfs.rohm.com/en/products/databook/datasheet/ic/sensor/light/bh1721fvc-e.pdf',
+    'url_product_purchase': 'https://www.dfrobot.com/product-531.html',
 
     'options_enabled': [
         'i2c_location',
         'period',
         'resolution',
         'sensitivity',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -74,15 +78,21 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            from smbus2 import SMBus
+        self.i2c_address = None
+        self.i2c_bus = None
+        self.resolution = None
 
-            self.i2c_address = int(str(input_dev.i2c_location), 16)
-            self.resolution = input_dev.resolution
-            self.sensitivity = input_dev.sensitivity
-            self.i2c_bus = SMBus(input_dev.i2c_bus)
-            self.power_down()
-            self.set_sensitivity(sensitivity=self.sensitivity)
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        from smbus2 import SMBus
+
+        self.i2c_address = int(str(self.input_dev.i2c_location), 16)
+        self.resolution = self.input_dev.resolution
+        self.i2c_bus = SMBus(self.input_dev.i2c_bus)
+        self.power_down()
+        self.set_sensitivity(sensitivity=self.input_dev.sensitivity)
 
     @property
     def lux(self):
@@ -93,7 +103,7 @@ class InputModule(AbstractInput):
 
     def get_measurement(self):
         """ Gets the BH1750's lux """
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.resolution == 0:
             lux = self.measure_low_res()

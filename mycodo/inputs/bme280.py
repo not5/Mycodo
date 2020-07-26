@@ -1,4 +1,6 @@
 # coding=utf-8
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_altitude
 from mycodo.inputs.sensorutils import calculate_dewpoint
@@ -41,13 +43,18 @@ INPUT_INFORMATION = {
     'input_library': 'Adafruit_BME280',
     'measurements_name': 'Pressure/Humidity/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.bosch-sensortec.com/bst/products/all_products/bme280',
+    'url_datasheet': 'https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf',
+    'url_product_purchase': [
+        'https://www.adafruit.com/product/2652',
+        'https://www.sparkfun.com/products/13676'
+    ],
 
     'options_enabled': [
         'i2c_location',
         'measurements_select',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -57,10 +64,7 @@ INPUT_INFORMATION = {
     ],
 
     'interfaces': ['I2C'],
-    'i2c_location': [
-        '0x76',
-        '0x77'
-    ],
+    'i2c_location': ['0x76', '0x77'],
     'i2c_address_editable': False
 }
 
@@ -71,22 +75,28 @@ class InputModule(AbstractInput):
     and pressure, them calculates the altitude and dew point
 
     """
-
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            from Adafruit_BME280 import BME280
+        self.sensor = None
 
-            self.i2c_address = int(str(input_dev.i2c_location), 16)
-            self.i2c_bus = input_dev.i2c_bus
-            self.sensor = BME280(
-                address=self.i2c_address,
-                busnum=self.i2c_bus)
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        from Adafruit_BME280 import BME280
+
+        self.sensor = BME280(
+            address=int(str(self.input_dev.i2c_location), 16),
+            busnum=self.input_dev.i2c_bus)
 
     def get_measurement(self):
-        """ Gets the measurement in units by reading the """
-        self.return_dict = measurements_dict.copy()
+        """ Get measurements and store in the database """
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.is_enabled(0):
             self.value_set(0, self.sensor.read_temperature())
@@ -97,19 +107,13 @@ class InputModule(AbstractInput):
         if self.is_enabled(2):
             self.value_set(2, self.sensor.read_pressure())
 
-        if (self.is_enabled(3) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(3, calculate_dewpoint(
-                self.value_get(0), self.value_get(1)))
+        if self.is_enabled(3) and self.is_enabled(0) and self.is_enabled(1):
+            self.value_set(3, calculate_dewpoint(self.value_get(0), self.value_get(1)))
 
         if self.is_enabled(4) and self.is_enabled(2):
             self.value_set(4, calculate_altitude(self.value_get(2)))
 
-        if (self.is_enabled(5) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(5, calculate_vapor_pressure_deficit(
-                self.value_get(0), self.value_get(1)))
+        if self.is_enabled(5) and self.is_enabled(0) and self.is_enabled(1):
+            self.value_set(5, calculate_vapor_pressure_deficit(self.value_get(0), self.value_get(1)))
 
         return self.return_dict

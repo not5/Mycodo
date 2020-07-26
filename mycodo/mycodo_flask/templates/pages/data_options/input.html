@@ -1,4 +1,4 @@
-<h4>{{_('Input')}} <a href="/help#input" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a></h4>
+<h4>{{_('Input')}} <a href="/static/manual/mycodo-manual.html#input" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a></h4>
 
 {% for each_order_input_id in display_order_input -%}
   {%- set all_input = table_input.query.filter(table_input.unique_id == each_order_input_id).all() -%}
@@ -7,9 +7,15 @@
 
 <div class="container" style="border: 2px solid #ddd; border-radius: 5px;">
 
-  <form method="post" action="/data">
+  <form id="mod_input_form" method="post" action="/data">
     {{form_mod_input.csrf_token}}
     {{form_mod_input.input_id(value=each_input.unique_id)}}
+
+    {% set form = form_mod_input %}
+    {% set dict_options = dict_inputs[each_input.device] %}
+    {% set each_device = each_input %}
+    {% set unique_id = each_input.unique_id %}
+    {% set custom_options_values = custom_options_values_inputs %}
 
   <div class="row {% if each_input.is_activated -%}active-background
                   {% else -%}inactive-background
@@ -21,10 +27,10 @@
       </a>
     </div>
     <div class="col-5 col-sm-2">
-      {{form_mod_input.name(class_='form-control', value=each_input.name, **{'title': dict_translation['name']['phrase']})}}
+      <input class="form-control" disabled="" value="{{each_input.name}}" type="text">
     </div>
     <div class="col-5 col-sm-3">
-      <input class="form-control btn btn-sm btn-block" type="button" onclick="setClipboard('{{each_input.unique_id}}')" title="UUID: {{each_input.unique_id}}, {{dict_translation['copy_to_clipboard']['phrase']}}" value="[{{'%02d' % each_input.id}}] {% if each_input.interface and each_input.interface not in ['RPi', 'Mycodo']%}[{{each_input.interface}}] {% endif %}{% if each_input.device in dict_inputs %}{{dict_inputs[each_input.device]['input_name']}}{% endif %}">
+      <input class="form-control btn btn-primary btn-sm btn-block" type="button" onclick="setClipboard('{{each_input.unique_id}}')" title="UUID: {{each_input.unique_id}}, {{dict_translation['copy_to_clipboard']['phrase']}}" value="{% if each_input.interface %}[{{each_input.interface}}] {% endif %}{% if each_input.device in dict_inputs %}{{dict_inputs[each_input.device]['input_name']}}{% endif %}">
     </div>
     <div class="col-4 col-xs-offset-2 col-sm-2 col-sm-offset-0">
     {% if each_input.is_activated -%}
@@ -33,20 +39,20 @@
         {%- do has_active_pid.append(1) -%}
       {%- endfor -%}
       {% if has_active_pid -%}
-        {{form_mod_input.input_deactivate(class_='form-control btn btn-sm',**{'onclick':'return confirm("There are currently active PID controllers that rely on this Input to be active. Select OK to deactivate this input and all associated PID controllers, otherwise click Cancel to leave them active.")'})}}
+        {{form_mod_input.input_deactivate(class_='form-control btn btn-primary btn-sm',**{'onclick':'return confirm("There are currently active PID controllers that rely on this Input to be active. Select OK to deactivate this input and all associated PID controllers, otherwise click Cancel to leave them active.")'})}}
       {% else -%}
-        {{form_mod_input.input_deactivate(class_='form-control btn btn-sm')}}
+        {{form_mod_input.input_deactivate(class_='form-control btn btn-primary btn-sm')}}
       {% endif -%}
     {% else -%}
-      {{form_mod_input.input_activate(class_='form-control btn btn-sm')}}
+      {{form_mod_input.input_activate(class_='form-control btn btn-primary btn-sm')}}
     {% endif -%}
     </div>
 
     <div class="col-4 col-sm-2">
-      {{form_mod_input.input_order_up(class_='form-control btn btn-sm btn-block')}}
+      {{form_mod_input.input_order_up(class_='form-control btn btn-primary btn-sm btn-block')}}
     </div>
     <div class="col-4 col-sm-2">
-      {{form_mod_input.input_order_down(class_='form-control btn btn-sm btn-block')}}
+      {{form_mod_input.input_order_down(class_='form-control btn btn-primary btn-sm btn-block')}}
     </div>
 
   </div>
@@ -60,90 +66,199 @@
 
     <div class="row small-gutters" style="padding: 0.5em">
       <div class="col-auto small-gutters">
-        {{form_mod_input.input_mod(class_='form-control btn btn-sm btn-block')}}
+        {{form_mod_input.input_mod(class_='form-control btn btn-primary btn-sm btn-block')}}
       </div>
       <div class="col-auto small-gutters">
         {% if has_active_pid or has_active_lcd -%}
-          {{form_mod_input.input_delete(class_='form-control btn btn-sm btn-block',**{'onclick':'return confirm("Note: there are currently an active PID that relies on this to operate. Deleting it will deactivate the PID. Are you sure you want to delete this?")'})}}
+          {{form_mod_input.input_delete(class_='form-control btn btn-primary btn-sm btn-block',**{'onclick':'return confirm("Note: there are currently an active PID that relies on this to operate. Deleting it will deactivate the PID. Are you sure you want to delete this?")'})}}
         {% else -%}
-          {{form_mod_input.input_delete(class_='form-control btn btn-sm btn-block',**{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
+          {{form_mod_input.input_delete(class_='form-control btn btn-primary btn-sm btn-block',**{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
         {% endif -%}
-      </div>
-      <div class="col-auto small-gutters">
-        {{form_mod_input.input_acquire_measurements(class_='form-control btn btn-sm btn-block')}}
       </div>
     </div>
 
+    {% if each_input.device in dict_inputs %}
+
     <div class="row small-gutters" style="padding: 0.5em">
 
-      {% if each_input.device in dict_inputs %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Message.html' %}
+      <div class="col-12">
+        {{_("Manufacturer")}}: {{dict_inputs[each_input.device]['input_manufacturer']}}
+      </div>
 
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Interface.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_GPIO.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_BT.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_I2C.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_FTDI.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_UART.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Baud_Rate.html' %}
+      <div class="col-12">
+        {{_("Model")}}: {{dict_inputs[each_input.device]['input_name']}}
+      </div>
 
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Location.html' %}
+      <div class="col-12">
+        {{_("Measurements")}}: {{dict_inputs[each_input.device]['measurements_name']}}
+      </div>
 
-        {% if each_input.device != 'EDGE' -%}
-          {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Period.html' %}
-          {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Start_Offset.html' %}
-          {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Pre_Output.html' %}
-        {% endif %}
+      {% if 'dependencies_module' in dict_inputs[each_input.device] and dict_inputs[each_input.device]['dependencies_module'] %}
+        <div class="col-12">
+        {{_("Library")}}:
+        {% for each_lib in dict_inputs[each_input.device]['dependencies_module'] -%}
+          {% if each_lib[0] == 'pip-pypi' %}
+            <a href="https://pypi.org/project/{{each_lib[2]}}" target="_blank">{{each_lib[2]}}</a>
+          {% else %}
+            {{each_lib[1]}}
+          {% endif %}
+          {%- if not loop.last %}, {% endif %}
+        {% endfor %}
+        </div>
+      {% endif %}
 
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_log_level_debug.html' %}
+      {% set manufacturer_url = 'url_manufacturer' in dict_inputs[each_input.device] and dict_inputs[each_input.device]['url_manufacturer'] %}
+      {% set datasheet_url = 'url_datasheet' in dict_inputs[each_input.device] and dict_inputs[each_input.device]['url_datasheet'] %}
+      {% set product_purchase_url = 'url_product_purchase' in dict_inputs[each_input.device] and dict_inputs[each_input.device]['url_product_purchase'] %}
+      {% set additional_url = 'url_additional' in dict_inputs[each_input.device] and dict_inputs[each_input.device]['url_additional'] %}
 
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Num_channels.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Measurements_Enabled.html' %}
+      {% if manufacturer_url or datasheet_url or product_purchase_url or additional_url %}
+      <div class="col-12">
+        {{_("Literature") + ": "}}
+      {%- if manufacturer_url -%}
+        {{_("Manufacturer")}} {% for each_url in dict_inputs[each_input.device]['url_manufacturer'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+      {%- endif -%}
+      {%- if datasheet_url -%}
+        {% if manufacturer_url %}; {% endif -%}
+        {{_("Datasheet")}} {% for each_url in dict_inputs[each_input.device]['url_datasheet'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+      {%- endif -%}
+      {%- if product_purchase_url -%}
+        {% if manufacturer_url or datasheet_url %}; {% endif -%}
+        {{_("Product")}} {% for each_url in dict_inputs[each_input.device]['url_product_purchase'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+      {%- endif -%}
+      {%- if additional_url -%}
+        {% if manufacturer_url or datasheet_url or product_purchase_url %}; {% endif -%}
+        {{_("Additional")}} {% for each_url in dict_inputs[each_input.device]['url_additional'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+      {%- endif -%}.
+      </div>
+      {% endif %}
 
-        {% set dict_options = dict_inputs[each_input.device] %}
-        {% set unique_id = each_input.unique_id %}
-        {% set custom_options_values = custom_options_values_inputs %}
-        {% include 'pages/TEMPLATE_OPTIONS_Custom_Options.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Single_Input_Math.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_EDGE.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Times_Check.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Deadline.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Port.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_RPM_Pulses_Rev.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Weighting.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Sample_Time.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_SHT_Voltage.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Pin_Clock.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Ref_Ohm.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Thermocouple_Type.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Resolution.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Resolution_2.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Sensitivity.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_ADC_Gain.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_ADC_Resolution.html' %}
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_ADC_Sample_Speed.html' %}
-
-        {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Cmd_Command.html' %}
+      {% if 'message' in dict_inputs[each_input.device] %}
+      <div class="col-12" style="padding-top: 0.3em">
+        {{dict_inputs[each_input.device]['message']|safe}}
+      </div>
       {% endif %}
 
     </div>
 
+    <div class="row small-gutters align-items-end" style="padding: 0.5em">
+      <div class="col-12">
+        <h5>{{_('Actions')}}</h5>
+      </div>
+      {% include 'pages/form_options/Custom_Actions_Message.html' %}
+      <div class="col-auto small-gutters">
+        {{form_mod_input.input_acquire_measurements(class_='form-control btn btn-primary btn-sm btn-block')}}
+      </div>
+      {% if each_input.device in custom_actions and custom_actions[each_input.device] %}
+        {% set running_custom_action = true %}
+        {% if 'custom_actions' in dict_options %}
+          {% for each_option in dict_options['custom_actions'] %}
+            {% if each_option['type'] == 'new_line' %}
+      </div>
+      <div class="row small-gutters" style="padding: 0.5em">
+            {% elif each_option['type'] == 'message' %}
+        <div class="col-12" style="padding-bottom: 0.5em">
+          {{each_option['default_value']|safe}}
+        </div>
+            {% else %}
+        {% include 'pages/form_options/Custom_Options.html' %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+      {% endif %}
+    </div>
+
+    <div class="row small-gutters" style="padding: 0.5em">
+      <div class="col-12">
+        <h5>{{_('Options')}}</h5>
+      </div>
+
+      <div class="col-auto">
+        {{form_mod_input.name.label(class_='control-label')}}
+        <div>
+          {{form_mod_input.name(class_='form-control', value=each_input.name, **{'title': dict_translation['name']['phrase']})}}
+        </div>
+      </div>
+      <div class="col-auto">
+        {{form_mod_input.log_level_debug.label(class_='control-label')}}
+        <div class="input-group-text">
+          <input id="log_level_debug" name="log_level_debug" type="checkbox" title="{{dict_translation['log_level_debug']['phrase']}}" value="y"{% if each_input.log_level_debug %} checked{% endif %}>
+        </div>
+      </div>
+
+      {% include 'pages/form_options/Interface.html' %}
+      {% include 'pages/form_options/GPIO.html' %}
+      {% include 'pages/form_options/Bluetooth.html' %}
+      {% include 'pages/form_options/I2C.html' %}
+      {% include 'pages/form_options/FTDI.html' %}
+      {% include 'pages/form_options/UART.html' %}
+      {% include 'pages/form_options/Baud_Rate.html' %}
+      {% include 'pages/form_options/Location.html' %}
+      {% include 'pages/form_options/Period.html' %}
+      {% include 'pages/form_options/Start_Offset.html' %}
+      {% include 'pages/form_options/Pre_Output.html' %}
+
+      {# TODO: move many of the below options from database columns to custom options at next major revision #}
+
+      {% include 'pages/form_options/Num_channels.html' %}
+      {% include 'pages/form_options/Measurements_Enabled.html' %}
+      {% include 'pages/form_options/Single_Input_Math.html' %}
+      {% include 'pages/form_options/EDGE.html' %}
+      {% include 'pages/form_options/Times_Check.html' %}
+      {% include 'pages/form_options/Deadline.html' %}
+      {% include 'pages/form_options/Port.html' %}
+      {% include 'pages/form_options/RPM_Pulses_Rev.html' %}
+      {% include 'pages/form_options/Weighting.html' %}
+      {% include 'pages/form_options/Sample_Time.html' %}
+      {% include 'pages/form_options/SHT_Voltage.html' %}
+      {% include 'pages/form_options/Pin_Clock.html' %}
+      {% include 'pages/form_options/Ref_Ohm.html' %}
+      {% include 'pages/form_options/Thermocouple_Type.html' %}
+      {% include 'pages/form_options/Resolution.html' %}
+      {% include 'pages/form_options/Resolution_2.html' %}
+      {% include 'pages/form_options/Sensitivity.html' %}
+      {% include 'pages/form_options/ADC_Gain.html' %}
+      {% include 'pages/form_options/ADC_Resolution.html' %}
+      {% include 'pages/form_options/ADC_Sample_Speed.html' %}
+      {% include 'pages/form_options/Shell_Command.html' %}
+
+    </div>
+
+      {% if custom_options_values[unique_id] %}
+    <div class="row small-gutters" style="padding: 0.5em">
+      <div class="col-12">
+        <h5>{{_('Custom Options')}}</h5>
+      </div>
+      {% include 'pages/form_options/Custom_Options_Message.html' %}
+        {% if 'custom_options' in dict_options %}
+          {% for each_option in dict_options['custom_options'] %}
+            {% if each_option['type'] == 'new_line' %}
+    </div>
+    <div class="row small-gutters" style="padding: 0.5em">
+            {% elif each_option['type'] == 'message' %}
+      <div class="col-12" style="padding-bottom: 0.5em">
+        {{each_option['default_value']|safe}}
+      </div>
+            {% else %}
+      {% include 'pages/form_options/Custom_Options.html' %}
+            {% endif %}
+          {% endfor %}
+        {% endif %}
+    </div>
+      {% endif %}
+
+    {% endif %}
+
     </form>
 
-    <div class="row small-gutters" style="border-bottom: 1px solid #ddd; padding: 0.5em">
+    <div class="row small-gutters" style="border-bottom: 1px solid #ddd; padding: 0.5em 0.5em 0 0.5em">
       <div class="col-12">
         <h5>{{_('Measurement Settings')}}</h5>
       </div>
     </div>
 
-    {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Measurements_Select.html' %}
-    {% include 'pages/data_options/input_options/TEMPLATE_OPTIONS_Measurements_Convert.html' %}
+    {% include 'pages/form_options/Measurements_Select.html' %}
+    {% include 'pages/form_options/Measurements_Convert.html' %}
 
   </div> <!- collapse container end ->
 

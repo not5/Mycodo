@@ -1,4 +1,5 @@
 # coding=utf-8
+import copy
 import os
 
 from mycodo.inputs.base_input import AbstractInput
@@ -16,13 +17,13 @@ INPUT_INFORMATION = {
     'input_name_unique': 'RPiFreeSpace',
     'input_manufacturer': 'System',
     'input_name': 'Free Space',
+    'input_library': 'os.statvfs()',
     'measurements_name': 'Unallocated Disk Space',
     'measurements_dict': measurements_dict,
 
     'options_enabled': [
         'location',
-        'period',
-        'log_level_debug'
+        'period'
     ],
     'options_disabled': ['interface'],
 
@@ -40,14 +41,22 @@ class InputModule(AbstractInput):
 
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
-        self._disk_space = None
+
+        self.path = None
 
         if not testing:
-            self.path = input_dev.location
+            self.initialize_input()
+
+    def initialize_input(self):
+        self.path = self.input_dev.location
 
     def get_measurement(self):
         """ Gets the free space """
-        self.return_dict = measurements_dict.copy()
+        if not self.path:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         f = os.statvfs(self.path)
         self.value_set(0, (f.f_bsize * f.f_bavail) / 1000000.0)

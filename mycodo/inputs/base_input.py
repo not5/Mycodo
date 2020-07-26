@@ -12,20 +12,22 @@ import datetime
 import logging
 import time
 
-import filelock
-import os
-
+from mycodo.abstract_base_controller import AbstractBaseController
 from mycodo.databases.models import Conversion
 from mycodo.databases.models import DeviceMeasurements
 from mycodo.utils.database import db_retrieve_table_daemon
 
 
-class AbstractInput(object):
+class AbstractInput(AbstractBaseController):
     """
     Base Input class that ensures certain methods and values are present
     in inputs.
     """
     def __init__(self, input_dev, testing=False, name=__name__):
+        if not testing:
+            super(AbstractInput, self).__init__(input_dev.unique_id, testing=testing, name=__name__)
+        else:
+            super(AbstractInput, self).__init__(None, testing=testing, name=__name__)
 
         self.logger = None
         self.setup_logger(testing=testing, name=name, input_dev=input_dev)
@@ -33,10 +35,8 @@ class AbstractInput(object):
         self._measurements = None
         self.channels_conversion = {}
         self.channels_measurement = {}
-        self.lock = {}
-        self.lock_file = None
-        self.locked = {}
         self.return_dict = {}
+        self.filter_avg = {}
         self.avg_max = {}
         self.avg_index = {}
         self.avg_meas = {}
@@ -142,10 +142,6 @@ class AbstractInput(object):
                 self.logger.exception(msg)
             else:
                 self.logger.error(msg)
-        finally:
-            # Clean up
-            if self.lock_file in self.locked and self.locked[self.lock_file]:
-                self.lock_release(self.lock_file)
         return 1
 
     def initialize_measurements(self):
@@ -162,70 +158,6 @@ class AbstractInput(object):
         except:
             self.setup_device_measurement()
             return self.channels_measurement[channel].is_enabled
-
-    def setup_custom_options(self, custom_options, input_dev):
-        for each_option_default in custom_options:
-            try:
-                required = False
-                custom_option_set = False
-                error = []
-                if 'type' not in each_option_default:
-                    error.append("'type' not found in custom_options")
-                if 'id' not in each_option_default:
-                    error.append("'id' not found in custom_options")
-                if 'default_value' not in each_option_default:
-                    error.append(
-                        "'default_value' not found in custom_options")
-                for each_error in error:
-                    self.logger.error(each_error)
-                if error:
-                    return
-
-                if ('required' in each_option_default and
-                        each_option_default['required']):
-                    required = True
-
-                option_value = each_option_default['default_value']
-
-                if not hasattr(input_dev, 'custom_options'):
-                    self.logger.error("input_dev missing attribute custom_options")
-                    return
-
-                if input_dev.custom_options:
-                    for each_option in input_dev.custom_options.split(';'):
-                        option = each_option.split(',')[0]
-                        value = each_option.split(',')[1]
-
-                        if option == each_option_default['id']:
-                            custom_option_set = True
-                            option_value = value
-
-                if required and not custom_option_set:
-                    self.logger.error(
-                        "Custom option '{}' required but was not found to be "
-                        "set by the user".format(each_option_default['id']))
-
-                if each_option_default['type'] == 'integer':
-                    setattr(
-                        self, each_option_default['id'], int(option_value))
-                elif each_option_default['type'] == 'float':
-                    setattr(
-                        self, each_option_default['id'], float(option_value))
-                elif each_option_default['type'] == 'bool':
-                    setattr(
-                        self, each_option_default['id'], bool(option_value))
-                elif each_option_default['type'] == 'text':
-                    setattr(
-                        self, each_option_default['id'], str(option_value))
-                elif each_option_default['type'] == 'select':
-                    setattr(
-                        self, each_option_default['id'], str(option_value))
-                else:
-                    self.logger.error(
-                        "Unknown custom_option type '{}'".format(
-                            each_option_default['type']))
-            except Exception:
-                self.logger.exception("Error parsing custom_options")
 
     def setup_device_measurement(self):
         # Make 5 attempts to access database
@@ -265,8 +197,10 @@ class AbstractInput(object):
         """ Called when Input is deactivated """
         self.running = False
         try:
-            if self.lock_file:
-                self.lock_release(self.lock_file)
+            # Release all locks
+            for lockfile, lock_state in self.lockfile.locked.items():
+                if lock_state:
+                    self.lock_release(lockfile)
         except:
             pass
 
@@ -293,7 +227,16 @@ class AbstractInput(object):
         :type timestamp: datetime.datetime
         :return:
         """
+        if value is None:
+            self.logger.error("Cannot set a value of None. Must be a float or string representing a float. "
+                              "Check the sensor and Input module is working correctly.")
+            return
+
+        if not self.is_enabled(chan):
+            return
+
         self.return_dict[chan]['value'] = float(value)
+
         if timestamp:
             self.return_dict[chan]['timestamp_utc'] = timestamp
         else:
@@ -313,65 +256,30 @@ class AbstractInput(object):
         :param measurement: add measurement to pool and return average of past init_max measurements
         :return: int or float, whichever measurements come in as
         """
-        if name not in self.avg_max:
-            if init_max != 0 and init_max < 2:
+        if name not in self.filter_avg:
+            self.filter_avg[name] = {}
+            if init_max < 2:
                 self.logger.error("init_max must be greater than 1")
-            elif init_max > 1:
-                self.avg_max[name] = init_max
-                self.avg_meas[name] = []
-                self.avg_index[name] = 0
+            else:
+                self.filter_avg[name]['max'] = init_max
+                self.filter_avg[name]['meas'] = []
+                self.filter_avg[name]['index'] = 0
 
         if measurement is None:
             return
 
-        if 0 <= self.avg_index[name] < len(self.avg_meas[name]):
-            self.avg_meas[name][self.avg_index[name]] = measurement
+        if 0 <= self.filter_avg[name]['index'] < len(self.filter_avg[name]['meas']):
+            self.filter_avg[name]['meas'][self.filter_avg[name]['index']] = measurement
         else:
-            self.avg_meas[name].append(measurement)
-        average = sum(self.avg_meas[name]) / float(len(self.avg_meas[name]))
+            self.filter_avg[name]['meas'].append(measurement)
+        average = sum(self.filter_avg[name]['meas']) / float(len(self.filter_avg[name]['meas']))
 
-        if self.avg_index[name] >= self.avg_max[name] - 1:
-            self.avg_index[name] = 0
+        if self.filter_avg[name]['index'] >= self.filter_avg[name]['max'] - 1:
+            self.filter_avg[name]['index'] = 0
         else:
-            self.avg_index[name] += 1
+            self.filter_avg[name]['index'] += 1
 
         return average
-
-    def lock_acquire(self, lockfile, timeout):
-        """ Non-blocking locking method """
-        self.lock[lockfile] = filelock.FileLock(lockfile, timeout=1)
-        self.locked[lockfile] = False
-        timer = time.time() + timeout
-        self.logger.debug("Acquiring lock for {} ({} sec timeout)".format(
-            lockfile, timeout))
-        while self.running and time.time() < timer:
-            try:
-                self.lock[lockfile].acquire()
-                seconds = time.time() - (timer - timeout)
-                self.logger.debug(
-                    "Lock acquired for {} in {:.3f} seconds".format(
-                        lockfile, seconds))
-                self.locked[lockfile] = True
-                break
-            except:
-                pass
-            time.sleep(0.05)
-        if not self.locked[lockfile]:
-            self.logger.debug(
-                "Lock unable to be acquired after {:.3f} seconds. "
-                "Breaking for future lock.".format(timeout))
-            self.lock_release(self.lock_file)
-
-    def lock_release(self, lockfile):
-        """ Release lock and force deletion of lock file """
-        try:
-            self.logger.debug("Releasing lock for {}".format(lockfile))
-            self.lock[lockfile].release(force=True)
-            os.remove(lockfile)
-        except Exception:
-            pass
-        finally:
-            self.locked[lockfile] = False
 
     def is_acquiring_measurement(self):
         return self.acquiring_measurement

@@ -10,11 +10,14 @@ import random
 from mycodo.config import MATH_INFO
 from mycodo.databases.models import Input
 from mycodo.databases.models import Math
+from mycodo.databases.models import Output
 from mycodo.databases.models import User
 from mycodo.mycodo_flask.utils.utils_general import generate_form_input_list
+from mycodo.mycodo_flask.utils.utils_general import generate_form_output_list
 from mycodo.tests.software_tests.conftest import login_user
 from mycodo.tests.software_tests.factories import UserFactory
 from mycodo.utils.inputs import parse_input_information
+from mycodo.utils.outputs import parse_output_information
 
 
 # ----------------------
@@ -172,7 +175,7 @@ def test_api_measurement_post_get(_, testapp):
     headers = {'Accept': 'application/vnd.mycodo.v1+json',
                'X-API-KEY': base64.b64encode(b'secret_admin_api_key')}
     for each_measurement in measurements_random:
-        endpoint = 'measurements/create/testuniqueid/unit/0/{val}'.format(val=each_measurement)
+        endpoint = 'measurements/create/testuniqueid/C/0/{val}'.format(val=each_measurement)
         print("test_api_measurement_post_get: testapp.post('/api/{ep}')".format(ep=endpoint))
         response = testapp.post('/api/{ep}'.format(ep=endpoint), headers=headers)
         assert response.status_code == 200, "Endpoint Tested: {page}".format(page=endpoint)
@@ -180,7 +183,7 @@ def test_api_measurement_post_get(_, testapp):
             body=response.body)
 
     # Read last stored measurement
-    endpoint = 'measurements/last/testuniqueid/unit/0/1000'
+    endpoint = 'measurements/last/testuniqueid/C/0/1000'
     print("test_api_measurement_post_get: testapp.get('/api/{ep}')".format(ep=endpoint))
     response = testapp.get('/api/{ep}'.format(ep=endpoint), headers=headers)
     assert response.status_code == 200, "Endpoint Tested: {page}".format(page=endpoint)
@@ -192,7 +195,7 @@ def test_api_measurement_post_get(_, testapp):
     measurements_sum = 0
 
     # Read historical stored measurements
-    endpoint = 'measurements/historical/testuniqueid/unit/0/{start}/{end}'.format(start=epoch_start, end=epoch_end)
+    endpoint = 'measurements/historical/testuniqueid/C/0/{start}/{end}'.format(start=epoch_start, end=epoch_end)
     print("test_api_measurement_post_get: testapp.get('/api/{ep}')".format(ep=endpoint))
     response = testapp.get('/api/{ep}'.format(ep=endpoint), headers=headers)
     assert response.status_code == 200, "Endpoint Tested: {page}".format(page=endpoint)
@@ -209,7 +212,7 @@ def test_api_measurement_post_get(_, testapp):
         body=response.body)
 
     # Read historical stored measurements (epoch_end = 0)
-    endpoint = 'measurements/historical/testuniqueid/unit/0/{start}/{end}'.format(start=epoch_start, end=0)
+    endpoint = 'measurements/historical/testuniqueid/C/0/{start}/{end}'.format(start=epoch_start, end=0)
     print("test_api_measurement_post_get: testapp.get('/api/{ep}')".format(ep=endpoint))
     response = testapp.get('/api/{ep}'.format(ep=endpoint), headers=headers)
     assert response.status_code == 200, "Endpoint Tested: {page}".format(page=endpoint)
@@ -224,7 +227,7 @@ def test_api_measurement_post_get(_, testapp):
         body=response.body)
 
     # Read past stored measurements
-    endpoint = 'measurements/past/testuniqueid/unit/0/5'.format()
+    endpoint = 'measurements/past/testuniqueid/C/0/5'.format()
     print("test_api_measurement_post_get: testapp.get('/api/{ep}')".format(ep=endpoint))
     response = testapp.get('/api/{ep}'.format(ep=endpoint), headers=headers)
     assert response.status_code == 200, "Endpoint Tested: {page}".format(page=endpoint)
@@ -239,7 +242,7 @@ def test_api_measurement_post_get(_, testapp):
         body=response.body)
 
     # Use historical stored measurement with SUM function
-    endpoint = 'measurements/historical_function/testuniqueid/unit/0/{start}/{end}/SUM'.format(
+    endpoint = 'measurements/historical_function/testuniqueid/C/0/{start}/{end}/SUM'.format(
         start=epoch_start, end=epoch_end)
     print("test_api_measurement_post_get: testapp.get('/api/{ep}')".format(ep=endpoint))
     response = testapp.get('/api/{ep}'.format(ep=endpoint), headers=headers)
@@ -248,7 +251,7 @@ def test_api_measurement_post_get(_, testapp):
         body=response.body)
 
     # Use historical stored measurement with SUM function (epoch_end = 0)
-    endpoint = 'measurements/historical_function/testuniqueid/unit/0/{start}/{end}/SUM'.format(
+    endpoint = 'measurements/historical_function/testuniqueid/C/0/{start}/{end}/SUM'.format(
         start=epoch_start, end=0)
     print("test_api_measurement_post_get: testapp.get('/api/{ep}')".format(ep=endpoint))
     response = testapp.get('/api/{ep}'.format(ep=endpoint), headers=headers)
@@ -351,6 +354,7 @@ def test_routes_logged_in_as_admin(_, testapp):
         ('dashboard', '<!-- Route: /dashboard -->'),
         ('data', '<!-- Route: /data -->'),
         ('export', '<!-- Route: /export -->'),
+        ('forgot_password', '<!-- Route: /forgot_password -->'),
         ('function', '<!-- Route: /function -->'),
         ('graph-async', '<!-- Route: /graph-async -->'),
         ('info', '<!-- Route: /info -->'),
@@ -363,6 +367,7 @@ def test_routes_logged_in_as_admin(_, testapp):
         ('note_edit/0', 'admin logged in'),
         ('output', '<!-- Route: /output -->'),
         ('remote/setup', '<!-- Route: /remote/setup -->'),
+        ('reset_password', '<!-- Route: /reset_password -->'),
         ('setup_atlas_ph', '<!-- Route: /setup_atlas_ph -->'),
         ('setup_ds_resolution', '<!-- Route: /setup_ds_resolution -->'),
         ('usage', '<!-- Route: /usage -->'),
@@ -399,7 +404,7 @@ def test_add_all_data_devices_logged_in_as_admin(_, testapp):
 
     for index, each_input in enumerate(choices_input):
         choice_name = each_input.split(',')[0]
-        print("test_add_all_data_devices_logged_in_as_admin: Adding Input ({}/{}): {}".format(
+        print("test_add_all_data_devices_logged_in_as_admin: Adding and deleting Input ({}/{}): {}".format(
             index + 1, len(choices_input), each_input))
         response = add_data(testapp, data_type='input', input_type=each_input)
 
@@ -409,10 +414,16 @@ def test_add_all_data_devices_logged_in_as_admin(_, testapp):
 
         # Verify data was entered into the database
         input_count += 1
-        assert Input.query.count() == input_count, "Number of Inputs doesn't match: In DB {}, Should be: {}".format(Input.query.count(), input_count)
+        assert Input.query.count() == input_count, "Number of Inputs doesn't match: In DB {}, Should be: {}".format(
+            Input.query.count(), input_count)
 
         input_dev = Input.query.filter(Input.id == input_count).first()
-        assert dict_inputs[choice_name]['input_name'] in input_dev.name, "Input name doesn't match: {}".format(choice_name)
+        assert choice_name == input_dev.device, "Input name doesn't match: {}".format(choice_name)
+
+        # Delete input (speeds up further input addition checking)
+        response = delete_data(testapp, data_type='input', device_dev=input_dev)
+        assert "Delete input with ID: {}".format(input_dev.unique_id) in response
+        input_count -= 1
 
     # Add All Maths
     math_count = 0
@@ -428,10 +439,55 @@ def test_add_all_data_devices_logged_in_as_admin(_, testapp):
         # Verify data was entered into the database
         math_count += 1
         actual_count = Math.query.count()
-        assert actual_count == math_count, "Number of Maths don't match: In DB {}, Should be: {}".format(actual_count, math_count)
+        assert actual_count == math_count, "Number of Maths don't match: In DB {}, Should be: {}".format(
+            actual_count, math_count)
 
         math_dev = Math.query.filter(Math.id == math_count).first()
         assert each_math in math_dev.math_type, "Math type doesn't match: {}".format(each_math)
+
+        # Delete input (speeds up further input addition checking)
+        response = delete_data(testapp, data_type='math', device_dev=math_dev)
+        assert "Delete math with ID: {}".format(math_dev.unique_id) in response
+        math_count -= 1
+
+
+@mock.patch('mycodo.mycodo_flask.routes_authentication.login_log')
+def test_add_all_output_devices_logged_in_as_admin(_, testapp):
+    """ Verifies adding all outputs as a logged in admin user """
+    print("\nTest: test_add_all_output_devices_logged_in_as_admin")
+    login_user(testapp, 'admin', '53CR3t_p4zZW0rD')
+
+    # Add All Inputs
+    output_count = 0
+
+    dict_outputs = parse_output_information()
+    list_outputs_sorted = generate_form_output_list(dict_outputs)
+
+    choices_output = []
+    for each_output in list_outputs_sorted:
+        if 'interfaces' not in dict_outputs[each_output]:
+            choices_output.append('{inp},'.format(inp=each_output))
+        else:
+            for each_interface in dict_outputs[each_output]['interfaces']:
+                choices_output.append('{inp},{int}'.format(inp=each_output, int=each_interface))
+
+    for index, each_output in enumerate(choices_output):
+        print("test_add_all_data_devices_logged_in_as_admin: Adding and deleting Output ({}/{}): {}".format(
+            index + 1, len(choices_output), each_output))
+        response = add_output(testapp, output_type=each_output)
+        # Verify success message flashed
+        assert "Success: Add Output" in response
+
+        # Verify data was entered into the database
+        output_count += 1
+        assert Output.query.count() == output_count, "Number of Outputs doesn't match: In DB {}, Should be: {}".format(
+            Output.query.count(), output_count)
+
+        # Delete output (speeds up further output addition checking)
+        output = Output.query.filter(Output.id == output_count).first()
+        response = delete_data(testapp, data_type='output', device_dev=output)
+        assert "Success: Delete output with ID: {}".format(output.unique_id) in response
+        output_count -= 1
 
 
 # ---------------------------
@@ -442,7 +498,7 @@ def test_routes_logged_in_as_guest(_, testapp):
     """ Verifies behavior of these endpoints for a logged in guest user """
     print("\nTest: test_routes_logged_in_as_guest")
 
-    print("test_routes_logged_in_as_admin: login_user(testapp, 'guest', '53CR3t_p4zZW0rD')")
+    print("test_routes_logged_in_as_guest: login_user(testapp, 'guest', '53CR3t_p4zZW0rD')")
     login_user(testapp, 'guest', '53CR3t_p4zZW0rD')
 
     # Test if the navigation bar is seen on the main page
@@ -482,7 +538,7 @@ def create_user(mycodo_db, role_id, name, password):
 
 
 def add_data(testapp, data_type='input', input_type='RPi'):
-    """ Go to the data page and create one or more inputs """
+    """ Go to the data page and create input/math """
     response = None
     if data_type == 'input':
         form = testapp.get('/data').maybe_follow().forms['new_input_form']
@@ -492,6 +548,35 @@ def add_data(testapp, data_type='input', input_type='RPi'):
         form = testapp.get('/data').maybe_follow().forms['new_math_form']
         form.select(name='math_type', value=input_type)
         response = form.submit(name='math_add', value='Add').maybe_follow()
+    # response.showbrowser()
+    return response
+
+
+def add_output(testapp, output_type='wired'):
+    """ Go to the data page and create output/math """
+    form = testapp.get('/output').maybe_follow().forms['new_output_form']
+    form.set(name='output_quantity', value=1)
+    form.select(name='output_type', value=output_type)
+    response = form.submit(name='output_add', value='Add').maybe_follow()
+    # response.showbrowser()
+    return response
+
+
+def delete_data(testapp, data_type='input', device_dev=None):
+    """ Go to the data page and delete input/math """
+    response = None
+    if data_type == 'input':
+        form = testapp.get('/data').maybe_follow().forms['mod_input_form']
+        form['input_id'].force_value(device_dev.unique_id)
+        response = form.submit(name='input_delete', value='Delete').maybe_follow()
+    elif data_type == 'math':
+        form = testapp.get('/data').maybe_follow().forms['mod_math_form']
+        form['math_id'].force_value(device_dev.unique_id)
+        response = form.submit(name='math_delete', value='Delete').maybe_follow()
+    elif data_type == 'output':
+        form = testapp.get('/output').maybe_follow().forms['mod_output_form']
+        form['output_id'].force_value(device_dev.unique_id)
+        response = form.submit(name='delete', value='Delete').maybe_follow()
     # response.showbrowser()
     return response
 

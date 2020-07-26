@@ -1,12 +1,18 @@
 # coding=utf-8
-import fcntl  # used to access I2C parameters like addresses
+import fcntl
 import logging
-import time  # used for sleep delay and timestamps
+import os
+import sys
+import time
 
-import io  # used to create file streams
+import io
+
+sys.path.append(os.path.abspath(os.path.join(os.path.realpath(__file__), '../../..')))
+
+from mycodo.devices.base_atlas import AbstractBaseAtlasScientific
 
 
-class AtlasScientificI2C:
+class AtlasScientificI2C(AbstractBaseAtlasScientific):
     """Class for Atlas Scientific sensor communication via I2C"""
 
     long_timeout = 1.5  # the timeout needed to query readings and calibrations
@@ -15,6 +21,8 @@ class AtlasScientificI2C:
     default_address = 98  # the default address for the sensor
 
     def __init__(self, i2c_address=default_address, i2c_bus=default_bus):
+        super(AtlasScientificI2C, self).__init__(interface='I2C', name="_{}_{}".format(i2c_address, i2c_bus))
+
         # open two file streams, one for reading and one for writing
         # the specific I2C channel is selected with bus
         # it is usually 1, except for older revisions where its 0
@@ -22,18 +30,28 @@ class AtlasScientificI2C:
         self.logger = logging.getLogger(
             "{}_{}_{}".format(__name__, i2c_address, i2c_bus))
         self.current_addr = i2c_address
-        self.setup = True
+        self.setup = False
         try:
             self.file_read = io.open("/dev/i2c-" + str(i2c_bus), "rb", buffering=0)
             self.file_write = io.open("/dev/i2c-" + str(i2c_bus), "wb", buffering=0)
 
             # initializes I2C to either a user specified or default address
             self.set_i2c_address(i2c_address)
+            self.setup = True
+
+            (board,
+             revision,
+             firmware_version) = self.get_board_version()
+
+            self.logger.info(
+                "Atlas Scientific Board: {brd}, Rev: {rev}, Firmware: {fw}".format(
+                    brd=board,
+                    rev=revision,
+                    fw=firmware_version))
         except Exception as err:
             self.logger.exception(
                 "{cls} raised an exception when initializing: "
                 "{err}".format(cls=type(self).__name__, err=err))
-            self.setup = False
 
     def set_i2c_address(self, addr):
         # set the I2C communications to the slave specified by the address
@@ -50,7 +68,7 @@ class AtlasScientificI2C:
         # self.logger.error("Atlas Scientific command being sent: '{}'".format(cmd))
         self.file_write.write(cmd.encode('latin-1'))
 
-    def read(self, num_of_bytes=31):
+    def read(self, num_of_bytes=50):
         """ Read a specified number of bytes from I2C, then parse and display the result """
         res = self.file_read.read(num_of_bytes)  # read from the board
         if res[0] == 1:  # if the response isn't an error

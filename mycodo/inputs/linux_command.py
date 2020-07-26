@@ -1,6 +1,7 @@
 # coding=utf-8
 import traceback
 
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -23,13 +24,13 @@ INPUT_INFORMATION = {
     'measurements_name': 'Return Value',
     'measurements_dict': measurements_dict,
 
+    'message': 'This Input will execute a command in the shell and store the output as a float value. Perform any unit conversions within your script or command. A measurement/unit is required to be selected.',
+
     'options_enabled': [
-        'custom_options',
         'measurements_select_measurement_unit',
         'period',
         'cmd_command',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -68,24 +69,26 @@ INPUT_INFORMATION = {
 
 class InputModule(AbstractInput):
     """ A sensor support class that returns a value from a command """
-
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        # Initialize custom options
+        self.command = None
+
         self.command_timeout = None
         self.execute_as_user = None
         self.current_working_dir = None
-        # Set custom options
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
         if not testing:
-            self.command = input_dev.cmd_command
+            self.initialize_input()
+
+    def initialize_input(self):
+        self.command = self.input_dev.cmd_command
 
     def get_measurement(self):
         """ Determine if the return value of the command is a number """
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         self.logger.debug("Command being executed: {}".format(self.command))
 

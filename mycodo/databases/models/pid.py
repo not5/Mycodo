@@ -1,8 +1,9 @@
 # coding=utf-8
+from marshmallow_sqlalchemy import ModelSchema
+
 from mycodo.databases import CRUDMixin
 from mycodo.databases import set_uuid
 from mycodo.mycodo_flask.extensions import db
-from mycodo.mycodo_flask.extensions import ma
 
 
 class PID(CRUDMixin, db.Model):
@@ -33,13 +34,17 @@ class PID(CRUDMixin, db.Model):
     integrator_min = db.Column(db.Float, default=-100.0)
     integrator_max = db.Column(db.Float, default=100.0)
     raise_output_id = db.Column(db.String, db.ForeignKey('output.unique_id'), default=None)  # Output to raise the condition
+    raise_output_type = db.Column(db.String, default=None)
     raise_min_duration = db.Column(db.Float, default=0.0)
     raise_max_duration = db.Column(db.Float, default=0.0)
     raise_min_off_duration = db.Column(db.Float, default=0.0)
+    raise_always_min_pwm = db.Column(db.Boolean, default=False)
     lower_output_id = db.Column(db.String, db.ForeignKey('output.unique_id'), default=None)  # Output to lower the condition
+    lower_output_type = db.Column(db.String, default=None)
     lower_min_duration = db.Column(db.Float, default=0.0)
     lower_max_duration = db.Column(db.Float, default=0.0)
     lower_min_off_duration = db.Column(db.Float, default=0.0)
+    lower_always_min_pwm = db.Column(db.Boolean, default=False)
     store_lower_as_negative = db.Column(db.Boolean, default=True)
 
     # Setpoint tracking
@@ -58,6 +63,6 @@ class PID(CRUDMixin, db.Model):
         return "<{cls}(id={s.id})>".format(s=self, cls=self.__class__.__name__)
 
 
-class PIDSchema(ma.ModelSchema):
+class PIDSchema(ModelSchema):
     class Meta:
         model = PID

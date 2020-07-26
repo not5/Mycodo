@@ -190,14 +190,11 @@
               <a class="dropdown-item{% if active_page == 'graph_async' %} active{% endif %}" href="{{url_for('routes_page.page_graph_async')}}"><i class="fas fa-sync"></i> {{_('Asynchronous Graphs')}}</a>
               <div class="dropdown-divider"></div>
               <a class="dropdown-item disabled" href="#"><i class="fas fa-tachometer-alt"></i> {{_('Dashboards')}}</a>
-              <a class="dropdown-item" href="/dashboard-add">{{_('Add Dashboard')}}</a>
-              <div class="dropdown-divider"></div>
               {% for each_dash in dashboards %}
               <a class="dropdown-item" href="/dashboard/{{each_dash['dashboard_id']}}">{{each_dash['name']}}</a>
-                {% if not loop.last %}
               <div class="dropdown-divider"></div>
-                {% endif %}
               {% endfor %}
+              <a class="dropdown-item" href="/dashboard-add">{{_('Add Dashboard')}}</a>
             </div>
           </li>
 
@@ -245,7 +242,7 @@
               <a class="dropdown-item" target="_blank" href="/api"><i class="fas fa-plug"></i> {{_('Mycodo API Docs')}}</a>
               <div class="dropdown-divider"></div>
               <a class="dropdown-item" target="_blank" href="https://kylegabriel.com/forum/"><i class="fas fa-comments"></i> {{_('Discussion Forum')}}</a>
-              <a class="dropdown-item" target="_blank" href="https://github.com/kizniche/Mycodo/issues/new"><i class="fas fa-bug"></i> {{_('Submit an Issue')}}</a>
+              <a class="dropdown-item" target="_blank" href="https://github.com/kizniche/Mycodo/issues/new/choose"><i class="fas fa-bug"></i> {{_('Submit an Issue')}}</a>
               <a class="dropdown-item" target="_blank" href="https://github.com/kizniche/Mycodo"><i class="fab fa-github"></i> {{_('Mycodo on Github')}}</a>
               <a class="dropdown-item" target="_blank" href="https://github.com/kizniche/Mycodo/blob/master/CHANGELOG.md"><i class="fas fa-edit"></i> {{_('Changelog')}}</a>
             </div>

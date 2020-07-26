@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
+from marshmallow_sqlalchemy import ModelSchema
+
 from mycodo.databases import CRUDMixin
 from mycodo.databases import set_uuid
 from mycodo.mycodo_flask.extensions import db
-from mycodo.mycodo_flask.extensions import ma
 
 
 class Input(CRUDMixin, db.Model):
@@ -33,7 +34,7 @@ class Input(CRUDMixin, db.Model):
 
     # I2C
     i2c_location = db.Column(db.Text, default=None)  # Address location for I2C communication
-    i2c_bus = db.Column(db.Integer, default='')  # I2C bus the sensor is connected to
+    i2c_bus = db.Column(db.Integer, default=1)  # I2C bus the sensor is connected to
 
     # FTDI
     ftdi_location = db.Column(db.Text, default=None)  # Device location for FTDI communication
@@ -96,6 +97,6 @@ class Input(CRUDMixin, db.Model):
         return "<{cls}(id={s.id})>".format(s=self, cls=self.__class__.__name__)
 
 
-class InputSchema(ma.ModelSchema):
+class InputSchema(ModelSchema):
     class Meta:
         model = Input

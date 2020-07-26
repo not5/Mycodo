@@ -1,8 +1,8 @@
 # coding=utf-8
-
 import importlib.util
 import textwrap
 
+import copy
 import os
 from flask import Markup
 from flask import flash
@@ -160,8 +160,7 @@ INPUT_INFORMATION = {
         'measurements_select',
         'period',
         'cmd_command',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -185,24 +184,38 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            self.python_code = input_dev.cmd_command
+        self.python_code = None
 
-            self.measure_info = {}
-            self.device_measurements = db_retrieve_table_daemon(
-                DeviceMeasurements).filter(
-                DeviceMeasurements.device_id == self.input_dev.unique_id)
-            for each_measure in self.device_measurements.all():
-                self.measure_info[each_measure.channel] = {}
-                self.measure_info[each_measure.channel]['unit'] = each_measure.unit
-                self.measure_info[each_measure.channel]['measurement'] = each_measure.measurement
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        self.unique_id = self.input_dev.unique_id
+
+        self.measure_info = {}
+        self.device_measurements = db_retrieve_table_daemon(
+            DeviceMeasurements).filter(
+            DeviceMeasurements.device_id == self.input_dev.unique_id)
+        for each_measure in self.device_measurements.all():
+            self.measure_info[each_measure.channel] = {}
+            self.measure_info[each_measure.channel]['unit'] = each_measure.unit
+            self.measure_info[each_measure.channel]['measurement'] = each_measure.measurement
+
+        self.python_code = self.input_dev.cmd_command
 
     def get_measurement(self):
         """ Determine if the return value of the command is a number """
-        self.return_dict = measurements_dict.copy()
+        if not self.python_code:
+            self.logger.error("Input not set up")
+            return
 
-        file_run = '{}/input_python_code_{}.py'.format(
-            PATH_PYTHON_CODE_USER, self.unique_id)
+        self.return_dict = copy.deepcopy(measurements_dict)
+
+        file_run = '{}/input_python_code_{}.py'.format(PATH_PYTHON_CODE_USER, self.unique_id)
+
+        # If the file to execute doesn't exist, generate it
+        if not os.path.exists(file_run):
+            execute_at_creation(self.unique_id, self.python_code, None)
 
         with open(file_run, 'r') as file:
             self.logger.debug("Python Code:\n{}".format(file.read()))

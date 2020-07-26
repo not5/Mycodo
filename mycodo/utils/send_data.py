@@ -20,16 +20,16 @@ logger = logging.getLogger("mycodo.notification")
 # Email notification
 #
 
-def send_email(smtp_host, smtp_ssl, smtp_port, smtp_user, smtp_pass,
-               smtp_email_from, email_to, message_body,
+def send_email(smtp_host, smtp_protocol, smtp_port, smtp_user, smtp_pass,
+               smtp_email_from, email_to, message_body, subject=None,
                attachment_file=None, attachment_type=False):
     """
     Email a specific recipient or recipients a message.
 
     :param smtp_host: Email server hostname
     :type smtp_host: str
-    :param smtp_ssl: Use SSL?
-    :type smtp_ssl: bool
+    :param smtp_protocol: encryption protocol
+    :type smtp_protocol: str
     :param smtp_port: Email server port
     :type smtp_port: int
     :param smtp_user: Email server user name
@@ -42,6 +42,8 @@ def send_email(smtp_host, smtp_ssl, smtp_port, smtp_user, smtp_pass,
     :type email_to: str or list
     :param message_body: Message in the body of the email
     :type message_body: unicode
+    :param subject: Message subject of the email
+    :type subject: str
     :param attachment_file: location of file attachment
     :type attachment_file: str
     :param attachment_type: type of attachment ('still' or 'video')
@@ -55,8 +57,11 @@ def send_email(smtp_host, smtp_ssl, smtp_port, smtp_user, smtp_pass,
 
         # Create the enclosing (outer) message
         outer = MIMEMultipart()
-        outer['Subject'] = "Mycodo Notification ({})".format(
-            socket.gethostname())
+        if subject:
+            outer['Subject'] = subject
+        else:
+            outer['Subject'] = "Mycodo Notification ({})".format(
+                socket.gethostname())
         outer['To'] = ', '.join(recipients)
         outer['From'] = smtp_email_from
         outer.preamble = 'You will not see this in a MIME-aware mail reader.\n'
@@ -84,19 +89,46 @@ def send_email(smtp_host, smtp_ssl, smtp_port, smtp_user, smtp_pass,
 
         composed = outer.as_string()
 
-        # Send the email
-        if smtp_ssl:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port)
-            server.ehlo()
+        # determine port
+        port = None
+        if smtp_port:
+            port = smtp_port
+        elif smtp_protocol == 'ssl':
+            port = 465
+        elif smtp_protocol == 'tls':
+            port = 587
+        elif smtp_protocol in ['unencrypted', 'unencrypted_no_login']:
+            port = 25
         else:
-            server = smtplib.SMTP(smtp_host, smtp_port)
-            server.ehlo()
-            server.starttls()
+            logger.error("Could not determine port to use to send email. Not sending.")
+            return 1
 
-        server.ehlo()
-        server.login(smtp_user, smtp_pass)
-        server.sendmail(smtp_user, recipients, composed)
+        # select encryption protocol
+        response_login = None
+        if smtp_protocol == 'ssl':
+            server = smtplib.SMTP_SSL(smtp_host, port)
+            response_login = server.login(smtp_user, smtp_pass)
+        elif smtp_protocol == 'tls':
+            server = smtplib.SMTP(smtp_host, port)
+            server.starttls()
+            response_login = server.login(smtp_user, smtp_pass)
+        elif smtp_protocol == 'unencrypted':
+            server = smtplib.SMTP(smtp_host, port)
+            response_login = server.login(smtp_user, smtp_pass)
+        elif smtp_protocol == 'unencrypted_no_login':
+            server = smtplib.SMTP(smtp_host, port)
+        else:
+            logger.error("Unrecognized protocol: {}".format(smtp_protocol))
+            return 1
+
+        if response_login:
+            logger.debug("Email login response: {}".format(response_login))
+
+        # Send the email
+        response_send = server.sendmail(smtp_user, recipients, composed)
         server.close()
+
+        logger.debug("Email send response: {}".format(response_send))
 
         return 0
 
@@ -141,9 +173,8 @@ def send_email(smtp_host, smtp_ssl, smtp_port, smtp_user, smtp_pass,
         # server.sendmail(msg['From'], msg['To'].split(","), msg.as_string())
         # server.quit()
 
-    except Exception as error:
-        if logging:
-            logging.exception(
-                "Could not send email to {add} with message: {msg}. Error: "
-                "{err}".format(add=email_to, msg=message_body, err=error))
+    except Exception:
+        logger.exception(
+            "Could not send email to {add} with subject {sub}".format(
+                add=email_to, sub=subject))
         return 1

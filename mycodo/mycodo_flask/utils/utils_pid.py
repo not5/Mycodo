@@ -7,7 +7,6 @@ from flask import redirect
 from flask import url_for
 from flask_babel import gettext
 
-from mycodo.config import OUTPUTS_PWM
 from mycodo.config_translations import TRANSLATIONS
 from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import DisplayOrder
@@ -22,6 +21,7 @@ from mycodo.mycodo_flask.utils.utils_general import controller_activate_deactiva
 from mycodo.mycodo_flask.utils.utils_general import delete_entry_with_id
 from mycodo.mycodo_flask.utils.utils_general import flash_form_errors
 from mycodo.mycodo_flask.utils.utils_general import flash_success_errors
+from mycodo.utils.outputs import parse_output_information
 from mycodo.utils.system_pi import csv_to_list_of_str
 from mycodo.utils.system_pi import get_measurement
 from mycodo.utils.system_pi import list_to_csv
@@ -36,11 +36,14 @@ logger = logging.getLogger(__name__)
 
 def pid_mod(form_mod_pid_base,
             form_mod_pid_pwm_raise, form_mod_pid_pwm_lower,
-            form_mod_pid_output_raise, form_mod_pid_output_lower):
+            form_mod_pid_output_raise, form_mod_pid_output_lower,
+            form_mod_pid_volume_raise, form_mod_pid_volume_lower):
     action = '{action} {controller}'.format(
         action=TRANSLATIONS['modify']['title'],
         controller=TRANSLATIONS['pid']['title'])
     error = []
+
+    dict_outputs = parse_output_information()
 
     if not form_mod_pid_base.validate():
         error.append(TRANSLATIONS['error']['title'])
@@ -65,6 +68,7 @@ def pid_mod(form_mod_pid_base,
     mod_pid.integrator_min = form_mod_pid_base.integrator_max.data
     mod_pid.integrator_max = form_mod_pid_base.integrator_min.data
     mod_pid.setpoint_tracking_type = form_mod_pid_base.setpoint_tracking_type.data
+
     if form_mod_pid_base.setpoint_tracking_type.data == 'method':
         mod_pid.setpoint_tracking_id = form_mod_pid_base.setpoint_tracking_method_id.data
     elif form_mod_pid_base.setpoint_tracking_type.data == 'input-math':
@@ -89,65 +93,149 @@ def pid_mod(form_mod_pid_base,
                 each_measurement.measurement = selected_measurement.measurement
                 each_measurement.unit = selected_measurement.unit
 
-    if form_mod_pid_base.raise_output_id.data:
-        raise_output_type = Output.query.filter(
-            Output.unique_id == form_mod_pid_base.raise_output_id.data).first().output_type
-        if mod_pid.raise_output_id == form_mod_pid_base.raise_output_id.data:
-            if raise_output_type in OUTPUTS_PWM:
-                if not form_mod_pid_pwm_raise.validate():
-                    error.append(TRANSLATIONS['error']['title'])
-                    flash_form_errors(form_mod_pid_pwm_raise)
-                else:
-                    mod_pid.raise_min_duration = form_mod_pid_pwm_raise.raise_min_duty_cycle.data
-                    mod_pid.raise_max_duration = form_mod_pid_pwm_raise.raise_max_duty_cycle.data
-            else:
-                if not form_mod_pid_output_raise.validate():
-                    error.append(TRANSLATIONS['error']['title'])
-                    flash_form_errors(form_mod_pid_output_raise)
-                else:
-                    mod_pid.raise_min_duration = form_mod_pid_output_raise.raise_min_duration.data
-                    mod_pid.raise_max_duration = form_mod_pid_output_raise.raise_max_duration.data
-                    mod_pid.raise_min_off_duration = form_mod_pid_output_raise.raise_min_off_duration.data
-        else:
-            if raise_output_type in OUTPUTS_PWM:
-                mod_pid.raise_min_duration = 2
-                mod_pid.raise_max_duration = 98
-            else:
-                mod_pid.raise_min_duration = 0
-                mod_pid.raise_max_duration = 0
-                mod_pid.raise_min_off_duration = 0
-        mod_pid.raise_output_id = form_mod_pid_base.raise_output_id.data
-    else:
-        mod_pid.raise_output_id = None
+        #
+        # Handle Raise Output Settings
+        #
+        if form_mod_pid_base.raise_output_id.data:
+            raise_output_type = Output.query.filter(
+                Output.unique_id == form_mod_pid_base.raise_output_id.data).first().output_type
 
+            def default_raise_output_settings(mod):
+                if mod.raise_output_type == 'on_off':
+                    mod.raise_min_duration = 0
+                    mod.raise_max_duration = 0
+                    mod.raise_min_off_duration = 0
+                elif mod.raise_output_type == 'pwm':
+                    mod.raise_min_duration = 2
+                    mod.raise_max_duration = 98
+                elif mod.raise_output_type == 'volume':
+                    mod.raise_min_duration = 0
+                    mod.raise_max_duration = 0
+                return mod
+
+            raise_output_id_changed = False
+            if mod_pid.raise_output_id != form_mod_pid_base.raise_output_id.data:
+                mod_pid.raise_output_id = form_mod_pid_base.raise_output_id.data
+                raise_output_id_changed = True
+
+            # Output ID changed
+            if ('output_types' in dict_outputs[raise_output_type] and
+                    mod_pid.raise_output_id and
+                    raise_output_id_changed):
+
+                if len(dict_outputs[raise_output_type]['output_types']) == 1:
+                    mod_pid.raise_output_type = dict_outputs[raise_output_type]['output_types'][0]
+                else:
+                    mod_pid.raise_output_type = None
+
+                mod_pid = default_raise_output_settings(mod_pid)
+
+            # Output ID unchanged
+            elif ('output_types' in dict_outputs[raise_output_type] and
+                  mod_pid.raise_output_id and
+                  not raise_output_id_changed):
+
+                if (not mod_pid.raise_output_type or
+                        mod_pid.raise_output_type != form_mod_pid_base.raise_output_type.data):
+                    if len(dict_outputs[raise_output_type]['output_types']) > 1:
+                        mod_pid.raise_output_type = form_mod_pid_base.raise_output_type.data
+                    mod_pid = default_raise_output_settings(mod_pid)
+                elif mod_pid.raise_output_type == 'on_off':
+                    if not form_mod_pid_output_raise.validate():
+                        error.append(TRANSLATIONS['error']['title'])
+                        flash_form_errors(form_mod_pid_output_raise)
+                    else:
+                        mod_pid.raise_min_duration = form_mod_pid_output_raise.raise_min_duration.data
+                        mod_pid.raise_max_duration = form_mod_pid_output_raise.raise_max_duration.data
+                        mod_pid.raise_min_off_duration = form_mod_pid_output_lower.raise_min_off_duration.data
+                elif mod_pid.raise_output_type == 'pwm':
+                    if not form_mod_pid_pwm_raise.validate():
+                        error.append(TRANSLATIONS['error']['title'])
+                        flash_form_errors(form_mod_pid_pwm_raise)
+                    else:
+                        mod_pid.raise_min_duration = form_mod_pid_pwm_raise.raise_min_duty_cycle.data
+                        mod_pid.raise_max_duration = form_mod_pid_pwm_raise.raise_max_duty_cycle.data
+                        mod_pid.raise_always_min_pwm = form_mod_pid_pwm_raise.raise_always_min_pwm.data
+                elif mod_pid.raise_output_type == 'volume':
+                    if not form_mod_pid_volume_raise.validate():
+                        error.append(TRANSLATIONS['error']['title'])
+                        flash_form_errors(form_mod_pid_volume_raise)
+                    else:
+                        mod_pid.raise_min_duration = form_mod_pid_volume_raise.raise_min_amount.data
+                        mod_pid.raise_max_duration = form_mod_pid_volume_raise.raise_max_amount.data
+        else:
+            mod_pid.raise_output_id = None
+
+    #
+    # Handle Lower Output Settings
+    #
     if form_mod_pid_base.lower_output_id.data:
         lower_output_type = Output.query.filter(
             Output.unique_id == form_mod_pid_base.lower_output_id.data).first().output_type
-        if mod_pid.lower_output_id == form_mod_pid_base.lower_output_id.data:
-            if lower_output_type in OUTPUTS_PWM:
-                if not form_mod_pid_pwm_lower.validate():
-                    error.append(gettext("Error in form field(s)"))
-                    flash_form_errors(form_mod_pid_pwm_lower)
-                else:
-                    mod_pid.lower_min_duration = form_mod_pid_pwm_lower.lower_min_duty_cycle.data
-                    mod_pid.lower_max_duration = form_mod_pid_pwm_lower.lower_max_duty_cycle.data
+
+        def default_lower_output_settings(mod):
+            if mod.lower_output_type == 'on_off':
+                mod.lower_min_duration = 0
+                mod.lower_max_duration = 0
+                mod.lower_min_off_duration = 0
+            elif mod.lower_output_type == 'pwm':
+                mod.lower_min_duration = 2
+                mod.lower_max_duration = 98
+            elif mod.lower_output_type == 'volume':
+                mod.lower_min_duration = 0
+                mod.lower_max_duration = 0
+            return mod
+
+        lower_output_id_changed = False
+        if mod_pid.lower_output_id != form_mod_pid_base.lower_output_id.data:
+            mod_pid.lower_output_id = form_mod_pid_base.lower_output_id.data
+            lower_output_id_changed = True
+
+        # Output ID changed
+        if ('output_types' in dict_outputs[lower_output_type] and
+                mod_pid.lower_output_id and
+                lower_output_id_changed):
+
+            if len(dict_outputs[lower_output_type]['output_types']) == 1:
+                mod_pid.lower_output_type = dict_outputs[lower_output_type]['output_types'][0]
             else:
+                mod_pid.lower_output_type = None
+
+            mod_pid = default_lower_output_settings(mod_pid)
+
+        # Output ID unchanged
+        elif ('output_types' in dict_outputs[lower_output_type] and
+                mod_pid.lower_output_id and
+                not lower_output_id_changed):
+
+            if (not mod_pid.lower_output_type or
+                    mod_pid.lower_output_type != form_mod_pid_base.lower_output_type.data):
+                if len(dict_outputs[lower_output_type]['output_types']) > 1:
+                    mod_pid.lower_output_type = form_mod_pid_base.lower_output_type.data
+                mod_pid = default_lower_output_settings(mod_pid)
+            elif mod_pid.lower_output_type == 'on_off':
                 if not form_mod_pid_output_lower.validate():
-                    error.append(gettext("Error in form field(s)"))
+                    error.append(TRANSLATIONS['error']['title'])
                     flash_form_errors(form_mod_pid_output_lower)
                 else:
                     mod_pid.lower_min_duration = form_mod_pid_output_lower.lower_min_duration.data
                     mod_pid.lower_max_duration = form_mod_pid_output_lower.lower_max_duration.data
                     mod_pid.lower_min_off_duration = form_mod_pid_output_lower.lower_min_off_duration.data
-        else:
-            if lower_output_type in OUTPUTS_PWM:
-                mod_pid.lower_min_duration = 2
-                mod_pid.lower_max_duration = 98
-            else:
-                mod_pid.lower_min_duration = 0
-                mod_pid.lower_max_duration = 0
-                mod_pid.lower_min_off_duration = 0
-        mod_pid.lower_output_id = form_mod_pid_base.lower_output_id.data
+            elif mod_pid.lower_output_type == 'pwm':
+                if not form_mod_pid_pwm_lower.validate():
+                    error.append(TRANSLATIONS['error']['title'])
+                    flash_form_errors(form_mod_pid_pwm_lower)
+                else:
+                    mod_pid.lower_min_duration = form_mod_pid_pwm_lower.lower_min_duty_cycle.data
+                    mod_pid.lower_max_duration = form_mod_pid_pwm_lower.lower_max_duty_cycle.data
+                    mod_pid.lower_always_min_pwm = form_mod_pid_pwm_lower.lower_always_min_pwm.data
+            elif mod_pid.lower_output_type == 'volume':
+                if not form_mod_pid_volume_lower.validate():
+                    error.append(TRANSLATIONS['error']['title'])
+                    flash_form_errors(form_mod_pid_volume_lower)
+                else:
+                    mod_pid.lower_min_duration = form_mod_pid_volume_lower.lower_min_amount.data
+                    mod_pid.lower_max_duration = form_mod_pid_volume_lower.lower_max_amount.data
     else:
         mod_pid.lower_output_id = None
 

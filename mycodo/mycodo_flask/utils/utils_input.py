@@ -88,7 +88,7 @@ def input_add(form_add):
         if 'input_name' in dict_inputs[input_name]:
             new_input.name = dict_inputs[input_name]['input_name']
         else:
-            new_input.name = 'Input Name'
+            new_input.name = 'Name'
 
         #
         # Set default values for new input being added
@@ -600,12 +600,15 @@ def input_activate(form_mod):
         action=TRANSLATIONS['activate']['title'],
         controller=TRANSLATIONS['input']['title'])
     error = []
+
     dict_inputs = parse_input_information()
     input_id = form_mod.input_id.data
     input_dev = Input.query.filter(Input.unique_id == input_id).first()
     device_measurements = DeviceMeasurements.query.filter(
         DeviceMeasurements.device_id == input_dev.unique_id)
-    custom_options_values_inputs = parse_custom_option_values(input_dev)
+
+    custom_options_values_inputs = parse_custom_option_values(
+        input_dev, dict_controller=dict_inputs)
 
     #
     # General Input checks
@@ -626,12 +629,18 @@ def input_activate(form_mod):
     #
     if 'custom_options' in dict_inputs[input_dev.device]:
         for each_option in dict_inputs[input_dev.device]['custom_options']:
-            value = custom_options_values_inputs[input_dev.unique_id][each_option['id']]
-            if ('required' in each_option and
-                    each_option['required'] and
-                    not value):
-                error.append("{} is required to be set".format(
-                    each_option['name']))
+            if each_option['id'] not in custom_options_values_inputs[input_dev.unique_id]:
+                if ('required' in each_option and each_option['required']):
+                    error.append("{} not found and is required to be set. "
+                                 "Set option and save Input.".format(
+                        each_option['name']))
+            else:
+                value = custom_options_values_inputs[input_dev.unique_id][each_option['id']]
+                if ('required' in each_option and
+                        each_option['required'] and
+                        not value):
+                    error.append("{} is required to be set".format(
+                        each_option['name']))
 
     #
     # Input-specific checks

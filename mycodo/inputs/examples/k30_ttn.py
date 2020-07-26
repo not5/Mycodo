@@ -11,6 +11,7 @@
 #
 import time
 
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -44,10 +45,8 @@ INPUT_INFORMATION = {
     'options_enabled': [
         'uart_location',
         'uart_baud_rate',
-        'custom_options',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -77,6 +76,11 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.ser = None
+        self.serial = None
+        self.serial_send = None
+        self.lock_file = "/var/lock/mycodo_ttn.lock"
+        self.ttn_serial_error = False
         self.timer = 0
 
         # Initialize custom options
@@ -85,40 +89,37 @@ class InputModule(AbstractInput):
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
-        if not testing:
-            import serial
+    def initialize_input(self):
+        import serial
 
-            self.uart_location = input_dev.uart_location
-            self.baud_rate = input_dev.baud_rate
-            # Check if device is valid
-            self.uart_location = is_device(self.uart_location)
-            if self.uart_location:
-                try:
-                    self.ser = serial.Serial(self.uart_location,
-                                             baudrate=self.baud_rate,
-                                             timeout=1)
-                except serial.SerialException:
-                    self.logger.exception('Opening serial')
-            else:
-                self.logger.error(
-                    'Could not open "{dev}". '
-                    'Check the device location is correct.'.format(
-                        dev=self.uart_location))
+        # Check if device is valid
+        if is_device(self.input_dev.uart_location):
+            try:
+                self.ser = serial.Serial(
+                    port=self.input_dev.uart_location,
+                    baudrate=self.input_dev.baud_rate,
+                    timeout=1,
+                    writeTimeout=5)
+            except serial.SerialException:
+                self.logger.exception('Opening serial')
+        else:
+            self.logger.error(
+                'Could not open "{dev}". '
+                'Check the device location is correct.'.format(
+                    dev=self.input_dev.uart_location))
 
-            self.serial = serial
-            self.serial_send = None
-            self.lock_file = "/var/lock/mycodo_ttn.lock"
-            self.ttn_serial_error = False
-            self.logger.debug(
-                "Min time between transmissions: {} seconds".format(
-                    min_seconds_between_transmissions))
+        self.serial = serial
+
+        self.logger.debug(
+            "Min time between transmissions: {} seconds".format(
+                min_seconds_between_transmissions))
 
     def get_measurement(self):
         """ Gets the K30's CO2 concentration in ppmv via UART"""
-        if not self.uart_location:  # Don't measure if device isn't validated
+        if not self.ser:  # Don't measure if device isn't validated
             return None
 
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         co2 = None
 
@@ -140,10 +141,14 @@ class InputModule(AbstractInput):
                 self.timer = now + min_seconds_between_transmissions
                 # "K" designates this data belonging to the K30
                 string_send = 'K,{}'.format(self.value_get(0))
-                self.lock_acquire(self.lock_file, timeout=10)
-                if self.locked[self.lock_file]:
+
+                if self.lock_acquire(self.lock_file, timeout=10):
                     try:
-                        self.serial_send = self.serial.Serial(self.serial_device, 9600)
+                        self.serial_send = self.serial.Serial(
+                            port=self.serial_device,
+                            baudrate=9600,
+                            timeout=5,
+                            writeTimeout=5)
                         self.serial_send.write(string_send.encode())
                         time.sleep(4)
                     finally:

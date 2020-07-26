@@ -2,6 +2,8 @@
 import subprocess
 import time
 
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_dewpoint
 from mycodo.inputs.sensorutils import calculate_vapor_pressure_deficit
@@ -26,19 +28,19 @@ measurements_dict = {
         'unit': 'V'
     },
     4: {
-        'measurement': 'acceleration_g_force',
+        'measurement': 'acceleration',
         'unit': 'g_force'
     },
     5: {
-        'measurement': 'acceleration_x_g_force',
+        'measurement': 'acceleration_x',
         'unit': 'g_force'
     },
     6: {
-        'measurement': 'acceleration_y_g_force',
+        'measurement': 'acceleration_y',
         'unit': 'g_force'
     },
     7: {
-        'measurement': 'acceleration_z_g_force',
+        'measurement': 'acceleration_z',
         'unit': 'g_force'
     },
     8: {
@@ -56,16 +58,17 @@ INPUT_INFORMATION = {
     'input_name_unique': 'RUUVITAG',
     'input_manufacturer': 'Ruuvi',
     'input_name': 'RuuviTag',
+    'input_library': 'ruuvitag_sensor',
     'measurements_name': 'Acceleration/Humidity/Pressure/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://ruuvi.com/',
+    'url_datasheet': 'https://ruuvi.com/files/ruuvitag-tech-spec-2019-7.pdf',
 
     'options_enabled': [
         'bt_location',
         'measurements_select',
-        'custom_options',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -74,7 +77,7 @@ INPUT_INFORMATION = {
         ('apt', 'python3-psutil', 'python3-psutil'),
         ('apt', 'bluez', 'bluez'),
         ('apt', 'bluez-hcidump', 'bluez-hcidump'),
-        ('pip-pypi', 'ruuvitag_sensor', 'ruuvitag_sensor'),
+        ('pip-pypi', 'ruuvitag_sensor', 'ruuvitag_sensor')
     ],
 
     'interfaces': ['BT'],
@@ -86,11 +89,12 @@ INPUT_INFORMATION = {
 class InputModule(AbstractInput):
     """
     A support class for the RuuviTag
-
     """
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.sensor = None
+        self.ruuvitag = None
         self.download_stored_data = None
         self.logging_interval_ms = None
         self.gadget = None
@@ -101,23 +105,29 @@ class InputModule(AbstractInput):
         self.last_downloaded_timestamp = None
 
         if not testing:
-            from ruuvitag_sensor.ruuvitag import RuuviTag
-            self.ruuvitag = RuuviTag
+            self.initialize_input()
 
-            self.lock_file = '/var/lock/bluetooth_dev_hci{}'.format(
-                input_dev.bt_adapter)
-            self.location = input_dev.location
-            self.bt_adapter = input_dev.bt_adapter
-            self.sensor = self.ruuvitag(
-                self.location,
-                bt_device='hci{}'.format(self.bt_adapter))
+    def initialize_input(self):
+        from ruuvitag_sensor.ruuvitag import RuuviTag
+
+        self.ruuvitag = RuuviTag
+
+        self.lock_file = '/var/lock/bluetooth_dev_hci{}'.format(self.input_dev.bt_adapter)
+        self.location = self.input_dev.location
+        self.bt_adapter = self.input_dev.bt_adapter
+        self.sensor = self.ruuvitag(
+            self.location,
+            bt_device='hci{}'.format(self.bt_adapter))
 
     def get_measurement(self):
         """ Obtain and return the measurements """
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
 
-        self.lock_acquire(self.lock_file, timeout=3600)
-        if self.locked[self.lock_file]:
+        self.return_dict = copy.deepcopy(measurements_dict)
+
+        if self.lock_acquire(self.lock_file, timeout=3600):
             self.logger.debug("Starting measurement")
             try:
                 cmd = 'timeout -k 11 10 /var/mycodo-root/env/bin/python ' \
@@ -135,9 +145,7 @@ class InputModule(AbstractInput):
                 values = cmd_return.decode('ascii').split(',')
 
                 if not str_is_float(values[0]):
-                    self.logger.debug(
-                        "Error: Could not convert string to float: "
-                        "string '{}'".format(str(values[0])))
+                    self.logger.debug("Error: Could not convert string to float: string '{}'".format(str(values[0])))
                     return
 
                 temperature = float(str(values[0]))
@@ -152,8 +160,7 @@ class InputModule(AbstractInput):
                 if battery < 1 or battery > 4:
                     self.logger.debug(
                         "Not recording measurements: "
-                        "Battery outside expected range (1 < battery volts < 4): "
-                        "{bat}".format(bat=battery))
+                        "Battery outside expected range (1 < battery volts < 4): {bat}".format(bat=battery))
                     return
 
                 if self.is_enabled(0):

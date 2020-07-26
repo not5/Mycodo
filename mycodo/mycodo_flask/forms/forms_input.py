@@ -42,15 +42,15 @@ class InputAdd(FlaskForm):
             manuf=dict_inputs[each_input]['input_manufacturer'],
             name=dict_inputs[each_input]['input_name'])
 
+        name += ': {meas}'.format(meas=dict_inputs[each_input]['measurements_name'])
+
         if 'input_library' in dict_inputs[each_input]:
             name += ' ({lib})'.format(lib=dict_inputs[each_input]['input_library'])
-
-        name += ': {meas}'.format(meas=dict_inputs[each_input]['measurements_name'])
 
         if 'interfaces' in dict_inputs[each_input]:
             for each_interface in dict_inputs[each_input]['interfaces']:
                 tmp_value = '{val}{int}'.format(val=value, int=each_interface)
-                tmp_name = '{name} ({int})'.format(name=name, int=each_interface)
+                tmp_name = '{name} [{int}]'.format(name=name, int=each_interface)
                 choices_inputs.append((tmp_value, tmp_name))
         else:
             choices_inputs.append((value, name))
@@ -87,8 +87,7 @@ class InputMod(FlaskForm):
                     )],
         widget=NumberInput(step='any')
     )
-    log_level_debug = BooleanField(
-        TRANSLATIONS['log_level_debug']['title'])
+    log_level_debug = BooleanField(TRANSLATIONS['log_level_debug']['title'])
     num_channels = IntegerField(lazy_gettext('Number of Measurements'), widget=NumberInput())
     location = StringField(lazy_gettext('Location'))
     ftdi_location = StringField(TRANSLATIONS['ftdi_location']['title'])
@@ -132,7 +131,7 @@ class InputMod(FlaskForm):
         TRANSLATIONS['pin_miso']['title'], widget=NumberInput())
 
     # Bluetooth Communication
-    bt_adapter = StringField(lazy_gettext('BT Adapter (hci[X])'))
+    bt_adapter = StringField(TRANSLATIONS['bt_adapter']['title'])
 
     # ADC
     adc_gain = IntegerField(

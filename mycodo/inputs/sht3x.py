@@ -6,6 +6,7 @@
 import math
 import time
 
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -54,16 +55,16 @@ INPUT_INFORMATION = {
     'input_name_unique': 'SHT31',
     'input_manufacturer': 'Sensirion',
     'input_name': 'SHT3x (30, 31, 35)',
+    'input_library': 'Adafruit_SHT31',
     'measurements_name': 'Humidity/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.sensirion.com/en/environmental-sensors/humidity-sensors/digital-humidity-sensors-for-various-applications/',
 
     'options_enabled': [
         'i2c_location',
         'measurements_select',
-        'custom_options',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -73,10 +74,7 @@ INPUT_INFORMATION = {
     ],
 
     'interfaces': ['I2C'],
-    'i2c_location': [
-        '0x44',
-        '0x45'
-    ],
+    'i2c_location': ['0x44', '0x45'],
     'i2c_address_editable': False,
 
     'custom_options': [
@@ -113,31 +111,34 @@ class InputModule(AbstractInput):
     A sensor support class that measures the SHT31's humidity and temperature,
     them calculates the dew point and vapor pressure deficit
     """
-
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.sensor = None
         self.measurement_count = 0
 
-        # Initialize custom options
         self.heater_enable = None
         self.heater_seconds = None
         self.heater_measurements = None
-        # Set custom options
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
         if not testing:
-            from Adafruit_SHT31 import SHT31
+            self.initialize_input()
 
-            self.i2c_address = int(str(input_dev.i2c_location), 16)
-            self.i2c_bus = input_dev.i2c_bus
-            self.sensor = SHT31(
-                address=self.i2c_address,
-                busnum=self.i2c_bus)
+    def initialize_input(self):
+        from Adafruit_SHT31 import SHT31
+
+        self.sensor = SHT31(
+            address=int(str(self.input_dev.i2c_location), 16),
+            busnum=self.input_dev.i2c_bus)
 
     def get_measurement(self):
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         temperature = None
         humidity = None
@@ -156,12 +157,8 @@ class InputModule(AbstractInput):
                         self.logger.debug("Measurement unsuccessful after reset")
                 except Exception:
                     self.logger.debug("Reset command unsuccessful")
-            if (None in [temperature, humidity] or
-                    math.isnan(temperature) or
-                    math.isnan(humidity)):
-                self.logger.debug(
-                    "At least one measurement is not a number: Temperature: {}, "
-                    "Humidity: {}".format(temperature, humidity))
+            if None in [temperature, humidity] or math.isnan(temperature) or math.isnan(humidity):
+                self.logger.debug("One not a number: Temperature: {}, Humidity: {}".format(temperature, humidity))
             else:
                 success = True
                 break
@@ -177,17 +174,11 @@ class InputModule(AbstractInput):
         if self.is_enabled(1):
             self.value_set(1, humidity)
 
-        if (self.is_enabled(2) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(2, calculate_dewpoint(
-                self.value_get(0), self.value_get(1)))
+        if self.is_enabled(2) and self.is_enabled(0) and self.is_enabled(1):
+            self.value_set(2, calculate_dewpoint(self.value_get(0), self.value_get(1)))
 
-        if (self.is_enabled(3) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(3, calculate_vapor_pressure_deficit(
-                self.value_get(0), self.value_get(1)))
+        if self.is_enabled(3) and self.is_enabled(0) and self.is_enabled(1):
+            self.value_set(3, calculate_vapor_pressure_deficit(self.value_get(0), self.value_get(1)))
 
         if self.heater_enable and self.heater_seconds and self.heater_measurements:
             time.sleep(2)

@@ -13,8 +13,8 @@ from flask_babel import lazy_gettext
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 from config_translations import TRANSLATIONS
 
-MYCODO_VERSION = '8.2.1'
-ALEMBIC_VERSION = '20174b717c2e'
+MYCODO_VERSION = '8.6.4'
+ALEMBIC_VERSION = '4d3258ef5864'
 
 #  FORCE_UPGRADE_MASTER
 #  Set True to enable upgrading to the master branch of the Mycodo repository.
@@ -66,20 +66,44 @@ CAMERA_INFO = {
         'name': 'fswebcam',
         'dependencies_module': [
             ('apt', 'fswebcam', 'fswebcam')
-        ]
+        ],
+        'capable_image': True,
+        'capable_stream': True
     },
     'opencv': {
         'name': 'OpenCV',
         'dependencies_module': [
             ('pip-pypi', 'imutils', 'imutils'),
             ('apt', 'python3-opencv', 'python3-opencv'),
-        ]
+        ],
+        'capable_image': True,
+        'capable_stream': True
     },
     'picamera': {
         'name': 'PiCamera',
         'dependencies_module': [
             ('pip-pypi', 'picamera', 'picamera')
-        ]
+        ],
+        'capable_image': True,
+        'capable_stream': True
+    },
+    'http_address': {
+        'name': 'URL (urllib)',
+        'dependencies_module': [
+            ('pip-pypi', 'imutils', 'imutils'),
+            ('apt', 'python3-opencv', 'python3-opencv'),
+        ],
+        'capable_image': True,
+        'capable_stream': True
+    },
+    'http_address_requests': {
+        'name': 'URL (requests)',
+        'dependencies_module': [
+            ('pip-pypi', 'imutils', 'imutils'),
+            ('apt', 'python3-opencv', 'python3-opencv'),
+        ],
+        'capable_image': True,
+        'capable_stream': True
     },
 }
 
@@ -87,11 +111,13 @@ CAMERA_INFO = {
 LCD_INFO = {
     '16x2_generic': {
         'name': '16x2 LCD',
-        'dependencies_module': []
+        'dependencies_module': [],
+        'interfaces': ['I2C']
     },
     '20x4_generic': {
         'name': '20x4 LCD',
-        'dependencies_module': []
+        'dependencies_module': [],
+        'interfaces': ['I2C']
     },
     '128x32_pioled': {
         'name': '128x32 OLED (SD1306)',
@@ -101,7 +127,8 @@ LCD_INFO = {
             ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO'),
             ('pip-pypi', 'Adafruit_PureIO', 'Adafruit_PureIO'),
             ('pip-git', 'Adafruit_SSD1306', 'git://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=adafruit-ssd1306')
-        ]
+        ],
+        'interfaces': ['I2C', 'SPI']
     },
     '128x64_pioled': {
         'name': '128x64 OLED (SD1306)',
@@ -111,7 +138,8 @@ LCD_INFO = {
             ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO'),
             ('pip-pypi', 'Adafruit_PureIO', 'Adafruit_PureIO'),
             ('pip-git', 'Adafruit_SSD1306', 'git://github.com/adafruit/Adafruit_Python_SSD1306.git#egg=adafruit-ssd1306')
-        ]
+        ],
+        'interfaces': ['I2C', 'SPI']
     }
 }
 
@@ -303,86 +331,6 @@ METHODS = [
     ('DailyBezier', METHOD_INFO['DailyBezier']['name'])
 ]
 
-# Outputs
-OUTPUT_INFO = {
-    'wired': {
-        'name': lazy_gettext('On/Off (GPIO)'),
-        'dependencies_module': [],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'pwm': {
-        'name': lazy_gettext('PWM (GPIO)'),
-        'dependencies_module': [
-            ('internal', 'file-exists /opt/mycodo/pigpio_installed', 'pigpio')
-        ],
-        'measure': {
-            'duty_cycle': {'percent': {0: {}}}
-        }},
-    'wireless_rpi_rf': {
-        'name': lazy_gettext('Wireless 315/433MHz LPD/SRD (rpi-rf)'),
-        'dependencies_module': [
-            ('pip-pypi', 'RPi.GPIO', 'RPi.GPIO'),
-            ('pip-pypi', 'rpi_rf', 'rpi_rf')
-        ],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'command': {
-        'name': lazy_gettext('On/Off (Linux Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'command_pwm': {
-        'name': lazy_gettext('PWM (Linux Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duty_cycle': {'percent': {0: {}}}
-        }},
-    'python': {
-        'name': lazy_gettext('On/Off (Python Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duration_time': {'s': {0: {}}}
-        }},
-    'python_pwm': {
-        'name': lazy_gettext('PWM (Python Command)'),
-        'dependencies_module': [],
-        'measure': {
-            'duty_cycle': {'percent': {0: {}}}
-        }},
-    'atlas_ezo_pmp': {
-        'name': lazy_gettext('Atlas EZO-PMP'),
-        'dependencies_module': [],
-        'measure': {
-            'volume': {'ml': {0: {}}},
-            'duration_time': {'minute': {1: {}}}
-        }}
-}
-
-# Output form dropdown
-OUTPUTS = [
-    ('wired,GPIO', OUTPUT_INFO['wired']['name']),
-    ('pwm,GPIO', OUTPUT_INFO['pwm']['name']),
-    ('command,GPIO', OUTPUT_INFO['command']['name']),
-    ('command_pwm,GPIO', OUTPUT_INFO['command_pwm']['name']),
-    ('python,GPIO', OUTPUT_INFO['python']['name']),
-    ('python_pwm,GPIO', OUTPUT_INFO['python_pwm']['name']),
-    ('wireless_rpi_rf,GPIO', OUTPUT_INFO['wireless_rpi_rf']['name']),
-    ('atlas_ezo_pmp,FTDI', '{} ({})'.format(
-        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('FTDI'))),
-    ('atlas_ezo_pmp,I2C', '{} ({})'.format(
-        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('I2C'))),
-    ('atlas_ezo_pmp,UART', '{} ({})'.format(
-        OUTPUT_INFO['atlas_ezo_pmp']['name'], lazy_gettext('UART')))
-]
-
-# Defines which Outputs are PWM
-OUTPUTS_PWM = [
-    'pwm', 'command_pwm', 'python_pwm'
-]
-
 PID_INFO = {
     'measure': {
         0: {
@@ -431,6 +379,13 @@ PID_INFO = {
             'name': '{} ({})'.format(
                 TRANSLATIONS['output']['title'],
                 TRANSLATIONS['duty_cycle']['title'])
+        },
+        8: {
+            'measurement': 'volume',
+            'unit': 'ml',
+            'name': '{} ({})'.format(
+                TRANSLATIONS['output']['title'],
+                TRANSLATIONS['volume']['title'])
         }
     }
 }
@@ -599,6 +554,11 @@ FUNCTION_ACTION_INFO = {
             TRANSLATIONS['deactivate']['title']),
         'dependencies_module': []
     },
+    'clear_total_volume': {
+        'name': "{}: {}".format(lazy_gettext('Flow Meter'),
+                                lazy_gettext('Clear Total Volume')),
+        'dependencies_module': []
+    },
     'create_note': {
         'name': TRANSLATIONS['note']['title'],
         'dependencies_module': []
@@ -633,6 +593,11 @@ FUNCTION_ACTION_INFO = {
             ('pip-pypi', 'lirc', 'python-lirc'),
             ('pip-pypi', 'py_irsend', 'py-irsend')
         ]
+    },
+    'input_force_measurements': {
+        'name': "{}: {}".format(lazy_gettext('Input'),
+                                lazy_gettext('Force Measurements')),
+        'dependencies_module': []
     },
     'lcd_backlight_off': {
         'name': '{}: {}'.format(
@@ -671,9 +636,16 @@ FUNCTION_ACTION_INFO = {
         'dependencies_module': []
     },
     'output_ramp_pwm': {
-        'name': '{} {}'.format(
+        'name': '{} ({} {})'.format(
+            TRANSLATIONS['output']['title'],
             TRANSLATIONS['ramp']['title'],
             TRANSLATIONS['duty_cycle']['title']),
+        'dependencies_module': []
+    },
+    'output_volume': {
+        'name': '{} ({})'.format(
+            TRANSLATIONS['output']['title'],
+            TRANSLATIONS['volume']['title']),
         'dependencies_module': []
     },
     'pause_pid': {
@@ -711,6 +683,18 @@ FUNCTION_ACTION_INFO = {
             TRANSLATIONS['pid']['title'],
             lazy_gettext('Lower Setpoint')),
         'dependencies_module': []
+    },
+    'system_restart': {
+        'name': '{}: {}'.format(
+            TRANSLATIONS['system']['title'],
+            lazy_gettext('Restart')),
+        'dependencies_module': []
+    },
+    'system_shutdown': {
+        'name': '{}: {}'.format(
+            TRANSLATIONS['system']['title'],
+            lazy_gettext('Shutdown')),
+        'dependencies_module': []
     }
 
     # TODO: These have been disabled until they can be properly tested
@@ -723,9 +707,11 @@ FUNCTION_ACTIONS = [
     ('photo', FUNCTION_ACTION_INFO['photo']['name']),
     ('activate_controller', FUNCTION_ACTION_INFO['activate_controller']['name']),
     ('deactivate_controller', FUNCTION_ACTION_INFO['deactivate_controller']['name']),
+    ('clear_total_volume', FUNCTION_ACTION_INFO['clear_total_volume']['name']),
     ('create_note', FUNCTION_ACTION_INFO['create_note']['name']),
     ('email', FUNCTION_ACTION_INFO['email']['name']),
     ('email_multiple', FUNCTION_ACTION_INFO['email_multiple']['name']),
+    ('input_force_measurements', FUNCTION_ACTION_INFO['input_force_measurements']['name']),
     ('photo_email', FUNCTION_ACTION_INFO['photo_email']['name']),
     ('video_email', FUNCTION_ACTION_INFO['video_email']['name']),
     ('command', FUNCTION_ACTION_INFO['command']['name']),
@@ -737,12 +723,15 @@ FUNCTION_ACTIONS = [
     ('output', FUNCTION_ACTION_INFO['output']['name']),
     ('output_pwm', FUNCTION_ACTION_INFO['output_pwm']['name']),
     ('output_ramp_pwm', FUNCTION_ACTION_INFO['output_ramp_pwm']['name']),
+    ('output_volume', FUNCTION_ACTION_INFO['output_volume']['name']),
     ('pause_pid', FUNCTION_ACTION_INFO['pause_pid']['name']),
     ('resume_pid', FUNCTION_ACTION_INFO['resume_pid']['name']),
     ('method_pid', FUNCTION_ACTION_INFO['method_pid']['name']),
     ('setpoint_pid', FUNCTION_ACTION_INFO['setpoint_pid']['name']),
     ('setpoint_pid_raise', FUNCTION_ACTION_INFO['setpoint_pid_raise']['name']),
-    ('setpoint_pid_lower', FUNCTION_ACTION_INFO['setpoint_pid_lower']['name'])
+    ('setpoint_pid_lower', FUNCTION_ACTION_INFO['setpoint_pid_lower']['name']),
+    ('system_restart', FUNCTION_ACTION_INFO['system_restart']['name']),
+    ('system_shutdown', FUNCTION_ACTION_INFO['system_shutdown']['name'])
 ]
 
 # Calibration
@@ -750,6 +739,7 @@ CALIBRATION_DEVICES = [
     ('setup_atlas_ec', 'Atlas Scientific Electrical Conductivity Sensor'),
     ('setup_atlas_ezo_pump', 'Atlas Scientific EZO Pump'),
     ('setup_atlas_ph', 'Atlas Scientific pH Sensor'),
+    ('setup_atlas_rgb', 'Atlas Scientific RGB Sensor'),
     ('setup_ds_resolution', 'DS-Type Temperature Sensors (e.g. DS18B20)')
 ]
 
@@ -757,19 +747,24 @@ CALIBRATION_DEVICES = [
 USER_ROLES = [
     dict(id=1, name='Admin',
          edit_settings=True, edit_controllers=True, edit_users=True,
-         view_settings=True, view_camera=True, view_stats=True, view_logs=True),
+         view_settings=True, view_camera=True, view_stats=True, view_logs=True,
+         reset_password=True),
     dict(id=2, name='Editor',
          edit_settings=True, edit_controllers=True, edit_users=False,
-         view_settings=True, view_camera=True, view_stats=True, view_logs=True),
+         view_settings=True, view_camera=True, view_stats=True, view_logs=True,
+         reset_password=True),
     dict(id=3, name='Monitor',
          edit_settings=False, edit_controllers=False, edit_users=False,
-         view_settings=True, view_camera=True, view_stats=True, view_logs=True),
+         view_settings=True, view_camera=True, view_stats=True, view_logs=True,
+         reset_password=True),
     dict(id=4, name='Guest',
          edit_settings=False, edit_controllers=False, edit_users=False,
-         view_settings=False, view_camera=False, view_stats=False, view_logs=False),
+         view_settings=False, view_camera=False, view_stats=False, view_logs=False,
+         reset_password=False),
     dict(id=5, name='Kiosk',
          edit_settings=False, edit_controllers=False, edit_users=False,
-         view_settings=False, view_camera=True, view_stats=True, view_logs=False)
+         view_settings=False, view_camera=True, view_stats=True, view_logs=False,
+         reset_password=False)
 ]
 
 # Web UI themes
@@ -811,8 +806,10 @@ MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
 PATH_1WIRE = '/sys/bus/w1/devices/'
 PATH_CONTROLLERS = os.path.join(INSTALL_DIRECTORY, 'mycodo/controllers')
 PATH_INPUTS = os.path.join(INSTALL_DIRECTORY, 'mycodo/inputs')
+PATH_OUTPUTS = os.path.join(INSTALL_DIRECTORY, 'mycodo/outputs')
 PATH_CONTROLLERS_CUSTOM = os.path.join(PATH_CONTROLLERS, 'custom_controllers')
 PATH_INPUTS_CUSTOM = os.path.join(PATH_INPUTS, 'custom_inputs')
+PATH_OUTPUTS_CUSTOM = os.path.join(PATH_OUTPUTS, 'custom_outputs')
 PATH_PYTHON_CODE_USER = os.path.join(INSTALL_DIRECTORY, 'mycodo/user_python_code')
 USAGE_REPORTS_PATH = os.path.join(INSTALL_DIRECTORY, 'output_usage_reports')
 DEPENDENCY_INIT_FILE = os.path.join(INSTALL_DIRECTORY, '.dependency')
@@ -834,7 +831,6 @@ HTTP_ERROR_LOG_FILE = '/var/log/nginx/error.log'
 
 # Lock files
 LOCK_PATH = '/var/lock'
-ATLAS_PH_LOCK_FILE = os.path.join(LOCK_PATH, 'sensor-atlas-ph.pid')
 LOCK_FILE_STREAM = os.path.join(LOCK_PATH, 'mycodo-camera-stream.pid')
 
 # Run files

@@ -1,8 +1,341 @@
-## 8.2.2 (Unreleased)
+## 8.6.4 (2020-07-25)
+
+### Bugfixes
+
+ - Fix issue displaying lines 5-8 on SD1306 LCDs ([#800](https://github.com/kizniche/mycodo/issues/800))
+ - Fix Atlas Scientific Pump duration unit issues ([#801](https://github.com/kizniche/mycodo/issues/801))
+
+ ### Features
+
+ - Add Inputs: Ads1115 (Circuit Python library), ADS1015 (Circuit Python library)
+ - Add Input: BMP280 (bmp280-python library, includes ability to set forced mode) ([#608](https://github.com/kizniche/mycodo/issues/608))
+
+### Miscellaneous
+
+ - Deprecate Input using the Adafruit_ADS1x15 library
+
+
+## 8.6.3 (2020-07-25)
+
+### Bugfixes
+
+ - Fix ADS1x15 Input
+
+
+## 8.6.2 (2020-07-25)
+
+### Bugfixes
+
+ - Fix DS18S20 Input module ([#796](https://github.com/kizniche/mycodo/issues/796))
+ - Fix Peristaltic Pump Outputs unable to turn on for durations ([#799](https://github.com/kizniche/mycodo/issues/799))
+
+### Features
+
+ - Add a ([Building a Custom Input Module wiki page](https://github.com/kizniche/Mycodo/wiki/Building-a-Custom-Input)
+
+### Miscellaneous
+
+ - Improve custom output framework
+ - Consolidate locking code to utils/lockfile.py
+
+
+## 8.6.1 (2020-07-22)
+
+### Bugfixes
+
+ - Fix Wireless 315/433 MHz Output module
+
+
+## 8.6.0 (2020-07-22)
+
+This update adds a Generic Peristaltic Pump Output to compliment the Atlas Scientific Peristaltic Pump Output. Generic peristaltic pumps are less expensive but often have acceptable dispensing accuracy. Once your pump's flow rate has been measured and this rate set in the Output options, your pump can be used to dispense specific volumes of liquid just like the Atlas Scientific pumps. This release also enables pumps to dispense for durations of time in addition to specific volumes (once calibrated). So, you can now operate a PID controller or other functions/controllers that instruct a pump to dispense for a duration in seconds or a volume in milliliters.
+
+In this update, the Atlas Scientific Peristaltic Pump Output duration units have been changed form minutes to seconds, to align with other Outputs that use the second SI unit.
+
+WARNING: As a result of how this new output operates, a potentially breaking change has been introduced. If you use any custom Output modules, you will need to add the parameter output_type=None to the output_switch() function of all of your custom Output module files. If you do not, the Mycodo daemon/backend will fail to start after upgrading to or beyond this version. It is advised to modify your custom Output modules prior to upgrading to ensure the daemon successfully starts after the upgrade. If you have not created or imported any custom Output modules, there is nothing that needs to be done.
+
+### Bugfixes
+
+ - Fix measurement being stored in database after sensor error ([#795](https://github.com/kizniche/mycodo/issues/795))
+ - Fix UART communication with Atlas Scientific devices ([#785](https://github.com/kizniche/mycodo/issues/785))
+ - Fix FTDI communication with Atlas Scientific devices
+ - Fix PID Dashboard Widget error in log when PID inactive
+ - Fix install on Desktop version of Raspberry Pi OS by removing python3-cffi-backend
+ - Fix inability to change I2C address of ADS1x15 Input ([#788](https://github.com/kizniche/mycodo/issues/788))
+ - Fix issues with calibrating Atlas Scientific devices ([#789](https://github.com/kizniche/mycodo/issues/789))
+ - Fix missing default input custom option values if not set in the database
+ - Add missing TSL2561 I2C addresses
+ - Fix daemon hang on use of incorrect Atlas Scientific UART device (add writeTimeout to every serial.Serial())
+ - Fix uninstall of pigpiod
+ - Fix missing pigpio dependency for GPIO PWM Outputs
+ - Prevent LCD controllers from activating if Max Age or Decimal Places are unset ([#795](https://github.com/kizniche/mycodo/issues/795))
+
+### Features
+
+ - Add Inputs: ADXL34x, ADT7410 ([#791](https://github.com/kizniche/mycodo/issues/791))
+ - Add Output: Generic Peristaltic Pump
+ - Add ability to turn peristaltic pumps on for durations (in addition to volumes)
+ - Add Function Action: Output (Volume)
+ - Improve general compatibility with Atlas Scientific devices
+ - Add ability to utilize volume Outputs (pumps) with PID Controllers
+ - Add pypi.org links to Input libraries in Input description information
+ - Add SPI interface as an option for SD1306 LEDs ([#793](https://github.com/kizniche/mycodo/issues/793))
+
+### Miscellaneous
+
+ - Change Atlas Scientific Peristaltic Pump Output duration unit from minute to second
+ - Move clear total volume function for Atlas Scientific Flow Meter to Input Module
+ - Add instruction for viewing the frontend web log on the web 502 error page ([#786](https://github.com/kizniche/mycodo/issues/786))
+
+
+## 8.5.8 (2020-07-07)
+
+### Bugfixes
+
+ - Fix inability to install pigpio ([#783](https://github.com/kizniche/mycodo/issues/783))
+
+
+## 8.5.7 (2020-07-07)
+
+### Bugfixes
+
+ - Fix inability to install internal dependencies (pigpio, bcm2835, etc.) ([#783](https://github.com/kizniche/mycodo/issues/783))
+
+
+## 8.5.6 (2020-06-30)
+
+### Bugfixes
+
+- Fix API database schema issue
+
+
+## 8.5.5 (2020-06-30)
+
+### Bugfixes
+
+ - Prevent user with insufficient permissions from rearranging dashboard widgets
+ - Fix installing internal dependencies
+ - Fix restore of influxdb measurement data from import/Export page
+ - Fix Gauge Widget Measurement options from being selected after saving
+
+### Features
+
+ - Create scripts to automatically generate Input section of manual
+
+### Miscellaneous
+
+ - Add URLs to Input information
+ - Switch from deprecated SSLify to Talisman
+ - Update Python dependencies
+
+
+## 8.5.4 (2020-06-06)
+
+### Bugfixes
+
+ - Fix Atlas Scientific pump on duration calculation
+
+
+## 8.5.3 (2020-06-06)
+
+### Bugfixes
+
+ - Fix upgrade not preserving custom outputs
+ - Fix missing output device measurements in database ([#779](https://github.com/kizniche/mycodo/issues/779))
+
+
+## 8.5.2 (2020-06-01)
+
+### Bugfixes
+
+ - Fix Atlas Scientific Pump Output timestamp parsing
+
+
+## 8.5.1 (2020-05-30)
+
+### Bugfixes
+
+ - Fix translations
+ - Fix dependency check during upgrade
+ - Fix Atlas Scientific Pump Output
+
+
+## 8.5.0 (2020-05-30)
+
+With this release comes the ability to write and import custom Outputs. If you want to utilize an output that Mycodo doesn't currently support, you can now create your own Output module and import it to be used within the system. See [Custom Outputs](https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#custom-outputs) in the manual for more information.
+
+WARNING: There are changes with this version that may cause issues with your currently-configured outputs. Therefore, after upgrading, test if your outputs work and update their configuration if needed.
+
+### Bugfixes
+
+ - Fix PID Widget preventing graph custom colors from being editable
+ - Fix graph Widget custom color issues ([#760](https://github.com/kizniche/mycodo/issues/760))
+ - Fix PWM Trigger Functions reacting to 0 % duty cycle being set ([#761](https://github.com/kizniche/mycodo/issues/761))
+ - Fix KeyError if missing options when saving Input
+ - Fix ZH03B Input: add repeat measurement option and discard erroneous measurements
+ - Fix update check IndexError if there's no internet connection
+ - Fix parsing API api_key from requests
+ - Fix the inability of Math Controllers to use converted measurements
+ - Fix Redundancy Math controller ([#768](https://github.com/kizniche/mycodo/issues/768))
+ - Fix display of Custom Controller options
+ - Fix hostname display on login page
+ - Fix missing blank line check for LCDs with 8 lines ([#771](https://github.com/kizniche/mycodo/issues/771))
+ - Fix unset user groups when executing shell commands
+ - Fix guest users being able to create dashboards
+ - Fix queries with updated influxdb Python library
+
+### Features
+
+ - Add ability to write and import your own Custom Output Modules
+ - Add Input: VL53L0X (Laser-Range Measurement) ([#769](https://github.com/kizniche/mycodo/issues/769))
+ - Add Input: AS7262 Spectral Sensor (measures 450, 500, 550, 570, 600, and 650 nm wavelengths)
+ - Add Input: Atlas Scientific EZO Pressure Sensor
+ - Add ability to create custom Input actions
+ - Add MH-Z19/MH-Z19B Input actions: zero and span point calibrations
+ - Add unit conversions: PSI to kPa, PSI to cm H2O, kPa to PSI
+ - Add literature links to Input options: Manufacturer, Datasheet, Product
+ - Add 'tail dmesg' to System Information page
+ - Add Function Actions: System Restart and System Shutdown ([#763](https://github.com/kizniche/mycodo/issues/763))
+ - Add Conditional options: Log Level Debug and Message Includes Code
+ - Add Force Command option for Command/Python/Wireless Outputs ([#728](https://github.com/kizniche/mycodo/issues/728))
+ - Add ability to select which user executes Linux Output commands ([#719](https://github.com/kizniche/mycodo/issues/719))
+ - Add Cameras: URL (urllib), URL (requests) ([Feature Request - IP Camera/Network Camera](https://kylegabriel.com/forum/general-discussion/feature-request-ip-camera-network-camera-stream))
+ - Add ability to encode videos from time-lapse image sets
+ - Add send_email() to Daemon Control object
+
+### Miscellaneous
+
+ - Upon controller activation, generate Input and Conditional code files if they don't exist
+ - Update Werkzeug to 1.0.1 ([#742](https://github.com/kizniche/mycodo/issues/742)), Flask-RESTX to 0.2.0, alembic to 1.4.2, pyro5 to 5.8, SQLAlchemy to 1.3.15, distro to 1.5.0,
+ - Refactor Python Output code 
+ - Update all translations (all complete)
+ - Rename MH-Z19 Input to MH-Z19B (and add MH-Z19 Input)
+ - Change Email Notification options to allow unauthenticated sending
+ - Add conversions: m <-> cm <-> mm
+ - Make PID Controller a class
+ - Restyle Output page ([#732](https://github.com/kizniche/mycodo/issues/732))
+ - Include error response in PWM/On-Off Command Output debug logging line
+ - Update InfluxDB to 1.8.0
+
+
+## 8.4.0 (2020-03-23)
+
+### Bugfixes
+
+ - Fix invalid links to Help pages
+ - Prevent unstoppable Conditional Controller by adding self.running bool variable
+ - Fix calculation error causing inaccuracy with ADS1x15 analog-to-digital converter Input
+ - Remove PWM and Pump Outputs from Energy Usage calculations
+ - Fix links to camera widget error images
+ - Fix reference to input library to properly display 1-Wire device IDs ([#752](https://github.com/kizniche/mycodo/issues/752))
+ - If a camera output is already on when capturing an image, dont' turn it off after capture
+ - Discard first measurement of Atlas Scientific Inputs to prevent some erroneous measurements
+ - Fix display of setpoint on PID widget if a band is in use ([#744](https://github.com/kizniche/mycodo/issues/744))
+ - Fix Amp calculation ([#758](https://github.com/kizniche/mycodo/issues/758))
+
+### Features
+
+ - Add temperature compensation option for the Atlas Scientific Electrical Conductivity and Dissolved Oxygen Inputs
+ - Add Inputs: Atlas Scientific Flow Sensor, Atlas Scientific RGB Color Sensor
+ - Add Function Action: Clear Total Volume of Flow Meter, Force Input Measurements
+ - Add option to repeat measurements and store average for ADS1x15 analog-to-digital converter Input
+ - Add PID option Always Min for PWM outputs to always use at least the min duty cycle ([#757](https://github.com/kizniche/mycodo/issues/757))
+ - Add email password reset
+
+### Miscellaneous
+
+ - Add prefix to device IDs when using w1thermsensor ([#752](https://github.com/kizniche/mycodo/issues/752))
+
+
+## 8.3.0 (2020-02-21)
+
+### Bugfixes
+
+ - Fix determining frontend/backend virtualenv status
+ - Fix error detecting GPIO state during energy usage report generation ([#745](https://github.com/kizniche/mycodo/issues/745))
+ - Fix Atlas Scientific pH Input temperature calibration measurement
+ - Fix Atlas Scientific EZO-PMP flow mode not taking effect immediately upon saving
+ - Change deprecated w1thermsensor set_precision() to set_resolution()
+ - Fix setting DS sensor resolution ([#747](https://github.com/kizniche/mycodo/issues/747))
+ - Split DS18B20 Input into two files (one using w1thermsensor and another using ow-shell) ([#746](https://github.com/kizniche/mycodo/issues/746))
+ - Prevent users without "view settings" permission from viewing email addresses
+ - Fix TSL2561 input ([#750](https://github.com/kizniche/mycodo/issues/750))
+
+### Features
+
+ - Add Temperature Offset option for BME680 Input ([#735](https://github.com/kizniche/mycodo/issues/735))
+ - Add ability to change number of stops for Gauge Widgets ([#749](https://github.com/kizniche/mycodo/issues/749))
+
+### Miscellaneous
+
+ - Fix logging level of calibration functions
+ - Populate setpoint in field of PID dashboard widget ([#748](https://github.com/kizniche/mycodo/issues/748))
+
+
+## 8.2.5 (2020-02-09)
+
+### Bugfixes
+
+ - Fix daemon not being able to read measurements ([#743](https://github.com/kizniche/mycodo/issues/743))
+
+
+## 8.2.4 (2020-02-08)
+
+### Bugfixes
+
+ - Fix logs appearing blank after logrotate runs ([#734](https://github.com/kizniche/mycodo/issues/734))
+ - Update Flask-Babel to 1.0.0 to fix broken werkzeug ([#742](https://github.com/kizniche/mycodo/issues/742))
+ - Increase install wait times to prevent timeouts ([#742](https://github.com/kizniche/mycodo/issues/742))
+
+### Features
+
+ - Add BME680 temperature/humidity/pressure/VOC sensor ([#735](https://github.com/kizniche/mycodo/issues/735))
+ - Add measurement: resistance
+ - Add unit: Ohm
+ - Merge from [Flask-RESTPlus](https://github.com/noirbizarre/flask-restplus/issues/770) to [Flask-RESTX](https://github.com/python-restx/flask-restx) ([#742](https://github.com/kizniche/mycodo/issues/742))
+
+### Miscellaneous
+
+ - Improve sanity-checking of Input custom_options
+ - Improve sanity-checking of API endpoints ([#741](https://github.com/kizniche/mycodo/issues/741))
+ - Update pip requirements
+
+
+## 8.2.3 (2020-01-27)
+
+### Bugfixes
+
+ - Fix error during upgrade check if there is no internet connection
+ - Fix MQTT input, prevent keepalive from being <= 0 ([#733](https://github.com/kizniche/mycodo/issues/733))
+ - Fix issue restarting frontend using diagnostic database delete feature
+ - Fix ability to import Inputs with measurements/units that don't exist in database ([#735](https://github.com/kizniche/mycodo/issues/735))
+ - Fix ability to modify measurement/unit names that Inputs rely on
+ - Fix inability to modify custom measurements
+ - Fix error when deleting dashboards from the Config->Diagnostics menu ([#737](https://github.com/kizniche/mycodo/issues/737))
+ - Fix dashboard gauges causing the dashboard to crash ([#736](https://github.com/kizniche/mycodo/issues/736))
+
+### Miscellaneous
+
+ - Refactor upgrade check code into class to reduce the number of hits to github.com
+ - Rearrange dashboard dropdown menu
+ - Allow creation of measurement/unit IDs with upper-case letters ([#735](https://github.com/kizniche/mycodo/issues/735))
+
+## 8.2.2 (2020-01-06)
+
+### Bugfixes
+
+ - Fix table colors ([#724](https://github.com/kizniche/mycodo/issues/724))
+ - Fix error when dashboard is set to default landing page ([#727](https://github.com/kizniche/mycodo/issues/727))
 
 ### Features
 
  - Add options to show/hide various widget info ([#717](https://github.com/kizniche/mycodo/issues/717))
+ - Add Input: MLX90614 ([#723](https://github.com/kizniche/mycodo/pull/723))
+
+### Miscellaneous
+
+ - Update Bootstrap to 4.4.1
+ - Update Bootstrap themes
 
 
 ## 8.2.1 (2019.12.08)

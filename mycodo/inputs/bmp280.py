@@ -3,6 +3,8 @@
 # Author: Vitally Tezhe
 import time
 
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 from mycodo.inputs.sensorutils import calculate_altitude
 
@@ -27,15 +29,18 @@ INPUT_INFORMATION = {
     'input_name_unique': 'BMP280',
     'input_manufacturer': 'BOSCH',
     'input_name': 'BMP280',
+    'input_library': 'Adafruit_GPIO',
     'measurements_name': 'Pressure/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp280-1.html',
+    'url_datasheet': 'https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf',
+    'url_product_purchase': 'https://www.adafruit.com/product/2651',
 
     'options_enabled': [
         'i2c_location',
         'measurements_select',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -43,10 +48,7 @@ INPUT_INFORMATION = {
         ('pip-pypi', 'Adafruit_GPIO', 'Adafruit_GPIO')
     ],
     'interfaces': ['I2C'],
-    'i2c_location': [
-        '0x76',
-        '0x77'
-    ],
+    'i2c_location': ['0x76', '0x77'],
     'i2c_address_editable': False
 }
 
@@ -95,32 +97,38 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, mode=BMP280_STANDARD, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            import Adafruit_GPIO.I2C as I2C
+        self.sensor = None
+        self._mode = mode
+        self._tfine = 0
 
-            self.i2c_address = int(str(input_dev.i2c_location), 16)
-            self.i2c_bus = input_dev.i2c_bus
-            if mode not in [BMP280_ULTRALOWPOWER,
-                            BMP280_STANDARD,
-                            BMP280_HIGHRES,
-                            BMP280_ULTRAHIGHRES]:
-                raise ValueError(
-                    'Unexpected mode value {0}.  Set mode to one of '
-                    'BMP280_ULTRALOWPOWER, BMP280_STANDARD, BMP280_HIGHRES, '
-                    'or BMP280_ULTRAHIGHRES'.format(mode))
-            self._mode = mode
-            # Create I2C device.
-            i2c = I2C
-            self._device = i2c.get_i2c_device(
-                self.i2c_address,
-                busnum=self.i2c_bus)
-            # Load calibration values.
-            self._load_calibration()
-            self._tfine = 0
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        import Adafruit_GPIO.I2C
+
+        if self._mode not in [
+                BMP280_ULTRALOWPOWER,
+                BMP280_STANDARD,
+                BMP280_HIGHRES,
+                BMP280_ULTRAHIGHRES]:
+            raise ValueError(
+                'Unexpected mode value {0}.  Set mode to one of '
+                'BMP280_ULTRALOWPOWER, BMP280_STANDARD, BMP280_HIGHRES, '
+                'or BMP280_ULTRAHIGHRES'.format(self._mode))
+
+        self.sensor = Adafruit_GPIO.I2C.get_i2c_device(
+            int(str(self.input_dev.i2c_location), 16),
+            busnum=self.input_dev.i2c_bus)
+        self._load_calibration()  # Load calibration values
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.is_enabled(0):
             self.value_set(0, self.read_pressure())
@@ -128,25 +136,24 @@ class InputModule(AbstractInput):
         if self.is_enabled(1):
             self.value_set(1, self.read_temperature())
 
-        if self.is_enabled(2) and self.is_enabled(0):
-            self.value_set(2, calculate_altitude(
-                self.value_get(0)))
+        if self.is_enabled(0):
+            self.value_set(2, calculate_altitude(self.value_get(0)))
 
         return self.return_dict
 
     def _load_calibration(self):
-        self.cal_REGISTER_DIG_T1 = self._device.readU16LE(BMP280_REGISTER_DIG_T1)  # UINT16
-        self.cal_REGISTER_DIG_T2 = self._device.readS16LE(BMP280_REGISTER_DIG_T2)  # INT16
-        self.cal_REGISTER_DIG_T3 = self._device.readS16LE(BMP280_REGISTER_DIG_T3)  # INT16
-        self.cal_REGISTER_DIG_P1 = self._device.readU16LE(BMP280_REGISTER_DIG_P1)  # UINT16
-        self.cal_REGISTER_DIG_P2 = self._device.readS16LE(BMP280_REGISTER_DIG_P2)  # INT16
-        self.cal_REGISTER_DIG_P3 = self._device.readS16LE(BMP280_REGISTER_DIG_P3)  # INT16
-        self.cal_REGISTER_DIG_P4 = self._device.readS16LE(BMP280_REGISTER_DIG_P4)  # INT16
-        self.cal_REGISTER_DIG_P5 = self._device.readS16LE(BMP280_REGISTER_DIG_P5)  # INT16
-        self.cal_REGISTER_DIG_P6 = self._device.readS16LE(BMP280_REGISTER_DIG_P6)  # INT16
-        self.cal_REGISTER_DIG_P7 = self._device.readS16LE(BMP280_REGISTER_DIG_P7)  # INT16
-        self.cal_REGISTER_DIG_P8 = self._device.readS16LE(BMP280_REGISTER_DIG_P8)  # INT16
-        self.cal_REGISTER_DIG_P9 = self._device.readS16LE(BMP280_REGISTER_DIG_P9)  # INT16
+        self.cal_REGISTER_DIG_T1 = self.sensor.readU16LE(BMP280_REGISTER_DIG_T1)  # UINT16
+        self.cal_REGISTER_DIG_T2 = self.sensor.readS16LE(BMP280_REGISTER_DIG_T2)  # INT16
+        self.cal_REGISTER_DIG_T3 = self.sensor.readS16LE(BMP280_REGISTER_DIG_T3)  # INT16
+        self.cal_REGISTER_DIG_P1 = self.sensor.readU16LE(BMP280_REGISTER_DIG_P1)  # UINT16
+        self.cal_REGISTER_DIG_P2 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P2)  # INT16
+        self.cal_REGISTER_DIG_P3 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P3)  # INT16
+        self.cal_REGISTER_DIG_P4 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P4)  # INT16
+        self.cal_REGISTER_DIG_P5 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P5)  # INT16
+        self.cal_REGISTER_DIG_P6 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P6)  # INT16
+        self.cal_REGISTER_DIG_P7 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P7)  # INT16
+        self.cal_REGISTER_DIG_P8 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P8)  # INT16
+        self.cal_REGISTER_DIG_P9 = self.sensor.readS16LE(BMP280_REGISTER_DIG_P9)  # INT16
 
         # self.logger.debug('T1 = {0:6d}'.format(self.cal_REGISTER_DIG_T1))
         # self.logger.debug('T2 = {0:6d}'.format(self.cal_REGISTER_DIG_T2))
@@ -179,7 +186,7 @@ class InputModule(AbstractInput):
 
     def read_raw_temp(self):
         """Reads the raw (uncompensated) temperature from the sensor."""
-        self._device.write8(
+        self.sensor.write8(
             BMP280_REGISTER_CONTROL, BMP280_READCMD + (self._mode << 6))
         if self._mode == BMP280_ULTRALOWPOWER:
             time.sleep(0.005)
@@ -189,9 +196,9 @@ class InputModule(AbstractInput):
             time.sleep(0.026)
         else:
             time.sleep(0.008)
-        msb = self._device.readU8(BMP280_REGISTER_TEMPDATA_MSB)
-        lsb = self._device.readU8(BMP280_REGISTER_TEMPDATA_LSB)
-        xlsb = self._device.readU8(BMP280_REGISTER_TEMPDATA_XLSB)
+        msb = self.sensor.readU8(BMP280_REGISTER_TEMPDATA_MSB)
+        lsb = self.sensor.readU8(BMP280_REGISTER_TEMPDATA_LSB)
+        xlsb = self.sensor.readU8(BMP280_REGISTER_TEMPDATA_XLSB)
         raw = ((msb << 8 | lsb) << 8 | xlsb) >> 4
         self.logger.debug(
             'Raw temperature 0x{0:04X} ({1})'.format(raw & 0xFFFF, raw))
@@ -199,7 +206,7 @@ class InputModule(AbstractInput):
 
     def read_raw_pressure(self):
         """Reads the raw (uncompensated) pressure level from the sensor."""
-        self._device.write8(BMP280_REGISTER_CONTROL, BMP280_READCMD + (self._mode << 6))
+        self.sensor.write8(BMP280_REGISTER_CONTROL, BMP280_READCMD + (self._mode << 6))
         if self._mode == BMP280_ULTRALOWPOWER:
             time.sleep(0.005)
         elif self._mode == BMP280_HIGHRES:
@@ -208,9 +215,9 @@ class InputModule(AbstractInput):
             time.sleep(0.026)
         else:
             time.sleep(0.008)
-        msb = self._device.readU8(BMP280_REGISTER_PRESSUREDATA_MSB)
-        lsb = self._device.readU8(BMP280_REGISTER_PRESSUREDATA_LSB)
-        xlsb = self._device.readU8(BMP280_REGISTER_PRESSUREDATA_XLSB)
+        msb = self.sensor.readU8(BMP280_REGISTER_PRESSUREDATA_MSB)
+        lsb = self.sensor.readU8(BMP280_REGISTER_PRESSUREDATA_LSB)
+        xlsb = self.sensor.readU8(BMP280_REGISTER_PRESSUREDATA_XLSB)
         raw = ((msb << 8 | lsb) << 8 | xlsb) >> 4
         self.logger.debug('Raw pressure 0x{0:04X} ({1})'.format(raw & 0xFFFF, raw))
         return raw

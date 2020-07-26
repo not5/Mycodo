@@ -1,6 +1,8 @@
 # coding=utf-8
 import time
 
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 
 # Measurements
@@ -16,15 +18,17 @@ INPUT_INFORMATION = {
     'input_name_unique': 'DS28EA00',
     'input_manufacturer': 'MAXIM',
     'input_name': 'DS28EA00',
+    'input_library': 'w1thermsensor',
     'measurements_name': 'Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.maximintegrated.com/en/products/interface/sensor-interface/DS28EA00.html',
+    'url_datasheet': 'https://datasheets.maximintegrated.com/en/ds/DS28EA00.pdf',
 
     'options_enabled': [
         'location',
         'resolution',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -45,26 +49,29 @@ INPUT_INFORMATION = {
 
 class InputModule(AbstractInput):
     """ A sensor support class that monitors the DS28EA00's temperature """
-
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.sensor = None
+
         if not testing:
-            from w1thermsensor import W1ThermSensor
+            self.initialize_input()
 
-            self.location = input_dev.location
-            self.resolution = input_dev.resolution
+    def initialize_input(self):
+        from w1thermsensor import W1ThermSensor
 
-            self.sensor = W1ThermSensor(
-                W1ThermSensor.THERM_SENSOR_DS28EA00,
-                self.location)
-
-            if self.resolution:
-                self.sensor.set_precision(self.resolution)
+        self.sensor = W1ThermSensor(
+            W1ThermSensor.THERM_SENSOR_DS28EA00, self.input_dev.location)
+        if self.input_dev.resolution:
+            self.sensor.set_resolution(self.input_dev.resolution)
 
     def get_measurement(self):
         """ Gets the DS28EA00's temperature in Celsius """
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         n = 2
         for i in range(n):
@@ -74,6 +81,5 @@ class InputModule(AbstractInput):
             except Exception as e:
                 if i == n:
                     self.logger.exception(
-                        "{cls} raised an exception when taking a reading: "
-                        "{err}".format(cls=type(self).__name__, err=e))
+                        "{cls} raised an exception when taking a reading: {err}".format(cls=type(self).__name__, err=e))
                 time.sleep(1)

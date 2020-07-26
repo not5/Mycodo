@@ -1,8 +1,9 @@
 # coding=utf-8
+from marshmallow_sqlalchemy import ModelSchema
+
 from mycodo.databases import CRUDMixin
 from mycodo.databases import set_uuid
 from mycodo.mycodo_flask.extensions import db
-from mycodo.mycodo_flask.extensions import ma
 
 
 class Function(CRUDMixin, db.Model):
@@ -13,6 +14,7 @@ class Function(CRUDMixin, db.Model):
     unique_id = db.Column(db.String, nullable=False, unique=True, default=set_uuid)
     function_type = db.Column(db.Text, default='')
     name = db.Column(db.Text, default='Function Name')
+    log_level_debug = db.Column(db.Boolean, default=False)
 
 
 class Conditional(CRUDMixin, db.Model):
@@ -28,6 +30,7 @@ class Conditional(CRUDMixin, db.Model):
     conditional_statement = db.Column(db.Text, default='')
     period = db.Column(db.Float, default=60.0)
     start_offset = db.Column(db.Float, default=10.0)
+    message_include_code = db.Column(db.Boolean, default=False)
 
 
 class ConditionalConditions(CRUDMixin, db.Model):
@@ -105,7 +108,7 @@ class Trigger(CRUDMixin, db.Model):
     edge_detected = db.Column(db.Text, default='')
 
 
-class TriggerSchema(ma.ModelSchema):
+class TriggerSchema(ModelSchema):
     class Meta:
         model = Trigger
 
@@ -125,6 +128,7 @@ class Actions(CRUDMixin, db.Model):
     do_unique_id = db.Column(db.Text, default='')
     do_action_string = db.Column(db.Text, default='')  # string, such as the email address or command
     do_output_state = db.Column(db.Text, default='')  # 'on' or 'off'
+    do_output_amount = db.Column(db.Float, default=0.0)
     do_output_duration = db.Column(db.Float, default=0.0)
     do_output_pwm = db.Column(db.Float, default=0.0)
     do_output_pwm2 = db.Column(db.Float, default=0.0)

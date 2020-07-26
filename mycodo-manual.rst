@@ -70,6 +70,17 @@ certain events based on the truth of custom user conditional statements
 Frequently Asked Questions
 ==========================
 
+Here are a few frequently asked questions about Mycodo. There is also an
+`Question & Answer
+Forum <https://kylegabriel.com/forum/questions-answers-mycodo>`__ that
+you can pose a question. However, do ensure it's relevant to the topic
+by reading the `stickied Q&A
+Post <https://kylegabriel.com/forum/questions-answers-mycodo/when-should-you-post-in-this-forum>`__
+to determine if it may be better suited for the `General Discussion
+Forum <https://kylegabriel.com/forum/general-discussion>`__.
+
+--------------
+
 *What should I do if I have an issue?*
 
 First, read though this manual to make sure you understand how the
@@ -84,70 +95,86 @@ files, etc.) to aid in diagnosing the issue.
 
 --------------
 
-*How do I add an Input (like a sensor) to the system if it's not
+*How do I add an Input (like a sensor) or an Output (like a water pump),
+or custom functions (to do my bidding) to the system if they're not
 currently supported?*
 
-Yes, Mycodo supports adding custom Inputs. See the `Custom
-Inputs <#custom-inputs>`__ section for more information.
+Yes, Mycodo supports adding custom Inputs, Outputs, and Controllers. See
+the `Custom Inputs <#custom-inputs>`__, `Custom
+Outputs <#custom-outputs>`__, and `Custom
+Controllers <#custom-controllers>`__ sections for more information.
 
-The second way to add an Input is to create a script that obtains and
-returns a numerical value when executed in the linux system of the
-Raspberry Pi. This script may be configured to be executed by a "Linux
-Command" Input type. This will periodically execute the command and
-store the returned value to the database for use with the rest of the
-Mycodo system.
-
---------------
-
-*Can I create a new controller like the PID, Trigger, and LCD
-functions?*
-
-Yes, Mycodo supports adding custom Controllers. See the `Custom
-Controllers <#custom-controllers>`__ section for more information.
+Another way to add an Input is to create a bash or Python script that
+obtains and returns a numerical value when executed from the linux
+command line on the Raspberry Pi. This script may be configured to be
+executed by a "Linux Command" Input. The Input will periodically execute
+the command and store the returned measurement value to the database for
+use with the rest of the Mycodo system.
 
 --------------
 
-*How do I set up simple regulation?*
+*How do I set up simple environmental monitoring and regulation?*
 
 Here is how I generally set up Mycodo to monitor and regulate:
 
-1. Determine what environmental condition you want to measure or
-   regulate. Consider the devices that must be coupled to achieve this.
-   For instance, temperature regulation require a temperature sensor as
-   the input and an electric heater (or cooler) as the output.
-2. Determine what relays you will need to power your electric devices.
-   The Raspberry Pi is capable of directly switching relays (using a
-   3.3-volt signal). Remember to select a relay that can handle the load
-   and doesn't exceed the maximum current draw from the Raspberry Pi
-   GPIO pins.
-3. See the `Device Specific
-   Information <#device-specific-information>`__ for information about
-   what sensors are supported. Acquire sensor(s) and relay(s) and
-   connect them to the Raspberry Pi according to the manufacturer’s
-   instructions.
-4. On the ``Setup -> Data`` page, create a new input using the drop-down
-   to select the correct sensor or input device. Configure the input
-   with the correct communication pins and other options. Activate the
-   input to begin recording measurements to the database.
-5. Go to the ``Data -> Live`` page to ensure there is recent data being
-   acquired from the input.
-6. On the ``Setup -> Output`` page, add a relay and configure the GPIO
-   pin that switches it, whether the relay switches On when the signal
-   is HIGH or LOW, and what state (On or Off) to set the relay when
-   Mycodo starts. A pulse-width modulated (PWM) output may also be used,
-   among others.
-7. Test the relay by switching it On and Off or generating a PWM signal
-   from the ``Setup -> Output`` page and make sure the device connected
-   to the relay turns On when you select "On", and Off when you select
-   "Off".
-8. On the ``Setup -> Function`` page, create a PID controller with the
-   appropriate input, output, and other parameters. Activate the PID
-   controller.
-9. On the ``Data -> Dashboard`` page, create a graph that includes the
-   input measurement, the output that is being used by the PID, and the
-   PID output and setpoint. This provides a good visualization for
-   tuning the PID. See `Quick Setup Examples <#quick-setup-examples>`__
-   for a greater detail of this process and tuning tips.
+1.  Determine what environmental condition you want to measure or
+    regulate. Consider the devices that must be coupled to achieve this.
+    For instance, temperature regulation would require a temperature
+    sensor input and an electric heater (or cooler) output.
+2.  Determine what relays you will need to control power to your
+    electric devices. The Raspberry Pi is capable of directly switching
+    relays (using a controllable 3.3-volt signal from the Pi's GPIO
+    pins). Remember to select a relay that can handle the electrical
+    current load from your switched device and won't exceed the maximum
+    current draw from the Raspberry Pi GPIO pin the relay is connected
+    to.
+3.  See the `Input Devices <#input-devices>`__ section for information
+    about supported inputs. Acquire sensor(s) and relay(s) and connect
+    them to the Raspberry Pi according to the manufacturer’s
+    instructions. For instance, a sensor that communicates via the I2C
+    bus will connect the SDA, SCL, Power, and Ground pins of the sensor
+    to the SDA, SCL, 3.3 volt, and Ground pins of the Raspberry Pi. Make
+    sure to enable the I2C interface under
+    ``Configure -> Raspberry Pi``. Additionally, the simplest way to
+    connect a relay is to connect the controlling side of the relay to a
+    GPIO pin and Ground of the Raspberry Pi (remember to select a relay
+    that will not exceed the current limitation of the GPIO pin). Some
+    relays require the proper polarity for the controlling voltage, so
+    refer to the manufacturer's datasheet to determine if this is the
+    case.
+4.  On the ``Setup -> Data`` page, add a new input using the drop-down
+    menu. Configure the input with the correct communication pins and
+    other options. Activate the input to begin recording measurements to
+    the Mycodo measurement database.
+5.  Go to the ``Data -> Live`` page to ensure there are measurements
+    being acquired from the input.
+6.  On the ``Setup -> Output`` page, add an On/Off GPIO Output and
+    configure the GPIO pin that's connected to the relay, whether the
+    relay switches On when the signal is HIGH or LOW, and what state (On
+    or Off) to set the relay when Mycodo starts. There are a number of
+    other Outputs to choose from, but this is the most basic to start
+    with, that will simply switch the GPIO pin HIGH (3.3 volts) or LOW
+    (0 volts) to switch the relay that's connected to the pin.
+7.  Connect your device to the relay. This can be dont a number of ways,
+    and will depend on a number of factors, including whether you're
+    using DC or AC voltage, whether there are screw terminals or a
+    connector/socket, etc. In the simplest scenario, AC mains voltage
+    can be applied by cutting the live wire and connecting each of the
+    newly-cut ends to each of the terminals on the switching side fo the
+    relay. This enables the relay to short/connect or break/disconnect
+    the connection, which will power and depower your device.
+8.  Test the Output by switching it On and Off (or generating a PWM
+    signal if it's a PWM Output) from the ``Setup -> Output`` page and
+    make sure the device connected to the relay turns On when you select
+    "On", and Off when you select "Off".
+9.  On the ``Setup -> Function`` page, create a PID controller with the
+    appropriate input measurement, output, and other parameters.
+    Activate the PID controller.
+10. On the ``Data -> Dashboard`` page, create a graph that includes the
+    input measurement, the output, and the PID output and setpoint. This
+    provides a good visualization for tuning the PID. See `Quick Setup
+    Examples <#quick-setup-examples>`__ for a greater detail of this
+    process and tuning tips.
 
 --------------
 
@@ -166,44 +193,44 @@ PWM output signal from the PID?*
 
 Yes, as long as you have the proper hardware to do that. The PWM signal
 being produced by the PID should be handled appropriately, whether by a
-fast-switching solid state relay, an `AC modulation
-circuit <#schematics-for-ac-modulation>`__, `DC modulation
-circuit <#schematics-for-dc-fan-control>`__, or something else.
+fast-switching solid state relay, `AC modulation
+circuitry <#schematics-for-ac-modulation>`__, `DC modulation
+circuitry <#schematics-for-dc-fan-control>`__, or something else.
 
 --------------
 
 *I have a PID controller that uses one temperature sensor. If this
-sensor stops working, my entire PID controller stops working. Is there a
-way to prevent this by setting up a second sensor to be used in case the
-first one fails?*
+sensor stops working, my PID controller stops operating. Is there a way
+to prevent this by setting up a second sensor to be used as a backup in
+case the first one fails?*
 
 Yes, you can use as many sensors as you would like to create a redundant
-system so your PID doesn't stop working if one or more sensors fail. To
-do this, follow the below instructions:
+system so your PID or other functions don't stop working if one or more
+sensors fail. To do this, follow the below instructions:
 
 1. Add and activate all your sensors. For this example, we will use
    three temperature sensors, Sensor1, Sensor2, and Sensor3, that return
    measurements in degrees Celsius.
-2. Go to the ``Setup -> Data`` page and add the Math controller
-   "Redundancy".
+2. Go to the ``Setup -> Data`` page and add the Redundancy Math
+   controller.
 3. In the options of the Redundancy controller, set the Period, Start
-   Offset, and Max Age.
-4. In the options of the Redundancy controller, select Sensor1, Sensor2,
-   and Sensor3 for the Input option and click Save.
-5. In the options of the Redundancy controller, change the order you
+   Offset, and Max Age, then select Sensors 1, 2, and 3 for the Input
+   option, then Save.
+4. In the options of the Redundancy controller, change the order you
    wish to use the sensors under Order of Use. For this example, we will
    use the default order (Sensor1, Sensor2, Sensor3).
-6. In the options of the Redundancy controller, under Measurement
-   Settings, select Celsius for the Measurement Unit and click Save
-   under Measurement Settings.
-7. Activate the Redundancy Math controller.
-8. Go to the ``Data -> Live`` page and verify the Redundancy Math
-   controller is working correctly by returning a value from one of the
-   three selected Inputs. If the first sensor is working correctly, it
-   should return this value. You can deactivate the first sensor
+5. In the options of the Redundancy controller, under Measurement
+   Settings, select Celsius for the Measurement Unit and click the Save
+   under Measurement Settings (a different Save button from the general
+   options).
+6. Activate the Redundancy Math controller.
+7. Go to the ``Data -> Live`` page and verify the Redundancy Math
+   controller is working correctly by returning a value from the input
+   you selected to be first. If the first sensor is working correctly,
+   its value should be displayed. You can deactivate the first sensor
    (mimicking the first sensor stopped working) and see if the second
    sensor's value is then returned.
-9. Go to the ``Setup -> Function`` page and select the new Redundancy
+8. Go to the ``Setup -> Function`` page and select the new Redundancy
    Math controller for the PID Measurement option.
 
 The PID controller will now use the measurement returned from the
@@ -214,13 +241,14 @@ If a measurement can be found within the Max Age for Sensor1, the
 measurement for Sensor1 will be returned. If a measurement from Sensor1
 could not be acquired, and if a measurement can be found within the Max
 Age for Sensor2, the measurement for Sensor2 will be returned. If a
-measurement from Sensor2 could not be acquired, and if a measurement can
-be found within the Max Age for Sensor3, the measurement for Sensor3
-will be returned. If a measurement from Sensor3 could not be acquired,
-then the Redundancy Math controller will not return a measurement at all
-(indicating all three sensors are not working). It is advised to set up
-a Conditional to send a notification email to yourself if one or more
-measurements are unable to be acquired.
+measurement from Sensor1 or Sensor2 could not be acquired, and if a
+measurement can be found within the Max Age for Sensor3, the measurement
+for Sensor3 will be returned. If a measurement from Sensor1, Sensor2, or
+Sensor3 could not be acquired, then the Redundancy Math controller will
+not return a measurement at all (indicating all three sensors are not
+working). It is advised to set up a Conditional Controller to send a
+notification email to yourself if one or more measurements are unable to
+be acquired so you can investigate the issue.
 
 --------------
 
@@ -233,11 +261,12 @@ If you already have Mycodo installed, you can perform an upgrade to the
 latest `Mycodo Release <https://github.com/kizniche/Mycodo/releases>`__
 by either using the Upgrade option in the web interface (recommended) or
 by issuing the following command in a terminal. A log of the upgrade
-process is created at ``/var/log/mycodo/mycodoupgrade.log``
+process is created at ``/var/log/mycodo/mycodoupgrade.log`` and is also
+available from the ``Configure -> Mycodo Logs page``.
 
 .. code:: bash
 
-    sudo /bin/bash ~/Mycodo/mycodo/scripts/upgrade_commands.sh upgrade
+    sudo mycodo-commands upgrade-mycodo
 
 Backup-Restore
 ==============
@@ -245,21 +274,22 @@ Backup-Restore
 ``[Gear Icon] -> Backup Restore``
 
 A backup is made to /var/Mycodo-backups when the system is upgraded or
-through the web interface on the ``[Gear Icon] -> Backup Restore`` page.
+instructed to do so from the web interface on the
+``[Gear Icon] -> Backup Restore`` page.
 
 If you need to restore a backup, this can be done on the
-``[Gear Icon] -> Backup  Restore`` page. Find the backup you would like
-restored and press the Restore button beside it. A restore can also be
-initialized through the command line. Use the following commands to
-initialize a restore, changing the appropriate directory names, 'user'
-to your user name, and TIME and COMMIT to the appropriate text found as
-the directory names in /var/Mycodo-backups/
+``[Gear Icon] -> Backup  Restore`` page (recommended). Find the backup
+you would like restored and press the Restore button beside it. If
+you're unable to access the web interface, a restore can also be
+initialized through the command line. Use the following command to
+initialize a restore. The [backup\_location] must be the full path to
+the backup to be restored (e.g.
+"/var/Mycodo-backups/Mycodo-backup-2018-03-11\_21-19-15-5.6.4/" without
+quotes).
 
 .. code:: bash
 
-    sudo mv /home/user/Mycodo /home/user/Mycodo_old
-    sudo cp -a /var/Mycodo-backups/Mycodo-TIME-COMMIT /home/user/Mycodo
-    sudo /bin/bash ~/Mycodo/mycodo/scripts/upgrade_post.sh
+    sudo mycodo-commands backup-restore [backup_location]
 
 Web Interface
 =============
@@ -270,21 +300,21 @@ the daemon, of the system. The web interface supports an authentication
 system with user/password credentials, user roles that grant/deny access
 to parts of the system, and SSL for encrypted browsing.
 
-An SSL certificate will be generated (expires in 10 years) and stored at
-``~/Mycodo/mycodo/mycodo_flask/ssl_certs/`` during the install process
-to allow SSL to be used to securely connect to the web interface. If you
-want to use your own SSL certificates, replace them with your own.
+An SSL certificate with an expiration of 10 years will be generated and
+stored in ``~/Mycodo/mycodo/mycodo_flask/ssl_certs/`` during the install
+process to allow SSL to be used to securely connect to the web
+interface. If you want to use your own SSL certificates, replace them
+with your own.
 
 If using the auto-generated certificate from the install, be aware that
-it will not be verified when visiting the web interface using the
-``https://`` address prefix. You may continually receive a warning
-message about the security of your site, unless you add the certificate
-to your browser's trusted list.
+it will not be verified when visiting the web interface in your browser.
+You may continually receive a warning message about the security of your
+site unless you add the certificate to your browser's trusted list.
 
 REST API
 ========
 
-As of version 8, Mycodo has a REST API. Documentation is available here:
+As of version 8, Mycodo has a REST API. Documentation is available at
 `API
 Information <https://github.com/kizniche/Mycodo/blob/master/mycodo-api.rst>`__
 and `API Endpoint
@@ -433,6 +463,8 @@ a speedometer in a car.
 | Gauge Min                    | The lowest value of the gauge.              |
 +------------------------------+---------------------------------------------+
 | Gauge Max                    | The highest value of the gauge.             |
++------------------------------+---------------------------------------------+
+| Stops                        | The number of color ranges on the gauge.    |
 +------------------------------+---------------------------------------------+
 | Show Timestamp               | Show the timestamp of the current gauge     |
 |                              | measurement.                                |
@@ -590,6 +622,16 @@ Statements <#conditional-statements>`__, and other parts of Mycodo to
 operate from. Add, configure, and activate inputs to begin recording
 measurements to the database and allow them to be used throughout
 Mycodo.
+
+Input Actions
+~~~~~~~~~~~~~
+
+Input Actions are functions within the Input module that can be executed
+from the Web UI. This is useful for things such as calibration or other
+functionality specific to the input. By default there is at least one
+action, Acquire Measurements Now, which will cause the input to acquire
+measurements rather than waiting until the next Period has elapsed.
+Note, actions can only be executed while the Input is active.
 
 Input Options
 ~~~~~~~~~~~~~
@@ -806,23 +848,20 @@ the measurement database to be used throughout the Mycodo system.
 +------------------------------+---------------------------------------------+
 
 1. `Debouncing a
-   signal <http://kylegabriel.com/projects/2016/02/morse-code-translator.html#debouncing>`__
+   signal <https://kylegabriel.com/projects/2016/02/morse-code-translator.html#debouncing>`__
 
 Custom Inputs
 ~~~~~~~~~~~~~
 
+See `Building a Custom Input Module <https://github.com/kizniche/Mycodo/wiki/Building-a-Custom-Input-Module>`__ Wiki page.
+
 There is a Custom Input import system in Mycodo that allows user-created
 Inputs to be created an used in the Mycodo system. Custom Inputs can be
-uploaded on the ``Configure -> Inputs`` page. After import, they will be
-available to use on the ``Setup -> Data`` page.
+uploaded and imported from the ``Configure -> Inputs`` page. After
+import, they will be available to use on the ``Setup -> Data`` page.
 
 If you have a sensor that is not currently supported by Mycodo, you can
-build your own input module and import it into Mycodo. All information
-about an input is contained within the input module, set in the
-dictionary 'INPUT\_INFORMATION'. Each module will requires at a minimum
-for these variables to be set: 'input\_name\_unique',
-'input\_manufacturer', 'input\_name', 'measurements\_name', and
-'measurements\_dict'.
+build your own input module and import it into Mycodo.
 
 Open any of the built-in modules located in the inputs directory
 (https://github.com/kizniche/Mycodo/tree/master/mycodo/inputs/) for
@@ -833,14 +872,13 @@ an example:
 
 https://github.com/kizniche/Mycodo/tree/master/mycodo/inputs/examples/minimal_humidity_temperature.py
 
-The following link provides the full list of available
+There's also an input module that includes all available
 INPUT\_INFORMATION options along with descriptions:
 
 https://github.com/kizniche/Mycodo/tree/master/mycodo/inputs/examples/example_all_options_temperature.py
 
 Additionally, I have another github repository devoted to Custom Inputs
-and Controllers that are not included in the built-in set. These can be
-found at
+and Controllers that are not included in the built-in set, at
 `kizniche/Mycodo-custom <https://github.com/kizniche/Mycodo-custom>`__.
 
 The Things Network
@@ -984,16 +1022,11 @@ Types of math controllers.
 |                               | Difference, and if so, stores the average  |
 |                               | of the selected measurements.              |
 +-------------------------------+--------------------------------------------+
-| Median                        | Stores the statistical median from the     |
-|                               | selected measurements.                     |
+| Statistics                    | Calculates mean, median, minimum, maximum, |
+|                               | standard deviation (SD), SD upper, and SD  |
+|                               | lower for a set of measurements.           |
 +-------------------------------+--------------------------------------------+
-| Maximum                       | Stores the largest measurement from the    |
-|                               | selected measurements.                     |
-+-------------------------------+--------------------------------------------+
-| Minimum                       | Stores the smallest measurement from the   |
-|                               | selected measurements.                     |
-+-------------------------------+--------------------------------------------+
-| Humidity                      | Calculates and stores the percent relative |
+| Humidity (Wet/Dry-Bulb)       | Calculates and stores the percent relative |
 |                               | humidity from the dry-bulb and wet-bulb    |
 |                               | temperatures, and optional pressure.       |
 +-------------------------------+--------------------------------------------+
@@ -1080,18 +1113,38 @@ Output
 ``Setup -> Output``
 
 Outputs are various signals that can be generated that operate devices.
-An output can be a PWM signal, a simple HIGH/LOW signal to operate a
-relay, a 315/433 MHz signal to switch a radio frequency-operated relay,
-driving of pumps and motors, or an execution of a linux or Python
-command, to name a few.
+An output can be a HIGH/LOW signal on a GPIO pin, a pulse-width
+modulated (PWM) signal, a 315/433 MHz signal to switch a radio
+frequency-operated relay, driving of pumps and motors, or an execution
+of a linux or Python command, to name a few.
 
-General Output Options
-----------------------
+Custom Outputs
+--------------
+
+There is a Custom Output import system in Mycodo that allows
+user-created Outputs to be created an used in the Mycodo system. Custom
+Outputs can be uploaded and imported from the ``Configure -> Outputs``
+page. After import, they will be available to use on the
+``Setup -> Output`` page.
+
+If you desire an Output that is not currently supported by Mycodo, you
+can build your own Output module and import it into Mycodo. All
+information about an Output is contained within the Output module. Open
+any of the built-in modules located in the `outputs
+directory <https://github.com/kizniche/Mycodo/tree/master/mycodo/outputs/>`__
+for examples of the proper formatting. There's also a `minimal output
+module template as an
+example <https://github.com/kizniche/Mycodo/tree/master/mycodo/outputs/examples/example_dummy_output.py>`__.
+For Outputs that require new measurements/units, they can be added on
+the ``Configure -> Measurements`` page.
+
+Output Options
+--------------
 
 +------------------------------+---------------------------------------------+
 | Setting                      | Description                                 |
 +==============================+=============================================+
-| Pin                          | This is the GPIO that will be the signal to |
+| Pin (GPIO)                   | This is the GPIO that will be the signal to |
 |                              | the output, using BCM numbering.            |
 +------------------------------+---------------------------------------------+
 | WiringPi Pin                 | This is the GPIO that will be the signal to |
@@ -1129,6 +1182,8 @@ General Output Options
 | Bit Length                   | This is the bit length to transmit via      |
 |                              | 315/433 MHz. Default is 24-bit.             |
 +------------------------------+---------------------------------------------+
+| Execute as User              | Select which user executes Linux Commands.  |
++------------------------------+---------------------------------------------+
 | On Command                   | This is the command used to turn the output |
 |                              | on. For wireless relays, this is the        |
 |                              | numerical command to be transmitted, and    |
@@ -1144,6 +1199,11 @@ General Output Options
 |                              | be executed. Commands may be for the linux  |
 |                              | terminal or Python 3 (depending on which    |
 |                              | output type selected).                      |
++------------------------------+---------------------------------------------+
+| Force Command                | If an Output is already on, enabling this   |
+|                              | option will allow the On command to be      |
+|                              | executed rather than returning "Output is   |
+|                              | already On".                                |
 +------------------------------+---------------------------------------------+
 | PWM Command                  | This is the command used to set the duty    |
 |                              | cycle. The string "((duty\_cycle))" in the  |
@@ -1201,19 +1261,18 @@ voltage, without exposing the low-voltage system to the dangers of the
 higher voltage.
 
 Add and configure outputs in the Output tab. Outputs must be properly
-set up before PID regulation can be achieved.
+set up before they can be used in the rest of the system.
 
-To set up a wired relay, set the "GPIO Pin" to the BCM GPIO number of
-each pin that activates each relay. *On Trigger* should be set to the
-signal that activates the relay (the device attached to the relay turns
-on). If your relay activates when the potential across the coil is
-0-volts, set *On Trigger* to "Low", otherwise if your relay activates
-when the potential across the coil is 3.3-volts (or whatever switching
-voltage you are using, if not being driven by the GPIO pin), set it to
-"High".
+To set up a wired relay, set the "GPIO Pin" (using BCM numbering) to the
+pin you would like to switch High (5 volts) and Low (0 volts), which can
+be used to activate relays and other devices. *On Trigger* should be set
+to the signal state (High or Low) that induces the device to turn on.
+For example, if your relay activates when the potential across the coil
+is 0-volts, set *On Trigger* to "Low", otherwise if your relay activates
+when the potential across the coil is 5 volts, set it to "High".
 
-PWM (GPIO)
-----------
+Pulse-Width Modulation (PWM)
+----------------------------
 
 Pulse-width modulation (PWM) is a modulation technique used to encode a
 message into a pulsing signal, at a specific frequency in Hertz (Hz).
@@ -1236,13 +1295,11 @@ greatly depending on load and application, for example
 The term duty cycle describes the proportion of 'on' time to the regular
 interval or 'period' of time; a low duty cycle corresponds to low power,
 because the power is off for most of the time. Duty cycle is expressed
-in percent, 100% being fully on.
+in percent, with 0% being always off, 50% being off for half of the time
+and on for half of the time, and 100% being always on.
 
-PWM pins can be set up on the ``Setup -> Output``\ \` page, then it may
-be used by a PWM PID Controller.
-
-PWM (GPIO) Options
-------------------
+Pulse-Width Modulation (PWM) Options
+------------------------------------
 
 +------------------------------+---------------------------------------------+
 | Setting                      | Description                                 |
@@ -1254,20 +1311,17 @@ PWM (GPIO) Options
 |                              | 40 kHz PWM signal. See the table, below,    |
 |                              | for the hardware pins on various Pi boards. |
 +------------------------------+---------------------------------------------+
-| BCM Pin                      | This is the GPIO that will output the PWM   |
-|                              | signal, using BCM numbering.                |
+| Pin (GPIO)                   | This is the GPIO pin that will output the   |
+|                              | PWM signal, using BCM numbering.            |
 +------------------------------+---------------------------------------------+
-| Hertz                        | This is frequency of the PWM signal.        |
+| Frequency (Hertz)            | This is frequency of the PWM signal.        |
++------------------------------+---------------------------------------------+
+| Invert Signal                | Send an inverted duty cycle to the output   |
+|                              | controller.                                 |
 +------------------------------+---------------------------------------------+
 | Duty Cycle                   | This is the proportion of the time on to    |
 |                              | the time off, expressed in percent (0       |
 |                              | -100).                                      |
-+------------------------------+---------------------------------------------+
-| Current Draw (amps)          | This is the current draw, in amps, when the |
-|                              | duty cycle is 100%. Note: this value should |
-|                              | be calculated based on the voltage set in   |
-|                              | the `Energy Usage                           |
-|                              | Settings <#energy-usage-settings>`__.       |
 +------------------------------+---------------------------------------------+
 
 Non-hardware PWM Pins
@@ -1340,26 +1394,84 @@ PWM output modulating alternating current (AC) at 99% duty cycle
 |Schematic: PWM output modulating alternating current (AC) at 99% duty
 cycle|
 
-Atlas EZO-PMP Pump
-------------------
+Peristaltic Pump
+----------------
 
-Currently, only one pump is supported, the Atlas Scientific EZO-PMP
+There are two peristaltic pump Output modules that Mycodo supports, a
+generic peristaltic pump Output, and the Atlas Scientific EZO-PMP
 peristaltic pump.
 
-Atlas EZO-PMP Pump Options
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+Generic Peristaltic Pump
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+Any peristaltic pump can be used with the Generic Peristaltic Pump
+Output to dispense liquids. The most basic dispensing abilities are to
+start dispensing, stop dispensing, or dispense for a duration of time.
+If the pump rate has been measured, this value can be entered into the
+Fastest Rate (ml/min) setting and the Output controller will then be
+able to dispense specific volumes rather than merely for durations of
+time. In oder to dispense specific volumes, the Output Mode will also
+need to be set in addition to the Desired Flow Rate (ml/min), if the
+Output Mode has been set to Specify Flow Rate.
+
+To determine your pump's flow rate, first purge all air from your pump's
+hose. Next, instruct the pump to dispense for 60 seconds and collect the
+liquid it dispenses. Once finished, measure the amount of liquid and
+enter this value, in milliliters into the Fastest Rate (ml/min) setting.
+Once your pump's flow rate is set, you can now start dispensing specific
+volumes rather than durations.
+
+This Output module relies on switching a GPIO pin High and Low to switch
+the peristaltic pump on and off. This is most easily accomplished with
+the use of a relay in-line with your pump's power supply or using the
+GPIO as an input signal directly to the pump (if supported). When using
+a relay, it's important to develop your circuit to provide the fastest
+possible switching of the pump. Since the volume dispensed by the pump
+is dependent on time, the faster the pump switching can occur, the more
+accurate the dispensing will be. Many peristaltic pumps operate on DC
+voltage and require an AC-DC converter. These converters can take a
+significant amount of time to energize once power is applied as well as
+de-energize once power is removed, causing significant delays that can
+impact dispensing accuracy. To alleviate this issue, the DC power should
+be switched, rather than the AC power, which will remove this potential
+delay.
+
+Atlas Scientific Peristaltic Pump
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+The Atlas Scientific peristaltic pump is a peristaltic pump and
+microcontroller combined that allows it to be communicated with via I2C
+or Serial and can accurately dispense specific volumes of fluid. There
+are `several
+commands <https://www.atlas-scientific.com/files/EZO_PMP_Datasheet.pdf>`__
+the pump can accept, including commands to calibrate, turn on, turn off,
+and dispense at a specific rate, among others. Atlas Scientific
+peristaltic pumps are good options, but are more expensive than generic
+peristaltic pumps.
+
+Peristaltic Pump Options
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 +------------------------------+---------------------------------------------+
 | Setting                      | Description                                 |
 +==============================+=============================================+
 | Output Mode                  | "Fastest low Rate" will pump liquid at the  |
 |                              | fastest rate the pump can perform. "Specify |
-|                              | Flow Rate" will pump liquid at the rate     |
-|                              | with the "Flow Rate (ml/min)" option.       |
+|                              | Flow Rate" will pump liquid at the rate set |
+|                              | by the "Flow Rate (ml/min)" option.         |
 +------------------------------+---------------------------------------------+
 | Flow Rate (ml/min)           | This is how fast liquid will be pumped if   |
 |                              | the "Specify Flow Rate" option is selected  |
 |                              | for the Output Mode option.                 |
++------------------------------+---------------------------------------------+
+| Fastest Rate (ml/min)        | This is the rate at which the pump          |
+|                              | dispenses liquid, in ml/min.                |
++------------------------------+---------------------------------------------+
+| Minimum On (sec/min)         | This is the minimum duration (seconds) the  |
+|                              | pump should be turned on for every 60       |
+|                              | second period of pumping. This option is    |
+|                              | only used when Specify Flow Rate is         |
+|                              | selected as the output Mode.                |
 +------------------------------+---------------------------------------------+
 
 Wireless 315/433 MHz
@@ -1553,43 +1665,53 @@ PID Controller Options
 |                              | integrator; and PID output = Kp\_total +    |
 |                              | Ki\_total + Kd\_total)                      |
 +------------------------------+---------------------------------------------+
-| Output (Raise)               | This is the output that will cause the      |
-|                              | particular environmental condition to rise. |
-|                              | In the case of raising the temperature,     |
-|                              | this may be a heating pad or coil.          |
+| Output (Raise/Lower)         | This is the output that will cause the      |
+|                              | particular environmental condition to rise  |
+|                              | or lower. In the case of raising the        |
+|                              | temperature, this may be a heating pad or   |
+|                              | coil.                                       |
 +------------------------------+---------------------------------------------+
-| Min Duration (raise)         | This is the minimum that the PID output     |
-|                              | must be before the Up Output turns on. If   |
-|                              | the PID output exceeds this minimum, the Up |
-|                              | Output will turn on for the PID output      |
-|                              | number of seconds.                          |
+| Min On Duration, Duty Cycle, | This is the minimum value that the PID      |
+| or Amount (Raise/Lower)      | output must be before Output (Lower) turns  |
+|                              | on. If the PID output is less than this     |
+|                              | value, Duration Outputs will not turn on,   |
+|                              | and PWM Outputs will be turned off unless   |
+|                              | Always Min is enabled.                      |
 +------------------------------+---------------------------------------------+
-| Max Duration (raise)         | This is the maximum duration the Up Output  |
-|                              | is allowed to turn on for. If the PID       |
-|                              | output exceeds this number, the Up Output   |
-|                              | will turn on for no greater than this       |
-|                              | duration of time.                           |
+| Max On Duration, Duty Cycle, | This is the maximum duration, volume, or    |
+| or Amount (Raise/Lower)      | duty cycle the Output (Raise) can be set    |
+|                              | to. If the PID output is greater than this  |
+|                              | value, the Max value set here will be used. |
 +------------------------------+---------------------------------------------+
-| Output (Lower)               | This is the output that will cause the      |
-|                              | particular environmental condition to       |
-|                              | lower. In the case of lowering the CO2,     |
-|                              | this may be an exhaust fan.                 |
+| Min Off Duration             | For On/Off (Duration) Outputs, this is the  |
+| (Raise/Lower)                | minimum amount of time the Output must have |
+|                              | been off for before it is allowed to turn   |
+|                              | back on. Ths is useful for devices that can |
+|                              | be damaged by rapid power cycling (e.g.     |
+|                              | fridges).                                   |
 +------------------------------+---------------------------------------------+
-| Min Duration (lower)         | This is the minimum that the PID output     |
-|                              | must be before the Down Output turns on. If |
-|                              | the PID output exceeds this minimum, the    |
-|                              | Down Output will turn on for the PID output |
-|                              | number of seconds.                          |
-+------------------------------+---------------------------------------------+
-| Max Duration (lower)         | This is the maximum duration the Down       |
-|                              | Output is allowed to turn on for. if the    |
-|                              | PID output exceeds this number, the Down    |
-|                              | Output will turn on for no greater than     |
-|                              | this duration of time.                      |
+| Always Min (Raise/Lower)     | For PWM Outputs only. If enabled, the duty  |
+|                              | cycle will never be set below the Min       |
+|                              | value.                                      |
 +------------------------------+---------------------------------------------+
 | Setpoint Tracking Method     | Set a method to change the setpoint over    |
 |                              | time.                                       |
 +------------------------------+---------------------------------------------+
+
+PID Output Calculation
+~~~~~~~~~~~~~~~~~~~~~~
+
+PID Controllers can output as a duration or a duty cycle.
+
+When outputting a duration, Duration = Control\_Variable
+
+When outputting a duty cycle, Duty Cycle = (Control\_Variable / Period)
+\* 100
+
+Note: Control\_Variable = P\_Output + I\_Output + D\_Output. Duty cycle
+is limited within the 0 - 100 % range and the set Min Duty Cycle and Max
+Duty Cycle. Duration is limited by the set Min On Duration and Max On
+Duration.
 
 PID Tuning
 ~~~~~~~~~~
@@ -1803,7 +1925,7 @@ It will take several cycles to determine the gains according to several
 rules. In order to use this feature, the PID controller must be properly
 configured, and a Noise Band and Outstep selected, then select "Start
 Autotune". The output of the autotuner will appear in the daemon log
-(Config -> Mycodo Logs -> Daemon). While the autotune is being
+(``Config -> Mycodo Logs -> Daemon``). While the autotune is being
 performed, it is recommended to create a graph that includes the Input,
 Output, and PID Setpoint/Output in order to see what the PID Autotuner
 is doing and to notice any issues. If your autotune is taking a long
@@ -1957,11 +2079,14 @@ Check if the latest measurement is above or below the set value.
 | Period (seconds)             | The period (seconds) between conditional    |
 |                              | checks.                                     |
 +------------------------------+---------------------------------------------+
-| Refractory Period (seconds)  | The minimum duration (seconds) to wait      |
-|                              | after a conditional has been triggered to   |
-|                              | begin evaluating the conditional again.     |
+| Start Offset (seconds)       | The duration (seconds) to wait before       |
+|                              | executing the Conditional for the first     |
+|                              | after it is activated.                      |
 +------------------------------+---------------------------------------------+
 | Log Level: Debug             | Show debug lines in the daemon log.         |
++------------------------------+---------------------------------------------+
+| Message Includes Code        | Include Conditional Statement code in the   |
+|                              | message that is passed to actions.          |
 +------------------------------+---------------------------------------------+
 
 Conditions are variables that can be used within the Conditional
@@ -2553,6 +2678,10 @@ Conditional, Trigger).
 | PID: Set Setpoint            | Set the Setpoint of a particular PID        |
 |                              | controller.                                 |
 +------------------------------+---------------------------------------------+
+| System: Restart              | Restart the System.                         |
++------------------------------+---------------------------------------------+
+| System: Shutdown             | Shutdown the System.                        |
++------------------------------+---------------------------------------------+
 
 Methods
 =======
@@ -2770,26 +2899,23 @@ Dependencies
 The dependency page allows viewing of dependency information and the
 ability to initiate their installation.
 
-During the installation of Mycodo, there is an option to select which
-dependencies to install. If "Minimal Install" or "Custom Install" was
-selected (rather than "Full Install"), there may be unmet dependencies
-on your system. Don't worry, this isn't necessarily a problem. These
-optional dependencies only need to be installed when there's a
-particular feature you want to use. When a user attempts to use a
-feature that has an unmet dependency, the user will be forwarded to the
-Dependency page in order to install it.
-
 Camera
 ======
 
 ``More -> Camera``
 
-Once a cameras has been set up (in the `Camera
-Settings <#camera-settings>`__), it may be used to capture still images,
-create time-lapses, and stream video. Cameras may also be used by
-`Conditional Statements <#conditional-statements>`__ to trigger a camera
+Cameras can be used to capture still images, create time-lapses, and
+stream video. Cameras may also be used by Functions to trigger a camera
 image or video capture (as well as the ability to email the image/video
 with a notification).
+
+Cameras can be accessed by the following libraries: picamera (Raspberry
+Pi Camera), fswebcam, opencv, urllib, and requests.
+
+This enables images to be acquired from the Raspberry Pi camera, USB
+cameras and webcams, and IP cameras that are accessible by a URL.
+Furthermore, using the urllib and request libraries, any image URL can
+be used to acquire images.
 
 Energy Usage
 ============
@@ -2970,7 +3096,7 @@ Mycodo Client
 Infrared Remote
 ===============
 
-This functionality may or may not work. Since Raspbian upgraded to
+NOTE: This functionality may or may not work. Since Raspbian upgraded to
 Buster, I have not been able to get it to work. I will try to restore
 functionality.
 
@@ -3325,13 +3451,29 @@ Input Settings
 ``[Gear Icon] -> Configure -> Inputs``
 
 Input modules may be imported and used within Mycodo. These modules must
-follow a specific format. See `Create an Input
-Module <#create-an-input-module>`__ for more details.
+follow a specific format. See `Custom Inputs <#custom-inputs>`__ for
+more details.
 
 +------------------------------+---------------------------------------------+
 | Setting                      | Description                                 |
 +==============================+=============================================+
 | Import Input Module          | Select your input module file, then click   |
+|                              | this button to begin the import.            |
++------------------------------+---------------------------------------------+
+
+Output Settings
+---------------
+
+``[Gear Icon] -> Configure -> Outputs``
+
+Output modules may be imported and used within Mycodo. These modules
+must follow a specific format. See `Custom Outputs <#custom-outputs>`__
+for more details.
+
++------------------------------+---------------------------------------------+
+| Setting                      | Description                                 |
++==============================+=============================================+
+| Import Output Module         | Select your output module file, then click  |
 |                              | this button to begin the import.            |
 +------------------------------+---------------------------------------------+
 
@@ -3355,13 +3497,21 @@ measurement is added).
 +------------------------------+---------------------------------------------+
 | Setting                      | Description                                 |
 +==============================+=============================================+
-| Measurement Name             | Name for the measurement (e.g. "Weight",    |
-|                              | "Length").                                  |
+| Measurement ID               | ID for the measurement to use in the        |
+|                              | measurements\_dict of input modules (e.g.   |
+|                              | "length", "width", "speed").                |
++------------------------------+---------------------------------------------+
+| Measurement Name             | Common name for the measurement (e.g.       |
+|                              | "Length", "Weight", "Speed").               |
 +------------------------------+---------------------------------------------+
 | Measurement Units            | Select all the units that are associated    |
 |                              | with the measurement.                       |
 +------------------------------+---------------------------------------------+
-| Unit Name                    | Name for the unit (e.g. "Kilogram",         |
+| Unit ID                      | ID for the unit to use in the               |
+|                              | measurements\_dict of input modules (e.g.   |
+|                              | "K", "g", "m").                             |
++------------------------------+---------------------------------------------+
+| Unit Name                    | Common name for the unit (e.g. "Kilogram",  |
 |                              | "Meter").                                   |
 +------------------------------+---------------------------------------------+
 | Unit Abbreviation            | Abbreviation for the unit (e.g. "kg", "m"). |
@@ -3400,13 +3550,17 @@ additional users may be created from the User Settings page.
 | Email                        | The email associated with the new account.  |
 +------------------------------+---------------------------------------------+
 | Password/Repeat              | Choose a password that is between 6 and 64  |
-|                              | characters and only contain letters,        |
+|                              | characters and only contains letters,       |
 |                              | numbers, and symbols.                       |
 +------------------------------+---------------------------------------------+
 | Role                         | Roles are a way of imposing access          |
 |                              | restrictions on users, to either allow or   |
 |                              | deny actions. See the table below for       |
 |                              | explanations of the four default Roles.     |
++------------------------------+---------------------------------------------+
+| Theme                        | The web user interface theme to apply,      |
+|                              | including colors, themes, and other design  |
+|                              | elements.                                   |
 +------------------------------+---------------------------------------------+
 
 User Roles
@@ -3617,8 +3771,8 @@ Incorrect Database Version
    upgrade during the Mycodo upgrade process.
 -  Check the Upgrade Log for any issues that may have occurred. The log
    is located at ``/var/log/mycodo/mycodoupgrade.log`` but may also be
-   accessed from the web UI (if you're able to): select [Gear Icon] ->
-   Mycodo Logs -> Upgrade Log.
+   accessed from the web UI (if you're able to): select
+   ``[Gear Icon] -> Mycodo Logs -> Upgrade Log``.
 -  Sometimes issues may not immediately present themselves. It is not
    uncommon to be experiencing a database issue that was actually
    introduced several Mycodo versions ago, before the latest upgrade.
@@ -3648,108 +3802,766 @@ Devices
 Input Devices
 -------------
 
-Supported Input and Output devices are listed below.
+Supported Input devices are listed below.
 
-Built-In Inputs
-~~~~~~~~~~~~~~~
+Built-In Inputs (System-Specific)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
--  AM2315: Relative humidity, temperature
-   `link <https://www.adafruit.com/product/1293>`__
--  AM2320: Relative humidity, temperature
-   `link <https://www.adafruit.com/product/3721>`__
--  Atlas Scientific DO: Dissolved Oxygen
-   `link <https://www.atlas-scientific.com/dissolved-oxygen.html>`__
--  Atlas Scientific EC: Electrical Conductivity
-   `link <https://www.atlas-scientific.com/conductivity.html>`__
--  Atlas Scientific ORP: Oxidation-Reduction Potential
-   `link <https://www.atlas-scientific.com/orp.html>`__
--  Atlas Scientific pH: Potential hydrogen
-   `link <https://www.atlas-scientific.com/ph.html>`__
--  Atlas Scientific PT-1000: Temperature
-   `link <https://www.atlas-scientific.com/temperature.html>`__
--  BH1750: Light `link <https://www.dfrobot.com/product-531.html>`__
--  BME280: Barometric pressure, humidity, temperature
-   `link <https://www.bosch-sensortec.com/bst/products/all_products/bme280>`__
--  BMP085, BMP180: Barometric pressure, temperature
-   `link <https://learn.adafruit.com/using-the-bmp085-with-raspberry-pi>`__
--  BMP280: Barometric pressure, temperature
-   `link <https://www.bosch-sensortec.com/bst/products/all_products/bmp280>`__
--  CCS811: CO2, VOC, temperature
-   `link <https://www.sparkfun.com/products/14193>`__
--  Cozir: CO2, humidity, temperature
-   `link <https://www.co2meter.com/collections/co2-sensors/products/cozir-co2-temperature-humidity-sensor>`__
--  Chirp: Moisture, light, and temperature
-   `link <https://wemakethings.net/chirp/>`__
--  DHT11, DHT22/AM2302: Relative humidity and temperature
-   `link <https://learn.adafruit.com/dht-humidity-sensing-on-raspberry-pi-with-gdocs-logging/wiring>`__
--  DS18B20: Temperature
-   `link <https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf>`__
--  DS18S20: Temperature
-   `link <https://datasheets.maximintegrated.com/en/ds/DS18S20.pdf>`__
--  DS1822: Temperature
-   `link <https://datasheets.maximintegrated.com/en/ds/DS1822.pdf>`__
--  DS28EA00: Temperature
-   `link <https://datasheets.maximintegrated.com/en/ds/DS28EA00.pdf>`__
--  DS1825: Temperature
-   `link <https://datasheets.maximintegrated.com/en/ds/DS1825.pdf>`__
--  HDC1000: Relative humidity and temperature
-   `link <http://www.ti.com/lit/ds/symlink/hdc1000.pdf>`__
--  HTU21D: Relative humidity and temperature
-   `link <http://www.te.com/usa-en/product-CAT-HSC0004.html>`__
--  K30: Carbon dioxide (CO2) in ppmv
-   `link <http://www.co2meter.com/products/k-30-co2-sensor-module>`__
--  MAX31850K: Temperature
-   `link <https://datasheets.maximintegrated.com/en/ds/MAX31850-MAX31851.pdf>`__
--  MAX31855K: Temperature
-   `link <https://www.adafruit.com/product/269>`__
--  MAX31856: Temperature
-   `link <https://www.adafruit.com/product/3263>`__
--  MAX31865: Temperature
-   `link <https://www.adafruit.com/product/3328>`__
--  Miflora: Battery, electrical conductivity, light, moisture,
-   temperature
-   `link <https://gadget-freakz.com/product/xiaomi-mi-flora-plant-sensor/>`__
--  MCP9808: Temperature
-   `link <http://ww1.microchip.com/downloads/en/DeviceDoc/25095A.pdf>`__
--  MH-Z16: Carbon dioxide (CO2) in ppmv
-   `link <https://www.winsen-sensor.com/sensors/co2-sensor/mh-z16.html>`__
--  MH-Z19: Carbon dioxide (CO2) in ppmv
-   `link <http://www.winsen-sensor.com/products/ndir-co2-sensor/mh-z19.html>`__
--  Ruuvitag: Relative humidity, temperature, pressure, battery,
-   acceleration (g, x, y, and z) `link <https://ruuvi.com/>`__
--  SHT1x/SHT2x/SHT3x/SHT7x/SHT31 Smart Gadget: Relative humidity and
-   temperature `link <https://github.com/mk-fg/sht-sensor>`__
--  Sonoff TH10/16 (Tasmota firmware): Relative humidity and temperature
--  TMP006, TMP007: Contactless temperature
-   `link <https://www.sparkfun.com/products/11859>`__
--  TSL2561: Light `link <https://www.sparkfun.com/products/12055>`__
--  TSL2591: Light `link <https://www.adafruit.com/product/1980>`__
--  ZH03B: Particle sensor
-   `link <https://www.winsen-sensor.com/sensors/dust-sensor/zh3b.html>`__
+Linux: Bash Command
+^^^^^^^^^^^^^^^^^^^
 
-Other Built-In Inputs
-~~~~~~~~~~~~~~~~~~~~~
+| Measurements: Return Value
 
--  Raspberry Pi CPU: Temperature
--  Raspberry Pi CPU: CPU load
--  Raspberry Pi: Free disk space
--  Raspberry Pi: GPIO pin state
--  Raspberry Pi: GPIO pin rising or falling edge
--  Raspberry Pi: Measure PWM from signal
--  Raspberry Pi: Measure RPM from signal
--  Mycodo: Daemon RAM use
--  Mycodo: Network ping response
--  Mycodo: Network port open
--  The Things Network: Receive measurements from Data Storage
-   Integration
--  MTQQ: Subscribe to MQTT channels
--  Python Code: Execute Python 3 code and store a variable number of
-   measurements
--  Linux Command: Executes a linux command and stores the returned value
--  `Custom Input <#custom-inputs>`__: Create your own custom input
+This Input will execute a command in the shell and store the output as a
+float value. Perform any unit conversions within your script or command.
+A measurement/unit is required to be selected.
+
+Linux: Python 3 Code
+^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Store Value(s)
+
+Mycodo: MQTT Protocol (paho)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Variable measurements
+| Dependencies: `paho-mqtt <https://pypi.org/project/paho-mqtt>`__
+
+Mycodo: Mycodo RAM
+^^^^^^^^^^^^^^^^^^
+
+| Measurements: Size RAM in Use
+
+Mycodo: Mycodo Version
+^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Version as Major.Minor.Revision
+
+Mycodo: TTN Integration: Data Storage
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Variable measurements
+| Dependencies: `requests <https://pypi.org/project/requests>`__
+
+This Input receives and stores measurements from the Data Storage
+Integration on The Things Network.
+
+Raspberry Pi: CPU/GPU Temperature
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies: `subprocess <https://pypi.org/project/subprocess>`__
+
+The internal CPU and GPU temperature of the Raspberry Pi.
+
+Raspberry Pi: Edge
+^^^^^^^^^^^^^^^^^^
+
+| Measurements: Rising/Falling Edge
+| Dependencies: `RPi.GPIO <https://pypi.org/project/RPi.GPIO>`__
+
+Raspberry Pi: GPIO State
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: GPIO State
+| Dependencies: `RPi.GPIO <https://pypi.org/project/RPi.GPIO>`__
+
+Raspberry Pi: Signal (PWM)
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Frequency/Pulse Width/Duty Cycle
+| Dependencies: pigpio
+
+Raspberry Pi: Signal (Revolutions)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: RPM
+| Dependencies: pigpio
+
+System: CPU Load
+^^^^^^^^^^^^^^^^
+
+| Measurements: CPULoad
+
+System: Free Space
+^^^^^^^^^^^^^^^^^^
+
+| Measurements: Unallocated Disk Space
+
+System: Server Ping
+^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Boolean
+
+This Input executes the bash command "ping -c [times] -w [deadline]
+[host]" to determine if the host can be pinged.
+
+System: Server Port Open
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Boolean
+
+This Input executes the bash command "nc -zv [host] [port]" to determine
+if the host at a particular port is accessible.
+
+Built-In Inputs (Sensors)
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+AMS: AS7262
+^^^^^^^^^^^
+
+| Measurements: Light at 450, 500, 550, 570, 600, 650 nm
+| Dependencies: `as7262 <https://pypi.org/project/as7262>`__
+| Manufacturer URL: `Link <https://ams.com/as7262>`__
+| Datasheet URL:
+  `Link <https://ams.com/documents/20143/36005/AS7262_DS000486_2-00.pdf/0031f605-5629-e030-73b2-f365fd36a43b>`__
+| Product URL: `Link <https://www.sparkfun.com/products/14347>`__
+
+AMS: CCS811
+^^^^^^^^^^^
+
+| Measurements: CO2/VOC/Temperature
+| Dependencies:
+  `Adafruit\_CCS811 <https://pypi.org/project/Adafruit_CCS811>`__,
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__
+| Manufacturer URL:
+  `Link <https://www.sciosense.com/products/environmental-sensors/ccs811-gas-sensor-solution/>`__
+| Datasheet URL:
+  `Link <https://www.sciosense.com/wp-content/uploads/2020/01/CCS811-Datasheet.pdf>`__
+| Product URLs: `Link 1 <https://www.adafruit.com/product/3566>`__,
+  `Link 2 <https://www.sparkfun.com/products/14193>`__
+
+AMS: TSL2561
+^^^^^^^^^^^^
+
+| Measurements: Light
+| Dependencies:
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__,
+  `Adafruit\_PureIO <https://pypi.org/project/Adafruit_PureIO>`__,
+  `tsl2561 <https://pypi.org/project/tsl2561>`__
+| Manufacturer URL: `Link <https://ams.com/tsl2561>`__
+| Datasheet URL:
+  `Link <https://ams.com/documents/20143/36005/TSL2561_DS000110_3-00.pdf/18a41097-2035-4333-c70e-bfa544c0a98b>`__
+| Product URL: `Link <https://www.adafruit.com/product/439>`__
+
+AMS: TSL2591
+^^^^^^^^^^^^
+
+| Measurements: Light
+| Dependencies:
+  `tsl2591 <https://github.com/maxlklaxl/python-tsl2591>`__
+| Manufacturer URL: `Link <https://ams.com/tsl25911>`__
+| Datasheet URL:
+  `Link <https://ams.com/documents/20143/36005/TSL2591_DS000338_6-00.pdf/090eb50d-bb18-5b45-4938-9b3672f86b80>`__
+| Product URL: `Link <https://www.adafruit.com/product/1980>`__
+
+AOSONG: AM2315/AM2320
+^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies:
+  `quick2wire-api <https://pypi.org/project/quick2wire-api>`__
+| Datasheet URL:
+  `Link <https://cdn-shop.adafruit.com/datasheets/AM2315.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/1293>`__
+
+AOSONG: DHT11
+^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies: pigpio
+| Datasheet URL:
+  `Link <http://www.adafruit.com/datasheets/DHT11-chinese.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/386>`__
+
+AOSONG: DHT22
+^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies: pigpio
+| Datasheet URL: `Link <http://www.adafruit.com/datasheets/DHT22.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/385>`__
+
+Analog Devices: ADT7410
+^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `Adafruit\_CircuitPython\_ADT7410 <https://pypi.org/project/Adafruit_CircuitPython_ADT7410>`__,
+  `Adafruit\_Extended\_Bus <https://pypi.org/project/Adafruit_Extended_Bus>`__
+| Datasheet URL:
+  `Link <https://www.analog.com/media/en/technical-documentation/data-sheets/ADT7410.pdf>`__
+| Product URL:
+  `Link <https://www.analog.com/en/products/adt7410.html>`__
+
+Analog Devices: ADXL34x (343, 344, 345, 346)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Acceleration
+| Dependencies:
+  `Adafruit\_CircuitPython\_ADXL34x <https://pypi.org/project/Adafruit_CircuitPython_ADXL34x>`__,
+  `Adafruit\_Extended\_Bus <https://pypi.org/project/Adafruit_Extended_Bus>`__
+| Datasheet URLs: `Link
+  1 <https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL343.pdf>`__,
+  `Link
+  2 <https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL344.pdf>`__,
+  `Link
+  3 <https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL345.pdf>`__,
+  `Link
+  4 <https://www.analog.com/media/en/technical-documentation/data-sheets/ADXL346.pdf>`__
+| Product URLs: `Link
+  1 <https://www.analog.com/en/products/adxl343.html>`__, `Link
+  2 <https://www.analog.com/en/products/adxl344.html>`__, `Link
+  3 <https://www.analog.com/en/products/adxl345.html>`__, `Link
+  4 <https://www.analog.com/en/products/adxl346.html>`__
+
+Atlas Scientific: Atlas Color
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: RGB, CIE, LUX, Proximity
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL: `Link <https://www.atlas-scientific.com/ezo-rgb/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/EZO_RGB_Datasheet.pdf>`__
+
+Atlas Scientific: Atlas DO
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Dissolved Oxygen
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL:
+  `Link <https://www.atlas-scientific.com/dissolved-oxygen.html>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/DO_EZO_Datasheet.pdf>`__
+
+Atlas Scientific: Atlas EC
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Electrical Conductivity
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL:
+  `Link <https://www.atlas-scientific.com/conductivity/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/EC_EZO_Datasheet.pdf>`__
+
+Atlas Scientific: Atlas Flow Meter
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Total Volume, Flow Rate
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL: `Link <https://www.atlas-scientific.com/flow/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/flow_EZO_Datasheet.pdf>`__
+
+Set the Measurement Time Base to a value most appropriate for your
+anticipated flow (it will affect accuracy). This flow rate time base
+that is set and returned from the sensor will be converted to liters per
+minute, which is the default unit for this input module. If you desire a
+different rate to be stored in the database (such as liters per second
+or hour), then use the Convert to Unit option.
+
+Atlas Scientific: Atlas ORP
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Oxidation Reduction Potential
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL: `Link <https://www.atlas-scientific.com/orp/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/ORP_EZO_Datasheet.pdf>`__
+
+Atlas Scientific: Atlas PT-1000
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL:
+  `Link <https://www.atlas-scientific.com/temperature/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/EZO_RTD_Datasheet.pdf>`__
+
+Atlas Scientific: Atlas Pressure
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Pressure
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL:
+  `Link <https://www.atlas-scientific.com/pressure/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/EZO-PRS-Datasheet.pdf>`__
+
+Atlas Scientific: Atlas pH
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Ion Concentration
+| Dependencies: `pylibftdi <https://pypi.org/project/pylibftdi>`__
+| Manufacturer URL: `Link <https://www.atlas-scientific.com/ph/>`__
+| Datasheet URL:
+  `Link <https://www.atlas-scientific.com/files/pH_EZO_Datasheet.pdf>`__
+
+Calibration Measurement is an optional setting that provides a
+temperature measurement (in Celsius) of the water that the pH is being
+measured from.
+
+BOSCH: BME280
+^^^^^^^^^^^^^
+
+| Measurements: Pressure/Humidity/Temperature
+| Dependencies: Input Variant 1:
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__,
+  `Adafruit\_BME280 <https://github.com/adafruit/Adafruit_Python_BME280>`__;
+  Input Variant 2: `RPi.bme280 <https://pypi.org/project/RPi.bme280>`__
+| Manufacturer URL:
+  `Link <https://www.bosch-sensortec.com/bst/products/all_products/bme280>`__
+| Datasheet URL:
+  `Link <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf>`__
+| Product URLs: `Link 1 <https://www.adafruit.com/product/2652>`__,
+  `Link 2 <https://www.sparkfun.com/products/13676>`__
+
+BOSCH: BME680
+^^^^^^^^^^^^^
+
+| Measurements: Temperature/Humidity/Pressure/Gas
+| Dependencies: `bme680 <https://pypi.org/project/bme680>`__,
+  `smbus2 <https://pypi.org/project/smbus2>`__
+| Manufacturer URL:
+  `Link <https://www.bosch-sensortec.com/products/environmental-sensors/gas-sensors-bme680/>`__
+| Datasheet URL:
+  `Link <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme680-ds001.pdf>`__
+| Product URLs: `Link 1 <https://www.adafruit.com/product/3660>`__,
+  `Link 2 <https://www.sparkfun.com/products/16466>`__
+
+BOSCH: BMP180
+^^^^^^^^^^^^^
+
+| Measurements: Pressure/Temperature
+| Dependencies:
+  `Adafruit\_BMP <https://pypi.org/project/Adafruit_BMP>`__,
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__
+| Datasheet URL:
+  `Link <https://ae-bst.resource.bosch.com/media/_tech/media/product_flyer/BST-BMP180-FL000.pdf>`__
+
+BOSCH: BMP280
+^^^^^^^^^^^^^
+
+| Measurements: Pressure/Temperature
+| Dependencies:
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__
+| Manufacturer URL:
+  `Link <https://www.bosch-sensortec.com/products/environmental-sensors/pressure-sensors/pressure-sensors-bmp280-1.html>`__
+| Datasheet URL:
+  `Link <https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp280-ds001.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/2651>`__
+
+CO2Meter: K30
+^^^^^^^^^^^^^
+
+| Measurements: CO2
+| Manufacturer URL:
+  `Link <https://www.co2meter.com/products/k-30-co2-sensor-module>`__
+| Datasheet URL:
+  `Link <http://co2meters.com/Documentation/Datasheets/DS_SE_0118_CM_0024_Revised9%20(1).pdf>`__
+
+Catnip Electronics: Chirp
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Light/Moisture/Temperature
+| Dependencies: `smbus2 <https://pypi.org/project/smbus2>`__
+| Manufacturer URL: `Link <https://wemakethings.net/chirp/>`__
+| Product URL:
+  `Link <https://www.tindie.com/products/miceuz/chirp-plant-watering-alarm/>`__
+
+Cozir: Cozir CO2
+^^^^^^^^^^^^^^^^
+
+| Measurements: CO2/Humidity/Temperature
+| Dependencies: `cozir <https://github.com/pierre-haessig/pycozir>`__
+| Manufacturer URL:
+  `Link <https://www.co2meter.com/products/cozir-2000-ppm-co2-sensor>`__
+| Datasheet URL:
+  `Link <https://cdn.shopify.com/s/files/1/0019/5952/files/Datasheet_COZIR_A_CO2Meter_4_15.pdf>`__
+
+MAXIM: DS1822
+^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `w1thermsensor <https://pypi.org/project/w1thermsensor>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/sensors/DS1822.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/DS1822.pdf>`__
+
+MAXIM: DS1825
+^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `w1thermsensor <https://pypi.org/project/w1thermsensor>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/sensors/DS1825.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/DS1825.pdf>`__
+
+MAXIM: DS18B20
+^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies: Input Variant 1:
+  `ow-shell <https://packages.debian.org/buster/ow-shell>`__,
+  `subprocess <https://pypi.org/project/subprocess>`__; Input Variant 2:
+  `w1thermsensor <https://pypi.org/project/w1thermsensor>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/sensors/DS18B20.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/DS18B20.pdf>`__
+| Product URLs: `Link 1 <https://www.adafruit.com/product/374>`__, `Link
+  2 <https://www.adafruit.com/product/381>`__, `Link
+  3 <https://www.sparkfun.com/products/245>`__
+| Additional URL:
+  `Link <https://github.com/cpetrich/counterfeit_DS18B20>`__
+
+Warning: Counterfeit DS18B20 sensors are common and can cause a host of
+issues. Review the Additional URL for more information about how to
+determine if your sensor is authentic.
+
+MAXIM: DS18S20
+^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `w1thermsensor <https://pypi.org/project/w1thermsensor>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/sensors/DS18S20.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/DS18S20.pdf>`__
+
+MAXIM: DS28EA00
+^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `w1thermsensor <https://pypi.org/project/w1thermsensor>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/interface/sensor-interface/DS28EA00.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/DS28EA00.pdf>`__
+
+MAXIM: MAX31850K
+^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `w1thermsensor <https://pypi.org/project/w1thermsensor>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/sensors/MAX31850EVKIT.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/MAX31850-MAX31851.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/1727>`__
+
+MAXIM: MAX31855
+^^^^^^^^^^^^^^^
+
+| Measurements: Temperature (Object/Die)
+| Dependencies:
+  `Adafruit\_MAX31855 <https://github.com/adafruit/Adafruit_Python_MAX31855>`__,
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/interface/sensor-interface/MAX31855.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/MAX31855.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/269>`__
+
+MAXIM: MAX31856
+^^^^^^^^^^^^^^^
+
+| Measurements: Temperature (Object/Die)
+| Dependencies: `RPi.GPIO <https://pypi.org/project/RPi.GPIO>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/sensors/MAX31856.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/MAX31856.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/3263>`__
+
+MAXIM: MAX31865
+^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies: `RPi.GPIO <https://pypi.org/project/RPi.GPIO>`__
+| Manufacturer URL:
+  `Link <https://www.maximintegrated.com/en/products/interface/sensor-interface/MAX31865.html>`__
+| Datasheet URL:
+  `Link <https://datasheets.maximintegrated.com/en/ds/MAX31865.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/3328>`__
+
+Melexis: MLX90614
+^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature (Ambient/Object)
+| Dependencies: `smbus2 <https://pypi.org/project/smbus2>`__
+| Manufacturer URL:
+  `Link <https://www.melexis.com/en/product/MLX90614/Digital-Plug-Play-Infrared-Thermometer-TO-Can>`__
+| Datasheet URL:
+  `Link <https://www.melexis.com/-/media/files/documents/datasheets/mlx90614-datasheet-melexis.pdf>`__
+| Product URL: `Link <https://www.sparkfun.com/products/9570>`__
+
+Microchip: MCP3008
+^^^^^^^^^^^^^^^^^^
+
+| Measurements: Voltage (Analog-to-Digital Converter)
+| Dependencies:
+  `Adafruit\_MCP3008 <https://pypi.org/project/Adafruit_MCP3008>`__
+| Manufacturer URL:
+  `Link <https://www.microchip.com/wwwproducts/en/en010530>`__
+| Datasheet URL:
+  `Link <http://ww1.microchip.com/downloads/en/DeviceDoc/21295d.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/856>`__
+
+Microchip: MCP342x (x=2,3,4,6,7,8)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Voltage (Analog-to-Digital Converter)
+| Dependencies: `smbus2 <https://pypi.org/project/smbus2>`__,
+  `MCP342x <https://pypi.org/project/MCP342x>`__
+| Manufacturer URLs: `Link
+  1 <https://www.microchip.com/wwwproducts/en/MCP3422>`__, `Link
+  2 <https://www.microchip.com/wwwproducts/en/MCP3423>`__, `Link
+  3 <https://www.microchip.com/wwwproducts/en/MCP3424>`__, `Link
+  4 <https://www.microchip.com/wwwproducts/en/MCP3426https://www.microchip.com/wwwproducts/en/MCP3427>`__,
+  `Link 5 <https://www.microchip.com/wwwproducts/en/MCP3428>`__
+| Datasheet URLs: `Link
+  1 <http://ww1.microchip.com/downloads/en/DeviceDoc/22088c.pdf>`__,
+  `Link
+  2 <http://ww1.microchip.com/downloads/en/DeviceDoc/22226a.pdf>`__
+
+Microchip: MCP9808
+^^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies:
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__,
+  `Adafruit\_MCP9808 <https://github.com/adafruit/Adafruit_Python_MCP9808>`__
+| Manufacturer URL:
+  `Link <https://www.microchip.com/wwwproducts/en/en556182>`__
+| Datasheet URL:
+  `Link <http://ww1.microchip.com/downloads/en/DeviceDoc/MCP9808-0.5C-Maximum-Accuracy-Digital-Temperature-Sensor-Data-Sheet-DS20005095B.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/1782>`__
+
+Panasonic: AMG8833
+^^^^^^^^^^^^^^^^^^
+
+| Measurements: 8x8 Temperature Grid
+| Dependencies:
+  `libjpeg-dev <https://packages.debian.org/buster/libjpeg-dev>`__,
+  `zlib1g-dev <https://packages.debian.org/buster/zlib1g-dev>`__,
+  `colour <https://pypi.org/project/colour>`__,
+  `Pillow <https://pypi.org/project/Pillow>`__,
+  `Adafruit\_AMG88xx <https://github.com/adafruit/Adafruit_AMG88xx_python>`__
+
+ROHM: BH1750
+^^^^^^^^^^^^
+
+| Measurements: Light
+| Dependencies: `smbus2 <https://pypi.org/project/smbus2>`__
+| Datasheet URL:
+  `Link <http://rohmfs.rohm.com/en/products/databook/datasheet/ic/sensor/light/bh1721fvc-e.pdf>`__
+| Product URL: `Link <https://www.dfrobot.com/product-531.html>`__
+
+Ruuvi: RuuviTag
+^^^^^^^^^^^^^^^
+
+| Measurements: Acceleration/Humidity/Pressure/Temperature
+| Dependencies:
+  `python3-dev <https://packages.debian.org/buster/python3-dev>`__,
+  `python3-psutil <https://packages.debian.org/buster/python3-psutil>`__,
+  `bluez <https://packages.debian.org/buster/bluez>`__,
+  `bluez-hcidump <https://packages.debian.org/buster/bluez-hcidump>`__,
+  `ruuvitag\_sensor <https://pypi.org/project/ruuvitag_sensor>`__,
+  `subprocess <https://pypi.org/project/subprocess>`__
+| Manufacturer URL: `Link <https://ruuvi.com/>`__
+| Datasheet URL:
+  `Link <https://ruuvi.com/files/ruuvitag-tech-spec-2019-7.pdf>`__
+
+STMicroelectronics: VL53L0X
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Millimeter (Time-of-Flight Distance)
+| Dependencies:
+  `VL53L0X <https://github.com/grantramsay/VL53L0X_rasp_python>`__
+| Manufacturer URL:
+  `Link <https://www.st.com/en/imaging-and-photonics-solutions/vl53l0x.html>`__
+| Datasheet URL:
+  `Link <https://www.st.com/resource/en/datasheet/vl53l0x.pdf>`__
+| Product URLs: `Link 1 <https://www.adafruit.com/product/3317>`__,
+  `Link 2 <https://www.pololu.com/product/2490>`__
+
+Sensirion: SHT1x/7x
+^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies: `sht\_sensor <https://pypi.org/project/sht_sensor>`__
+| Manufacturer URLs: `Link
+  1 <https://www.sensirion.com/en/environmental-sensors/humidity-sensors/digital-humidity-sensors-for-accurate-measurements/>`__,
+  `Link
+  2 <https://www.sensirion.com/en/environmental-sensors/humidity-sensors/pintype-digital-humidity-sensors/>`__
+
+Sensirion: SHT2x
+^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies: `smbus2 <https://pypi.org/project/smbus2>`__
+| Manufacturer URL:
+  `Link <https://www.sensirion.com/en/environmental-sensors/humidity-sensors/humidity-temperature-sensor-sht2x-digital-i2c-accurate/>`__
+
+Sensirion: SHT3x (30, 31, 35)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies:
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__,
+  `Adafruit\_SHT31 <https://github.com/ralf1070/Adafruit_Python_SHT31>`__
+| Manufacturer URL:
+  `Link <https://www.sensirion.com/en/environmental-sensors/humidity-sensors/digital-humidity-sensors-for-various-applications/>`__
+
+Sensorion: SHT31 Smart Gadget
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies:
+  `pi-bluetooth <https://packages.debian.org/buster/pi-bluetooth>`__,
+  `libglib2.0-dev <https://packages.debian.org/buster/libglib2.0-dev>`__,
+  `bluepy <https://pypi.org/project/bluepy>`__
+| Manufacturer URL:
+  `Link <https://www.sensirion.com/en/environmental-sensors/humidity-sensors/development-kit/>`__
+
+Sonoff: TH16/10 (Tasmota firmware) with AM2301
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies: `requests <https://pypi.org/project/requests>`__
+| Manufacturer URL:
+  `Link <https://sonoff.tech/product/wifi-diy-smart-switches/th10-th16>`__
+
+Sonoff: TH16/10 (Tasmota firmware) with DS18B20
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature
+| Dependencies: `requests <https://pypi.org/project/requests>`__
+| Manufacturer URL:
+  `Link <https://sonoff.tech/product/wifi-diy-smart-switches/th10-th16>`__
+
+TE Connectivity: HTU21D
+^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Dependencies: pigpio
+| Manufacturer URL:
+  `Link <https://www.te.com/usa-en/product-CAT-HSC0004.html>`__
+| Datasheet URL:
+  `Link <https://www.te.com/commerce/DocumentDelivery/DDEController?Action=showdoc&DocId=Data+Sheet%7FHPC199_6%7FA6%7Fpdf%7FEnglish%7FENG_DS_HPC199_6_A6.pdf%7FCAT-HSC0004>`__
+| Product URL: `Link <https://www.adafruit.com/product/1899>`__
+
+Texas Instruments: ADS1256
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Voltage (Waveshare, Analog-to-Digital Converter)
+| Dependencies: `wiringpi <https://pypi.org/project/wiringpi>`__,
+  `pipyadc\_py3 <https://github.com/kizniche/PiPyADC-py3>`__
+
+Texas Instruments: ADS1x15
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Voltage (Analog-to-Digital Converter)
+| Dependencies:
+  `Adafruit\_GPIO <https://pypi.org/project/Adafruit_GPIO>`__,
+  `Adafruit\_ADS1x15 <https://pypi.org/project/Adafruit_ADS1x15>`__
+
+Texas Instruments: HDC1000
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Humidity/Temperature
+| Manufacturer URL: `Link <https://www.ti.com/product/HDC1000>`__
+| Datasheet URL:
+  `Link <https://www.ti.com/lit/ds/symlink/hdc1000.pdf>`__
+
+Texas Instruments: TMP006
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Measurements: Temperature (Object/Die)
+| Dependencies:
+  `Adafruit\_TMP <https://pypi.org/project/Adafruit_TMP>`__
+| Datasheet URL:
+  `Link <http://www.adafruit.com/datasheets/tmp006.pdf>`__
+| Product URL: `Link <https://www.adafruit.com/product/1296>`__
+
+Winsen: MH-Z16
+^^^^^^^^^^^^^^
+
+| Measurements: CO2
+| Dependencies: `smbus2 <https://pypi.org/project/smbus2>`__
+| Manufacturer URL:
+  `Link <https://www.winsen-sensor.com/sensors/co2-sensor/mh-z16.html>`__
+| Datasheet URL:
+  `Link <https://www.winsen-sensor.com/d/files/MH-Z16.pdf>`__
+
+Winsen: MH-Z19
+^^^^^^^^^^^^^^
+
+| Measurements: CO2
+| Datasheet URL:
+  `Link <https://www.winsen-sensor.com/d/files/PDF/Infrared%20Gas%20Sensor/NDIR%20CO2%20SENSOR/MH-Z19%20CO2%20Ver1.0.pdf>`__
+
+This is the version of the sensor that does not include the ability to
+conduct automatic baseline correction (ABC). See the B version of the
+sensor if you wish to use ABC.
+
+Winsen: MH-Z19B
+^^^^^^^^^^^^^^^
+
+| Measurements: CO2
+| Manufacturer URL:
+  `Link <https://www.winsen-sensor.com/sensors/co2-sensor/mh-z19b.html>`__
+| Datasheet URL:
+  `Link <https://www.winsen-sensor.com/d/files/MH-Z19B.pdf>`__
+
+This is the B version of the sensor that includes the ability to conduct
+automatic baseline correction (ABC).
+
+Winsen: ZH03B
+^^^^^^^^^^^^^
+
+| Measurements: Particulates
+| Manufacturer URL:
+  `Link <https://www.winsen-sensor.com/sensors/dust-sensor/zh3b.html>`__
+| Datasheet URL:
+  `Link <https://www.winsen-sensor.com/d/files/ZH03B.pdf>`__
+
+Xiaomi: Miflora
+^^^^^^^^^^^^^^^
+
+| Measurements: EC/Light/Moisture/Temperature
+| Dependencies:
+  `libglib2.0-dev <https://packages.debian.org/buster/libglib2.0-dev>`__,
+  `miflora <https://pypi.org/project/miflora>`__,
+  `btlewrap <https://pypi.org/project/btlewrap>`__,
+  `bluepy <https://pypi.org/project/bluepy>`__
 
 I2C Multiplexers
 ~~~~~~~~~~~~~~~~
+
+NOTE: As of March, 2020, it has been discovered that the device tree
+overlay technique for using I2C multiplexers does not work with Raspbian
+Buster. It will work for Raspbian Stretch, but Mycodo will not work
+properly with this old version of Raspbian and will disable the API. If
+you do not need access to the API and do require the use of a
+multiplexer, it is recommended to install Raspbian Stretch prior to
+installing Mycodo, until a fix for Buater can be developed. For more
+information, see [issue
+#755](\ https://github.com/kizniche/Mycodo/issues/755). Alternatively,
+you will need to write your own Python script (or other language) to
+switch to the specific multiplexer channel and acquire a measurement for
+use with Mycodo. This script can then be executed by either the Linux
+Command or Python Code Input to store the measurement(s). This
+workaround isn't ideal, but is all there is at this point.
 
 All devices that connected to the Raspberry Pi by the I2C bus need to
 have a unique address in order to communicate. Some inputs may have the
@@ -3833,7 +4645,7 @@ Run raspi-config
 
 ``sudo raspi-config``
 
-Go to ``Advanced Options`` -> ``Serial`` and disable. Then edit
+Go to ``Advanced Options -> Serial`` and disable. Then edit
 ``/boot/config.txt``
 
 ``sudo vi /boot/config.txt``
@@ -3847,17 +4659,16 @@ Output Devices
 Built-In Outputs
 ~~~~~~~~~~~~~~~~
 
--  Atlas EZO-PMP Peristaltic Pump: Pump volumes in milliliters
+-  On/Off (Python code)
+-  On/Off (GPIO)
+-  On/Off (Shell script)
+-  Pulse-Width-Modulation (Python code)
+-  Pulse-Width-Modulation (GPIO)
+-  Pulse-Width-Modulation (Shell script)
+-  Peristaltic Pump (Generic, GPIO)
+-  Peristaltic Pump (Atlas Scientific)
    `link <https://www.atlas-scientific.com/peristaltic.html>`__
-
-Other Built-In Outputs
-~~~~~~~~~~~~~~~~~~~~~~
-
--  GPIO Pin (High/Low)
--  GPIO PWM Signal generation
--  Python Command for On and Off actions
--  Linux Shell command for On and Off actions
--  Wireless 314/433 Mhz LPD/SRD (rpi-rf)
+-  Wireless 315/433 MHz (rpi-rf, GPIO)
 
 Device Notes
 ============
@@ -3946,13 +4757,13 @@ USB Device Persistence Across Reboots
 From `(#547) Theoi-Meteoroi on
 Github <https://github.com/kizniche/Mycodo/issues/547#issuecomment-428752904>`__:
 
-Using USB devices, such as USB-to-serial interfaces to connect a sensor,
-while convenient, poses an issue if there are multiple devices when the
-system reboots. After a reboot, there is no guarantee the device will
-persist with the same name. For instance, if Sensor A is /dev/ttyUSB0
-and Sensor B is /dev/ttyUSB1, after a reboot Sensor A may be
-/dev/ttyUSB1 and Sensor B may be /dev/ttyUSB0. This will cause Mycodo to
-query the wrong device for a measurement, potentially causing a
+Using USB devices, such as USB-to-serial interfaces (CP210x) to connect
+a sensor, while convenient, poses an issue if there are multiple devices
+when the system reboots. After a reboot, there is no guarantee the
+device will persist with the same name. For instance, if Sensor A is
+/dev/ttyUSB0 and Sensor B is /dev/ttyUSB1, after a reboot Sensor A may
+be /dev/ttyUSB1 and Sensor B may be /dev/ttyUSB0. This will cause Mycodo
+to query the wrong device for a measurement, potentially causing a
 mis-measurement, or worse, an incorrect measurement because the response
 is not from the correct sensor (I've seen my temperature sensor read
 700+ degrees celsius because of this!). Follow the instructions below to
@@ -3991,6 +4802,12 @@ First - find the VID and PID for the USB device:
     Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
 
 In this case the Vendor ID is 10c4 The Product ID is ea60
+
+Note: If you have multiple devices and you find your IDs to be the same,
+you can change IDs with the Simplicity Studio Xpress Configurator tool
+(discussed starting on page 6 of the `AN721: USBXpress™ Device
+Configuration and Programming
+Guide <https://www.silabs.com/documents/public/application-notes/AN721.pdf>`__).
 
 Since I changed the serial number field - this will be unique.
 

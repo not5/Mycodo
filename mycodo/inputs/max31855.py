@@ -1,4 +1,6 @@
 # coding=utf-8
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 
 # Measurements
@@ -20,8 +22,12 @@ INPUT_INFORMATION = {
     'input_name_unique': 'MAX31855',
     'input_manufacturer': 'MAXIM',
     'input_name': 'MAX31855',
+    'input_library': 'Adafruit_MAX31855',
     'measurements_name': 'Temperature (Object/Die)',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.maximintegrated.com/en/products/interface/sensor-interface/MAX31855.html',
+    'url_datasheet': 'https://datasheets.maximintegrated.com/en/ds/MAX31855.pdf',
+    'url_product_purchase': 'https://www.adafruit.com/product/269',
 
     'options_enabled': [
         'pin_clock',
@@ -29,8 +35,7 @@ INPUT_INFORMATION = {
         'pin_miso',
         'measurements_select',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -47,28 +52,30 @@ INPUT_INFORMATION = {
 
 
 class InputModule(AbstractInput):
-    """
-    A sensor support class that measures the MAX31855's temperature
-
-    """
-
+    """ A sensor support class that measures the MAX31855's temperature """
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            import Adafruit_MAX31855.MAX31855 as MAX31855
+        self.sensor = None
 
-            self.pin_clock = input_dev.pin_clock
-            self.pin_cs = input_dev.pin_cs
-            self.pin_miso = input_dev.pin_miso
-            self.sensor = MAX31855.MAX31855(
-                self.pin_clock,
-                self.pin_cs,
-                self.pin_miso)
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        import Adafruit_MAX31855.MAX31855 as MAX31855
+
+        self.sensor = MAX31855.MAX31855(
+            self.input_dev.pin_clock,
+            self.input_dev.pin_cs,
+            self.input_dev.pin_miso)
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        self.return_dict = measurements_dict.copy()
+        if not self.sensor:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.is_enabled(0):
             self.value_set(0, self.sensor.readTempC())

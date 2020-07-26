@@ -5,6 +5,7 @@
 
 from flask_babel import lazy_gettext
 from flask_wtf import FlaskForm
+from wtforms import BooleanField
 from wtforms import DecimalField
 from wtforms import IntegerField
 from wtforms import SelectField
@@ -33,6 +34,8 @@ class FunctionMod(FlaskForm):
     function_id = StringField('Function ID', widget=widgets.HiddenInput())
     function_type = StringField('Function Type', widget=widgets.HiddenInput())
     name = StringField(TRANSLATIONS['name']['title'])
+    log_level_debug = BooleanField(
+        TRANSLATIONS['log_level_debug']['title'])
     action_type = SelectField(
         choices=[('', TRANSLATIONS['select_one']['title'])] + FUNCTION_ACTIONS)
     add_action = SubmitField(lazy_gettext('Add Action'))
@@ -56,6 +59,9 @@ class Actions(FlaskForm):
     do_action_string = StringField(lazy_gettext('Action String'))
     do_unique_id = StringField(lazy_gettext('Controller ID'))
     do_output_state = StringField(lazy_gettext('Then State'))
+    do_output_amount = DecimalField(
+        lazy_gettext('Amount'),
+        widget=NumberInput(step='any'))
     do_output_duration = DecimalField(
         lazy_gettext('Duration (seconds)'),
         widget=NumberInput(step='any'))

@@ -3,6 +3,7 @@
 
 import datetime
 import logging
+import socket
 import time
 
 import flask_login
@@ -179,7 +180,8 @@ def do_login():
 
     return render_template('login.html',
                            dict_translation=TRANSLATIONS,
-                           form_login=form_login)
+                           form_login=form_login,
+                           host=socket.gethostname())
 
 
 @blueprint.route("/logout")
@@ -199,12 +201,6 @@ def logout():
 
     flash(gettext("Successfully logged out"), 'success')
     return response
-
-
-@blueprint.route('/forgot_password')
-def forgot_password():
-    """Load the default landing page"""
-    return render_template('forgot_password.html')
 
 
 @blueprint.route('/newremote/')

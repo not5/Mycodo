@@ -4,6 +4,7 @@
 #
 import time
 
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -47,17 +48,19 @@ INPUT_INFORMATION = {
     'input_name_unique': 'WINSEN_ZH03B',
     'input_manufacturer': 'Winsen',
     'input_name': 'ZH03B',
+    'input_library': 'serial',
     'measurements_name': 'Particulates',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.winsen-sensor.com/sensors/dust-sensor/zh3b.html',
+    'url_datasheet': 'https://www.winsen-sensor.com/d/files/ZH03B.pdf',
+    'url_product_purchase': '',
 
     'options_enabled': [
         'measurements_select',
         'uart_location',
         'uart_baud_rate',
-        'custom_options',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -80,6 +83,16 @@ INPUT_INFORMATION = {
             'constraints_pass': constraints_pass_positive_value,
             'name': lazy_gettext('Fan On Duration'),
             'phrase': lazy_gettext('How long to turn the fan on (seconds) before acquiring measurements')
+        },
+        {
+            'id': 'number_measurements',
+            'type': 'integer',
+            'default_value': 3,
+            'constraints_pass': constraints_pass_positive_value,
+            'name': lazy_gettext('Number of Measurements'),
+            'phrase': lazy_gettext(
+                'How many measurements to acquire. If more than 1 are acquired that '
+                'are less than 1001, the average of the measurements will be stored.')
         }
     ]
 }
@@ -91,88 +104,97 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.ser = None
         self.fan_is_on = False
 
-        # Initialize custom options
         self.fan_modulate = None
         self.fan_seconds = None
-        # Set custom options
+        self.number_measurements = None
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
         if not testing:
-            import serial
-            import binascii
+            self.initialize_input()
 
-            self.binascii = binascii
-            self.uart_location = input_dev.uart_location
-            self.baud_rate = input_dev.baud_rate
-            # Check if device is valid
-            self.serial_device = is_device(self.uart_location)
+    def initialize_input(self):
+        import serial
+        import binascii
 
-            if self.serial_device:
-                try:
-                    self.ser = serial.Serial(
-                        port=self.serial_device,
-                        baudrate=self.baud_rate,
-                        parity=serial.PARITY_NONE,
-                        stopbits=serial.STOPBITS_ONE,
-                        bytesize=serial.EIGHTBITS,
-                        timeout=10
-                    )
-                    self.ser.flushInput()
+        if is_device(self.input_dev.uart_location):
+            try:
+                self.binascii = binascii
+                self.ser = serial.Serial(
+                    port=self.input_dev.uart_location,
+                    baudrate=self.input_dev.baud_rate,
+                    parity=serial.PARITY_NONE,
+                    stopbits=serial.STOPBITS_ONE,
+                    bytesize=serial.EIGHTBITS,
+                    timeout=10,
+                    writeTimeout=10
+                )
+                self.ser.flushInput()
+                self.set_qa()
 
-                    if not self.fan_modulate:
-                        self.dormant_mode('run')
+                if not self.fan_modulate:
+                    self.dormant_mode('run')
 
-                    time.sleep(0.1)
+                time.sleep(0.1)
 
-                except serial.SerialException:
-                    self.logger.exception('Opening serial')
-            else:
-                self.logger.error(
-                    'Could not open "{dev}". '
-                    'Check the device location is correct.'.format(
-                        dev=self.uart_location))
+            except serial.SerialException:
+                self.logger.exception('Opening serial')
+        else:
+            self.logger.error('Could not open "{dev}". Check the device location is correct.'.format(
+                dev=self.input_dev.uart_location))
 
     def get_measurement(self):
-        """ Gets the WINSEN_ZH03B's Particulate concentration in μg/m^3 via UART """
-        if not self.serial_device:  # Don't measure if device isn't validated
-            return None
+        """ Gets the WINSEN_ZH03B's Particulate concentration in μg/m^3 """
+        if not self.ser:
+            self.logger.error("Input not set up")
+            return
 
-        self.return_dict = measurements_dict.copy()
+        pm_1_0 = []
+        pm_2_5 = []
+        pm_10_0 = []
 
-        self.logger.debug("Reading sample")
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.fan_modulate and not self.fan_is_on:
-            # Allow the fan to run before querying sensor
+            # Allow the fan to run for a duration before querying sensor
             self.dormant_mode('run')
             start_time = time.time()
-            while (self.running and
-                    time.time() - start_time < self.fan_seconds):
+            while self.running and time.time() - start_time < self.fan_seconds:
                 time.sleep(0.01)
 
         # Acquire measurements
-        pm_1_0, pm_2_5, pm_10_0 = self.qa_read_sample()
+        for i in range(self.number_measurements):
+            self.logger.debug("Acquiring measurement {}".format(i + 1))
+            pm_1_0_tmp, pm_2_5_tmp, pm_10_0_tmp = self.qa_read_sample()
+            self.logger.debug("Measurements: PM1 {}, PM2.5 {}, PM10 {}".format(pm_1_0_tmp, pm_2_5_tmp, pm_10_0_tmp))
 
-        if pm_1_0 > 1000:
-            pm_1_0 = 1001
-            self.logger.error("PM1 measurement out of range (over 1000 ug/m^3)")
-        if pm_2_5 > 1000:
-            pm_2_5 = 1001
-            self.logger.error("PM2.5 measurement out of range (over 1000 ug/m^3)")
-        if pm_10_0 > 1000:
-            pm_10_0 = 1001
-            self.logger.error("PM10 measurement out of range (over 1000 ug/m^3)")
+            if pm_1_0_tmp > 1000:
+                self.logger.debug("PM1 out of range (over 1000 ug/m^3): {}. Discarding.".format(pm_1_0_tmp))
+            else:
+                pm_1_0.append(pm_1_0_tmp)
 
-        if self.is_enabled(0):
-            self.value_set(0, pm_1_0)
+            if pm_2_5_tmp > 1000:
+                self.logger.debug("PM2.5 out of range (over 1000 ug/m^3): {}. Discarding.".format(pm_2_5_tmp))
+            else:
+                pm_2_5.append(pm_2_5_tmp)
 
-        if self.is_enabled(1):
-            self.value_set(1, pm_2_5)
+            if pm_10_0_tmp > 1000:
+                self.logger.debug("PM10 out of range (over 1000 ug/m^3): {}. Discarding.".format(pm_10_0_tmp))
+            else:
+                pm_10_0.append(pm_10_0_tmp)
 
-        if self.is_enabled(2):
-            self.value_set(2, pm_10_0)
+            time.sleep(0.1)
+
+        # Store measurements
+        if len(pm_1_0) < 1 or len(pm_2_5) < 1 or len(pm_10_0) < 1:
+            self.logger.debug("Error: Each particle size must have at least 1 valid measurement to store.")
+        else:
+            self.value_set(0, sum(pm_1_0) / len(pm_1_0))
+            self.value_set(1, sum(pm_2_5) / len(pm_2_5))
+            self.value_set(2, sum(pm_10_0) / len(pm_10_0))
 
         # Turn the fan off
         if self.fan_modulate:

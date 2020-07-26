@@ -40,12 +40,10 @@ from mycodo.config import HTTP_ACCESS_LOG_FILE
 from mycodo.config import HTTP_ERROR_LOG_FILE
 from mycodo.config import INSTALL_DIRECTORY
 from mycodo.config import KEEPUP_LOG_FILE
+from mycodo.config import LCD_INFO
 from mycodo.config import LOGIN_LOG_FILE
 from mycodo.config import MATH_INFO
 from mycodo.config import MYCODO_VERSION
-from mycodo.config import OUTPUTS
-from mycodo.config import OUTPUTS_PWM
-from mycodo.config import OUTPUT_INFO
 from mycodo.config import PATH_1WIRE
 from mycodo.config import RESTORE_LOG_FILE
 from mycodo.config import UPGRADE_LOG_FILE
@@ -58,7 +56,6 @@ from mycodo.databases.models import Conditional
 from mycodo.databases.models import ConditionalConditions
 from mycodo.databases.models import Conversion
 from mycodo.databases.models import CustomController
-from mycodo.databases.models import Widget
 from mycodo.databases.models import Dashboard
 from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import DisplayOrder
@@ -78,6 +75,7 @@ from mycodo.databases.models import PID
 from mycodo.databases.models import Trigger
 from mycodo.databases.models import Unit
 from mycodo.databases.models import User
+from mycodo.databases.models import Widget
 from mycodo.devices.camera import camera_record
 from mycodo.mycodo_client import DaemonControl
 from mycodo.mycodo_client import daemon_active
@@ -116,6 +114,8 @@ from mycodo.utils.influx import average_past_seconds
 from mycodo.utils.influx import average_start_end_seconds
 from mycodo.utils.inputs import list_analog_to_digital_converters
 from mycodo.utils.inputs import parse_input_information
+from mycodo.utils.outputs import output_types
+from mycodo.utils.outputs import parse_output_information
 from mycodo.utils.sunriseset import Sun
 from mycodo.utils.system_pi import add_custom_measurements
 from mycodo.utils.system_pi import add_custom_units
@@ -188,7 +188,7 @@ def page_camera():
                 'start_x=1' in open('/boot/config.txt').read()):
             pi_camera_enabled = True
     except IOError as e:
-        logger.error("Camera IOError raised in '/settings/camera' endpoint: "
+        logger.error("Camera IOError raised in '/camera' endpoint: "
                      "{err}".format(err=e))
 
     if request.method == 'POST':
@@ -218,7 +218,7 @@ def page_camera():
         elif form_camera.start_timelapse.data:
             if mod_camera.stream_started:
                 flash(gettext("Cannot start time-lapse if stream is active."), "error")
-                return redirect('/camera')
+                return redirect(url_for('routes_page.page_camera'))
             now = time.time()
             mod_camera.timelapse_started = True
             mod_camera.timelapse_start_time = now
@@ -249,7 +249,7 @@ def page_camera():
             if mod_camera.timelapse_started:
                 flash(gettext(
                     "Cannot start stream if time-lapse is active."), "error")
-                return redirect('/camera')
+                return redirect(url_for('routes_page.page_camera'))
             else:
                 mod_camera.stream_started = True
                 db.session.commit()
@@ -261,6 +261,8 @@ def page_camera():
                 camera_stream(unique_id=mod_camera.unique_id).stop(mod_camera.unique_id)
             mod_camera.stream_started = False
             db.session.commit()
+        elif form_camera.timelapse_generate.data:
+            utils_camera.camera_timelapse_video(form_camera)
 
         if unmet_dependencies:
             return redirect(url_for('routes_admin.admin_dependencies',
@@ -272,7 +274,8 @@ def page_camera():
     (latest_img_still_ts,
      latest_img_still,
      latest_img_tl_ts,
-     latest_img_tl) = utils_general.get_camera_image_info()
+     latest_img_tl,
+     time_lapse_imgs) = utils_general.get_camera_image_info()
 
     time_now = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -287,6 +290,7 @@ def page_camera():
                            opencv_devices=opencv_devices,
                            output=output,
                            pi_camera_enabled=pi_camera_enabled,
+                           time_lapse_imgs=time_lapse_imgs,
                            time_now=time_now)
 
 
@@ -479,17 +483,15 @@ def page_export():
         elif form_import_influxdb.influxdb_import_upload.data:
             restore_influxdb = utils_export.import_influxdb(
                 form_import_influxdb)
-            if restore_influxdb:
+            if restore_influxdb == 'success':
                 flash('The influxdb database import has been initialized. '
                       'This process may take an extended time to complete '
                       'if there is a lot of data. Please allow ample time '
                       'for it to complete.',
                       'success')
-                return redirect(url_for('routes_authentication.logout'))
             else:
-                flash(
-                    'An error occurred during the influxdb database import.',
-                    'error')
+                flash('Errors occurred during the influxdb database import.',
+                      'error')
 
     # Generate start end end times for date/time picker
     end_picker = datetime.datetime.now().strftime('%m/%d/%Y %H:%M')
@@ -512,6 +514,8 @@ def page_export():
 @blueprint.route('/save_dashboard_layout', methods=['POST'])
 def save_dashboard_layout():
     """Save positions and sizes of widgets of a particular dashboard"""
+    if not utils_general.user_has_permission('edit_controllers'):
+        return redirect(url_for('routes_general.home'))
     data = request.get_json()
     keys = ('widget_id', 'position_x', 'position_y', 'width', 'height')
     for index, each_widget in enumerate(data):
@@ -539,7 +543,9 @@ def page_dashboard_default():
 @blueprint.route('/dashboard-add', methods=('GET', 'POST'))
 @flask_login.login_required
 def page_dashboard_add():
-    """Load default dashboard"""
+    """Add a dashboard"""
+    if not utils_general.user_has_permission('edit_controllers'):
+        return redirect(url_for('routes_general.home'))
     dashboard_id = utils_dashboard.dashboard_add()
     return redirect(url_for(
         'routes_page.page_dashboard', dashboard_id=dashboard_id))
@@ -653,6 +659,8 @@ def page_dashboard(dashboard_id):
             dict_measure_measurements[each_measurement.unique_id] = measurement
             dict_measure_units[each_measurement.unique_id] = unit
 
+    dict_outputs = parse_output_information()
+
     # Retrieve all choices to populate form drop-down menu
     choices_camera = utils_general.choices_id_name(camera)
     choices_input = utils_general.choices_inputs(
@@ -663,7 +671,7 @@ def page_dashboard(dashboard_id):
         output, dict_units, dict_measurements)
     choices_output_devices = utils_general.choices_output_devices(output)
     choices_output_pwm = utils_general.choices_outputs_pwm(
-        output, dict_units, dict_measurements)
+        output, dict_units, dict_measurements, dict_outputs)
     choices_pid = utils_general.choices_pids(
         pid, dict_units, dict_measurements)
     choices_pid_devices = utils_general.choices_pids_devices(pid)
@@ -762,6 +770,7 @@ def page_dashboard(dashboard_id):
                            table_input=Input,
                            table_math=Math,
                            table_output=Output,
+                           table_pid=PID,
                            table_device_measurements=DeviceMeasurements,
                            choices_camera=choices_camera,
                            choices_input=choices_input,
@@ -784,7 +793,7 @@ def page_dashboard(dashboard_id):
                            misc=misc,
                            pid=pid,
                            output=output,
-                           OUTPUTS_PWM=OUTPUTS_PWM,
+                           output_types=output_types(),
                            input=input_dev,
                            tags=tags,
                            colors_graph=colors_graph,
@@ -915,6 +924,7 @@ def page_info():
     frontend_pid = None
     pstree_frontend_output = None
     top_frontend_output = None
+    dmesg_output = None
 
     uptime = subprocess.Popen(
         "uptime", stdout=subprocess.PIPE, shell=True)
@@ -977,6 +987,13 @@ def page_info():
     if free_output:
         free_output = free_output.decode("latin1")
 
+    dmesg = subprocess.Popen(
+        "dmesg | tail -n 20", stdout=subprocess.PIPE, shell=True)
+    (dmesg_output, _) = dmesg.communicate()
+    dmesg.wait()
+    if dmesg_output:
+        dmesg_output = dmesg_output.decode("latin1")
+
     ifconfig = subprocess.Popen(
         "ifconfig -a", stdout=subprocess.PIPE, shell=True)
     (ifconfig_output, _) = ifconfig.communicate()
@@ -987,7 +1004,7 @@ def page_info():
     database_version = AlembicVersion.query.first().version_num
     correct_database_version = ALEMBIC_VERSION
 
-    if hasattr(sys, 'real_prefix'):
+    if hasattr(sys, 'real_prefix') or sys.base_prefix != sys.prefix:
         virtualenv_flask = True
 
     if os.path.exists(DAEMON_PID_FILE):
@@ -1027,6 +1044,7 @@ def page_info():
                            database_version=database_version,
                            correct_database_version=correct_database_version,
                            df=df_output,
+                           dmesg_output=dmesg_output,
                            free=free_output,
                            frontend_pid=frontend_pid,
                            i2c_devices_sorted=i2c_devices_sorted,
@@ -1125,6 +1143,7 @@ def page_lcd():
                            choices_lcd=choices_lcd,
                            lcd=lcd,
                            lcd_data=lcd_data,
+                           lcd_info=LCD_INFO,
                            math=math,
                            measurements=parse_input_information(),
                            pid=pid,
@@ -1206,33 +1225,28 @@ def page_logview():
         if form_log_view.lines.data:
             lines = form_log_view.lines.data
 
-        # Get contents from file
+        # Log fie requested
         if form_log_view.log_view.data:
+            command = None
             log_field = form_log_view.log.data
+
+            # Find which log file was requested, generate command to execute
             if form_log_view.log.data == 'log_pid_settings':
-                command = 'grep -a "PID Settings" {log} | tail -n {lines}'.format(
-                    lines=lines, log=DAEMON_LOG_FILE)
-                log = subprocess.Popen(
-                    command, stdout=subprocess.PIPE, shell=True)
-                (log_output, _) = log.communicate()
-                log.wait()
-                log_output = str(log_output, 'latin-1')
+                logfile = DAEMON_LOG_FILE
+                logrotate_file = logfile + '.1'
+                if (logrotate_file and os.path.exists(logrotate_file) and
+                        logfile and os.path.isfile(logfile)):
+                    command = 'cat {lrlog} {log} | grep -a "PID Settings" | tail -n {lines}'.format(
+                        lrlog=logrotate_file, log=logfile, lines=lines)
+                else:
+                    command = 'grep -a "PID Settings" {log} | tail -n {lines}'.format(
+                        lines=lines, log=logfile)
             elif form_log_view.log.data == 'log_nginx':
                 command = 'journalctl -u nginx | tail -n {lines}'.format(
                     lines=lines)
-                log = subprocess.Popen(
-                    command, stdout=subprocess.PIPE, shell=True)
-                (log_output, _) = log.communicate()
-                log.wait()
-                log_output = str(log_output, 'latin-1')
             elif form_log_view.log.data == 'log_flask':
                 command = 'journalctl -u mycodoflask | tail -n {lines}'.format(
                     lines=lines)
-                log = subprocess.Popen(
-                    command, stdout=subprocess.PIPE, shell=True)
-                (log_output, _) = log.communicate()
-                log.wait()
-                log_output = str(log_output, 'latin-1')
             else:
                 if form_log_view.log.data == 'log_login':
                     logfile = LOGIN_LOG_FILE
@@ -1240,10 +1254,10 @@ def page_logview():
                     logfile = HTTP_ACCESS_LOG_FILE
                 elif form_log_view.log.data == 'log_http_error':
                     logfile = HTTP_ERROR_LOG_FILE
-                elif form_log_view.log.data == 'log_dependency':
-                    logfile = DEPENDENCY_LOG_FILE
                 elif form_log_view.log.data == 'log_daemon':
                     logfile = DAEMON_LOG_FILE
+                elif form_log_view.log.data == 'log_dependency':
+                    logfile = DEPENDENCY_LOG_FILE
                 elif form_log_view.log.data == 'log_keepup':
                     logfile = KEEPUP_LOG_FILE
                 elif form_log_view.log.data == 'log_backup':
@@ -1253,16 +1267,24 @@ def page_logview():
                 elif form_log_view.log.data == 'log_upgrade':
                     logfile = UPGRADE_LOG_FILE
 
-                if os.path.isfile(logfile):
+                logrotate_file = logfile + '.1'
+                if (logrotate_file and os.path.exists(logrotate_file) and
+                        logfile and os.path.isfile(logfile)):
+                    command = 'cat {lrlog} {log} | tail -n {lines}'.format(
+                        lrlog=logrotate_file, log=logfile, lines=lines)
+                elif os.path.isfile(logfile):
                     command = 'tail -n {lines} {log}'.format(lines=lines,
                                                              log=logfile)
-                    log = subprocess.Popen(
-                        command, stdout=subprocess.PIPE, shell=True)
-                    (log_output, _) = log.communicate()
-                    log.wait()
-                    log_output = str(log_output, 'latin-1')
-                else:
-                    log_output = 404
+
+            # Execute command and generate the output to display to the user
+            if command:
+                log = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, shell=True)
+                (log_output, _) = log.communicate()
+                log.wait()
+                log_output = str(log_output, 'latin-1')
+            else:
+                log_output = 404
 
     return render_template('tools/logview.html',
                            form_log_view=form_log_view,
@@ -1302,6 +1324,8 @@ def page_function():
     form_mod_pid_output_lower = forms_pid.PIDModRelayLower()
     form_mod_pid_pwm_raise = forms_pid.PIDModPWMRaise()
     form_mod_pid_pwm_lower = forms_pid.PIDModPWMLower()
+    form_mod_pid_volume_raise = forms_pid.PIDModVolumeRaise()
+    form_mod_pid_volume_lower = forms_pid.PIDModVolumeLower()
     form_function = forms_function.FunctionMod()
     form_trigger = forms_trigger.Trigger()
     form_conditional = forms_conditional.Conditional()
@@ -1352,7 +1376,9 @@ def page_function():
                               form_mod_pid_pwm_raise,
                               form_mod_pid_pwm_lower,
                               form_mod_pid_output_raise,
-                              form_mod_pid_output_lower)
+                              form_mod_pid_output_lower,
+                              form_mod_pid_volume_raise,
+                              form_mod_pid_volume_lower                              )
         elif form_mod_pid_base.pid_delete.data:
             utils_pid.pid_del(form_mod_pid_base.function_id.data)
         elif form_mod_pid_base.order_up.data:
@@ -1474,18 +1500,21 @@ def page_function():
     dict_measurements = add_custom_measurements(Measurement.query.all())
     dict_units = add_custom_units(Unit.query.all())
 
-    custom_options_values_controllers = parse_custom_option_values(custom_controllers)
+    dict_controllers = parse_controller_information()
+    dict_outputs = parse_output_information()
+
+    custom_options_values_controllers = parse_custom_option_values(
+        custom_controllers, dict_controller=dict_controllers)
 
     choices_functions = []
 
     for each_function in FUNCTIONS:
         choices_functions.append((each_function[0], each_function[1]))
 
-    dict_controllers = parse_controller_information()
-
     choices_custom_controllers = utils_general.choices_custom_controllers()
     choices_input = utils_general.choices_inputs(
         input_dev, dict_units, dict_measurements)
+    choices_input_devices = utils_general.choices_input_devices(input_dev)
     choices_math = utils_general.choices_maths(
         math, dict_units, dict_measurements)
     choices_output = utils_general.choices_outputs(
@@ -1596,6 +1625,7 @@ def page_function():
                            choices_custom_controllers=choices_custom_controllers,
                            choices_functions=choices_functions,
                            choices_input=choices_input,
+                           choices_input_devices=choices_input_devices,
                            choices_math=choices_math,
                            choices_output=choices_output,
                            choices_pid=choices_pid,
@@ -1607,6 +1637,7 @@ def page_function():
                            custom_controllers=custom_controllers,
                            custom_options_values_controllers=custom_options_values_controllers,
                            dict_controllers=dict_controllers,
+                           dict_outputs=dict_outputs,
                            display_order_function=display_order_function,
                            form_base=form_base,
                            form_conditional=form_conditional,
@@ -1620,6 +1651,8 @@ def page_function():
                            form_mod_pid_pwm_lower=form_mod_pid_pwm_lower,
                            form_mod_pid_output_raise=form_mod_pid_output_raise,
                            form_mod_pid_output_lower=form_mod_pid_output_lower,
+                           form_mod_pid_volume_raise=form_mod_pid_volume_raise,
+                           form_mod_pid_volume_lower=form_mod_pid_volume_lower,
                            form_trigger=form_trigger,
                            function_action_info=FUNCTION_ACTION_INFO,
                            function_dev=function_dev,
@@ -1631,7 +1664,7 @@ def page_function():
                            method=method,
                            names_function=names_function,
                            output=output,
-                           OUTPUTS_PWM=OUTPUTS_PWM,
+                           output_types=output_types(),
                            pid=pid,
                            sunrise_set_calc=sunrise_set_calc,
                            table_input=Input,
@@ -1651,8 +1684,7 @@ def page_output():
     output = Output.query.all()
     user = User.query.all()
 
-    display_order_output = csv_to_list_of_str(
-        DisplayOrder.query.first().output)
+    dict_outputs = parse_output_information()
 
     form_base = forms_output.DataBase()
     form_add_output = forms_output.OutputAdd()
@@ -1665,30 +1697,36 @@ def page_output():
 
         # Reorder
         if form_base.reorder.data:
-            if form_base.reorder_type.data == 'input':
-                mod_order = DisplayOrder.query.first()
-                mod_order.output = list_to_csv(form_base.list_visible_elements.data)
-                db.session.commit()
-                display_order_output = csv_to_list_of_str(DisplayOrder.query.first().output)
+            mod_order = DisplayOrder.query.first()
+            mod_order.output = list_to_csv(form_base.list_visible_elements.data)
+            db.session.commit()
 
-        if form_add_output.output_add.data:
+        elif form_add_output.output_add.data:
             unmet_dependencies = utils_output.output_add(form_add_output)
         elif form_mod_output.save.data:
-            utils_output.output_mod(form_mod_output)
+            utils_output.output_mod(form_mod_output, request.form)
         elif form_mod_output.delete.data:
             utils_output.output_del(form_mod_output)
-        elif form_mod_output.order_up.data:
-            utils_output.output_reorder(form_mod_output.output_id.data,
-                                        display_order_output, 'up')
-        elif form_mod_output.order_down.data:
-            utils_output.output_reorder(form_mod_output.output_id.data,
-                                        display_order_output, 'down')
+
+        # Custom action
+        else:
+            utils_general.custom_action(
+                "Output", dict_outputs, form_mod_output.output_id.data, request.form)
 
         if unmet_dependencies:
-            return redirect(url_for('routes_admin.admin_dependencies',
-                                    device=form_add_output.output_type.data.split(',')[0]))
+            return redirect(url_for(
+                'routes_admin.admin_dependencies',
+                device=form_add_output.output_type.data.split(',')[0]))
         else:
             return redirect(url_for('routes_page.page_output'))
+
+    custom_options_values_outputs = parse_custom_option_values(
+        output, dict_controller=dict_outputs)
+
+    custom_actions = {}
+    for each_output in output:
+        if 'custom_actions' in dict_outputs[each_output.output_type]:
+            custom_actions[each_output.output_type] = True
 
     # Create dict of Input names
     names_output = {}
@@ -1707,8 +1745,14 @@ def page_output():
         output_templates.extend(file_names)
         break
 
+    display_order_output = csv_to_list_of_str(
+        DisplayOrder.query.first().output)
+
     return render_template('pages/output.html',
                            camera=camera,
+                           custom_actions=custom_actions,
+                           custom_options_values_outputs=custom_options_values_outputs,
+                           dict_outputs=dict_outputs,
                            display_order_output=display_order_output,
                            form_base=form_base,
                            form_add_output=form_add_output,
@@ -1716,10 +1760,8 @@ def page_output():
                            lcd=lcd,
                            misc=misc,
                            names_output=names_output,
-                           outputs=OUTPUTS,
-                           output_info=OUTPUT_INFO,
                            output=output,
-                           OUTPUTS_PWM=OUTPUTS_PWM,
+                           output_types=output_types(),
                            output_templates=output_templates,
                            user=user)
 
@@ -1757,6 +1799,8 @@ def page_data():
     form_mod_verification = forms_math.MathModVerification()
     form_mod_misc = forms_math.MathModMisc()
 
+    dict_inputs = parse_input_information()
+
     if request.method == 'POST':
         unmet_dependencies = None
         if not utils_general.user_has_permission('edit_controllers'):
@@ -1768,15 +1812,14 @@ def page_data():
                 mod_order = DisplayOrder.query.first()
                 mod_order.inputs = list_to_csv(form_base.list_visible_elements.data)
                 db.session.commit()
-                display_order_input = csv_to_list_of_str(DisplayOrder.query.first().inputs)
             elif form_base.reorder_type.data == 'math':
                 mod_order = DisplayOrder.query.first()
                 mod_order.math = list_to_csv(form_base.list_visible_elements.data)
                 db.session.commit()
-                display_order_math = csv_to_list_of_str(DisplayOrder.query.first().math)
+            flash("Reorder Complete", "success")
 
         # Misc Input
-        if form_mod_input.input_acquire_measurements.data:
+        elif form_mod_input.input_acquire_measurements.data:
             utils_input.force_acquire_measurements(form_mod_input.input_id.data)
 
         # Add Input
@@ -1846,14 +1889,24 @@ def page_data():
         elif form_mod_math.math_deactivate.data:
             utils_math.math_deactivate(form_mod_math)
 
+        # Custom action
+        else:
+            utils_general.custom_action(
+                "Input", dict_inputs, form_mod_input.input_id.data, request.form)
+
         if unmet_dependencies:
             return redirect(url_for('routes_admin.admin_dependencies',
                                     device=form_add_input.input_type.data.split(',')[0]))
         else:
             return redirect(url_for('routes_page.page_data'))
 
-    dict_inputs = parse_input_information()
-    custom_options_values_inputs = parse_custom_option_values(input_dev)
+    custom_options_values_inputs = parse_custom_option_values(
+        input_dev, dict_controller=dict_inputs)
+
+    custom_actions = {}
+    for each_input in input_dev:
+        if 'custom_actions' in dict_inputs[each_input.device]:
+            custom_actions[each_input.device] = True
 
     # Generate dict that incorporate user-added measurements/units
     dict_units = add_custom_units(unit)
@@ -1913,7 +1966,9 @@ def page_data():
     if os.path.isdir(PATH_1WIRE):
         for each_name in os.listdir(PATH_1WIRE):
             if 'bus' not in each_name and '-' in each_name:
-                devices_1wire_w1thermsensor.append(each_name.split('-')[1])
+                devices_1wire_w1thermsensor.append(
+                    {'name': each_name, 'value': each_name.split('-')[1]}
+                )
 
     # Add 1-wire devices from ow-shell (if installed)
     devices_1wire_ow_shell = []
@@ -1932,6 +1987,15 @@ def page_data():
         except Exception:
             logger.error("Error finding 1-wire devices with 'owdir'")
 
+    # Find FTDI devices
+    ftdi_devices = []
+    if not current_app.config['TESTING']:
+        for each_input in input_dev:
+            if each_input.interface == "FTDI":
+                from mycodo.devices.atlas_scientific_ftdi import get_ftdi_device_list
+                ftdi_devices = get_ftdi_device_list()
+                break
+
     return render_template('pages/data.html',
                            and_=and_,
                            choices_input=choices_input,
@@ -1940,8 +2004,8 @@ def page_data():
                            choices_measurement=choices_measurement,
                            choices_measurements_units=choices_measurements_units,
                            choices_unit=choices_unit,
+                           custom_actions=custom_actions,
                            custom_options_values_inputs=custom_options_values_inputs,
-                           device_info=parse_input_information(),
                            dict_inputs=dict_inputs,
                            dict_measurements=dict_measurements,
                            dict_units=dict_units,
@@ -1962,13 +2026,14 @@ def page_data():
                            form_mod_math_measurement=form_mod_math_measurement,
                            form_mod_verification=form_mod_verification,
                            form_mod_misc=form_mod_misc,
+                           ftdi_devices=ftdi_devices,
                            input_templates=input_templates,
                            math_info=MATH_INFO,
                            math_templates=math_templates,
                            names_input=names_input,
                            names_math=names_math,
                            output=output,
-                           OUTPUTS_PWM=OUTPUTS_PWM,
+                           output_types=output_types(),
                            pid=pid,
                            table_conversion=Conversion,
                            table_device_measurements=DeviceMeasurements,
@@ -2171,7 +2236,7 @@ def page_usage():
                            misc=misc,
                            output=output,
                            output_stats=output_stats,
-                           OUTPUTS_PWM=OUTPUTS_PWM,
+                           output_types=output_types(),
                            picker_end=picker_end,
                            picker_start=picker_start,
                            timestamp=time.strftime("%c"))
@@ -2213,9 +2278,13 @@ def dict_custom_colors():
         ]
 
     color_count = OrderedDict()
-    try:
-        graph = Widget.query.all()
-        for each_graph in graph:
+    graph = Widget.query.all()
+    for each_graph in graph:
+        # Only process graph widget types
+        if each_graph.graph_type != 'graph':
+            continue
+
+        try:
             # Get current saved colors
             if each_graph.custom_colors:  # Split into list
                 colors = each_graph.custom_colors.split(',')
@@ -2242,9 +2311,11 @@ def dict_custom_colors():
                     device_measurement = DeviceMeasurements.query.filter(
                         DeviceMeasurements.unique_id == input_measure_id).first()
                     if device_measurement:
+                        measurement_name = device_measurement.name
                         conversion = Conversion.query.filter(
                             Conversion.unique_id == device_measurement.conversion_id).first()
                     else:
+                        measurement_name = None
                         conversion = None
                     channel, unit, measurement = return_measurement_info(
                         device_measurement, conversion)
@@ -2273,7 +2344,7 @@ def dict_custom_colors():
                             'channel': channel,
                             'unit': unit,
                             'measure': measurement,
-                            'measure_name': device_measurement.name,
+                            'measure_name': measurement_name,
                             'color': color,
                             'disable_data_grouping': disable_data_grouping})
                         index += 1
@@ -2288,9 +2359,11 @@ def dict_custom_colors():
                     device_measurement = DeviceMeasurements.query.filter(
                         DeviceMeasurements.unique_id == math_measure_id).first()
                     if device_measurement:
+                        measurement_name = device_measurement.name
                         conversion = Conversion.query.filter(
                             Conversion.unique_id == device_measurement.conversion_id).first()
                     else:
+                        measurement_name = None
                         conversion = None
                     channel, unit, measurement = return_measurement_info(
                         device_measurement, conversion)
@@ -2319,7 +2392,54 @@ def dict_custom_colors():
                             'channel': channel,
                             'unit': unit,
                             'measure': measurement,
-                            'measure_name': device_measurement.name,
+                            'measure_name': measurement_name,
+                            'color': color,
+                            'disable_data_grouping': disable_data_grouping})
+                        index += 1
+                index_sum += index
+
+            if each_graph.output_ids:
+                index = 0
+                for each_set in each_graph.output_ids.split(';'):
+                    output_unique_id = each_set.split(',')[0]
+                    output_measure_id = each_set.split(',')[1]
+
+                    device_measurement = DeviceMeasurements.query.filter(
+                        DeviceMeasurements.unique_id == output_measure_id).first()
+                    if device_measurement:
+                        measurement_name = device_measurement.name
+                        conversion = Conversion.query.filter(
+                            Conversion.unique_id == device_measurement.conversion_id).first()
+                    else:
+                        measurement_name = None
+                        conversion = None
+                    channel, unit, measurement = return_measurement_info(
+                        device_measurement, conversion)
+
+                    output = Output.query.filter_by(
+                        unique_id=output_unique_id).first()
+
+                    if (index < len(each_graph.output_ids.split(';')) and
+                            len(colors) > index_sum + index):
+                        color = colors[index_sum + index]
+                    else:
+                        color = '#FF00AA'
+
+                    # Data grouping
+                    disable_data_grouping = False
+                    if output_measure_id in each_graph.disable_data_grouping:
+                        disable_data_grouping = True
+
+                    if output is not None:
+                        total.append({
+                            'unique_id': output_unique_id,
+                            'measure_id': output_measure_id,
+                            'type': 'Output',
+                            'name': output.name,
+                            'channel': channel,
+                            'unit': unit,
+                            'measure': measurement,
+                            'measure_name': measurement_name,
                             'color': color,
                             'disable_data_grouping': disable_data_grouping})
                         index += 1
@@ -2334,9 +2454,11 @@ def dict_custom_colors():
                     device_measurement = DeviceMeasurements.query.filter(
                         DeviceMeasurements.unique_id == pid_measure_id).first()
                     if device_measurement:
+                        measurement_name = device_measurement.name
                         conversion = Conversion.query.filter(
                             Conversion.unique_id == device_measurement.conversion_id).first()
                     else:
+                        measurement_name = None
                         conversion = None
                     channel, unit, measurement = return_measurement_info(
                         device_measurement, conversion)
@@ -2365,94 +2487,11 @@ def dict_custom_colors():
                             'channel': channel,
                             'unit': unit,
                             'measure': measurement,
+                            'measure_name': measurement_name,
                             'color': color,
                             'disable_data_grouping': disable_data_grouping})
                         index += 1
-
-            if each_graph.output_ids:
-                index = 0
-                for each_set in each_graph.output_ids.split(';'):
-                    output_unique_id = each_set.split(',')[0]
-                    output_measure_id = each_set.split(',')[1]
-
-                    device_measurement = DeviceMeasurements.query.filter(
-                        DeviceMeasurements.unique_id == output_measure_id).first()
-                    if device_measurement:
-                        conversion = Conversion.query.filter(
-                            Conversion.unique_id == device_measurement.conversion_id).first()
-                    else:
-                        conversion = None
-                    channel, unit, measurement = return_measurement_info(
-                        device_measurement, conversion)
-
-                    output = Output.query.filter_by(
-                        unique_id=output_unique_id).first()
-
-                    if (index < len(each_graph.output_ids.split(';')) and
-                            len(colors) > index_sum + index):
-                        color = colors[index_sum + index]
-                    else:
-                        color = '#FF00AA'
-
-                    # Data grouping
-                    disable_data_grouping = False
-                    if output_measure_id in each_graph.disable_data_grouping:
-                        disable_data_grouping = True
-
-                    if output is not None:
-                        total.append({
-                            'unique_id': output_unique_id,
-                            'measure_id': output_measure_id,
-                            'type': 'Output',
-                            'name': output.name,
-                            'channel': channel,
-                            'unit': unit,
-                            'measure': measurement,
-                            'color': color,
-                            'disable_data_grouping': disable_data_grouping})
-                        index += 1
-
-            # if each_graph.output_ids:
-            #     index = 0
-            #     for each_set in each_graph.output_ids.split(';'):
-            #         output_unique_id = each_set.split(',')[0]
-            #         output_measure_id = each_set.split(',')[1]
-            #
-            #         device_measurement = Output.query.filter_by(
-            #             unique_id=output_unique_id).first()
-            #         if device_measurement:
-            #             conversion = Conversion.query.filter(
-            #                 Conversion.unique_id == device_measurement.conversion_id).first()
-            #         else:
-            #             conversion = None
-            #         channel, unit, measurement = return_measurement_info(
-            #             device_measurement, conversion)
-            #
-            #         # Custom color
-            #         if (index < len(each_graph.output_ids.split(',')) and
-            #                 len(colors) > index_sum + index):
-            #             color = colors[index_sum + index]
-            #         else:
-            #             color = '#FF00AA'
-            #
-            #         # Data grouping
-            #         disable_data_grouping = False
-            #         if output_measure_id in each_graph.disable_data_grouping:
-            #             disable_data_grouping = True
-            #
-            #         if device_measurement is not None:
-            #             total.append({
-            #                 'unique_id': output_unique_id,
-            #                 'measure_id': output_measure_id,
-            #                 'type': 'Output',
-            #                 'name': device_measurement.name,
-            #                 'channel': channel,
-            #                 'unit': unit,
-            #                 'measure': measurement,
-            #                 'color': color,
-            #                 'disable_data_grouping': disable_data_grouping})
-            #             index += 1
-            #     index_sum += index
+                index_sum += index
 
             if each_graph.note_tag_ids:
                 index = 0
@@ -2470,15 +2509,24 @@ def dict_custom_colors():
                     if device_measurement is not None:
                         total.append({
                             'unique_id': tag_unique_id,
+                            'measure_id': None,
                             'type': 'Tag',
                             'name': device_measurement.name,
-                            'color': color})
+                            'channel': None,
+                            'unit': None,
+                            'measure': None,
+                            'measure_name': None,
+                            'color': color,
+                            'disable_data_grouping': None
+                        })
                         index += 1
                 index_sum += index
 
             color_count.update({each_graph.unique_id: total})
-    except IndexError:
-        pass
+        except IndexError:
+            logger.exception("Index")
+        except Exception:
+            logger.exception("Exception")
 
     return color_count
 

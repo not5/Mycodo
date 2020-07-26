@@ -58,6 +58,229 @@ if __name__ == "__main__":
         #         error.append(msg)
         #         print(msg)
 
+        elif each_revision == '4d3258ef5864':
+            # The post-script for 4ea0a59dee2b didn't work to change minute to s
+            # This one works
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.databases.models import DeviceMeasurements
+                from mycodo.databases.models import Output
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for each_output in session.query(Output).all():
+                        if each_output.output_type == 'atlas_ezo_pmp':
+                            measurements = session.query(DeviceMeasurements).filter(
+                                DeviceMeasurements.device_id == each_output.unique_id).all()
+                            for meas in measurements:
+                                if meas.unit == 'minute':
+                                    meas.unit = 's'
+                                    session.commit()
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
+        elif each_revision == '4ea0a59dee2b':
+            # Only LCDs with I2C interface were supported until this revision.
+            # "interface" column added in this revision.
+            # Sets all current interfaces to I2C.
+            # Atlas Scientific pump output duration measurements are set to minute.
+            # Change unit minute to the SI unit second, like other outputs.
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.databases.models import DeviceMeasurements
+                from mycodo.databases.models import LCD
+                from mycodo.databases.models import Output
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for meas in session.query(DeviceMeasurements).all():
+                        if meas.measurement == 'acceleration_g_force':
+                            meas.measurement = 'acceleration'
+                        elif meas.measurement == 'acceleration_x_g_force':
+                            meas.measurement = 'acceleration_x'
+                        elif meas.measurement == 'acceleration_y_g_force':
+                            meas.measurement = 'acceleration_y'
+                        elif meas.measurement == 'acceleration_z_g_force':
+                            meas.measurement = 'acceleration_z'
+                        session.commit()
+
+                    outputs = session.query(Output).filter(
+                        Output.output_type == 'atlas_ezo_pmp').all()
+                    for each_output in outputs:
+                        measurements = session.query(DeviceMeasurements).filter(
+                            DeviceMeasurements.device_id == each_output.unique_id).all()
+                        for meas in measurements:
+                            if meas.unit == 'minute':
+                                meas.unit = 's'
+                                session.commit()
+
+                    for lcd in session.query(LCD).all():
+                        lcd.interface = 'I2C'
+                        session.commit()
+
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
+        elif each_revision == 'af5891792291':
+            # Set the output_type for PID controller outputs
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.utils.outputs import parse_output_information
+                from mycodo.databases.models import DeviceMeasurements
+                from mycodo.databases.models import Output
+                from mycodo.databases.models import PID
+
+                dict_outputs = parse_output_information()
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for each_pid in session.query(PID).all():
+                        try:
+                            new_measurement = DeviceMeasurements()
+                            new_measurement.name = "Output (Volume)"
+                            new_measurement.device_id = each_pid.unique_id
+                            new_measurement.measurement = 'volume'
+                            new_measurement.unit = 'ml'
+                            new_measurement.channel = 8
+                            session.add(new_measurement)
+
+                            if each_pid.raise_output_id:
+                                output_raise = session.query(Output).filter(
+                                    Output.unique_id == each_pid.raise_output_id).first()
+                                if output_raise:  # Use first output type listed (default)
+                                    each_pid.raise_output_type = dict_outputs[output_raise.output_type]['output_types'][0]
+                            if each_pid.lower_output_id:
+                                output_lower = session.query(Output).filter(
+                                    Output.unique_id == each_pid.lower_output_id).first()
+                                if output_lower:  # Use first output type listed (default)
+                                    each_pid.lower_output_type = dict_outputs[output_lower.output_type]['output_types'][0]
+                            session.commit()
+                        except:
+                            msg = "ERROR-1: post-alembic revision {}: {}".format(
+                                each_revision, traceback.format_exc())
+                            error.append(msg)
+                            print(msg)
+
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
+        elif each_revision == '561621f634cb':
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.databases.models import DeviceMeasurements
+                from mycodo.databases.models import Output
+                from mycodo.utils.outputs import parse_output_information
+
+                dict_outputs = parse_output_information()
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for each_output in session.query(Output).all():
+
+                        if not session.query(DeviceMeasurements).filter(
+                                DeviceMeasurements.device_id == each_output.unique_id).first():
+                            # No output device measurements exist. Need to create them.
+                            if ('measurements_dict' in dict_outputs[each_output.output_type] and
+                                    dict_outputs[each_output.output_type]['measurements_dict'] != []):
+                                for each_channel in dict_outputs[each_output.output_type]['measurements_dict']:
+                                    measure_info = dict_outputs[each_output.output_type]['measurements_dict'][each_channel]
+                                    new_measurement = DeviceMeasurements()
+                                    if 'name' in measure_info:
+                                        new_measurement.name = measure_info['name']
+                                    new_measurement.device_id = each_output.unique_id
+                                    new_measurement.measurement = measure_info['measurement']
+                                    new_measurement.unit = measure_info['unit']
+                                    new_measurement.channel = each_channel
+                                    session.add(new_measurement)
+
+                        session.commit()
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
+        elif each_revision == '61a0d0568d24':
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.databases.models import Role
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for role in session.query(Role).all():
+                        if role.name in ['Kiosk', 'Guest']:
+                            role.reset_password = False
+                        else:
+                            role.reset_password = True
+                        session.commit()
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
+        elif each_revision == 'f5b77ef5f17c':
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.databases.models import SMTP
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for smtp in session.query(SMTP).all():
+                        error = []
+                        if smtp.ssl:
+                            smtp.protocol = 'ssl'
+                            if smtp.port == 465:
+                                smtp.port = None
+                        elif not smtp.ssl:
+                            smtp.protocol = 'tls'
+                            if smtp.port == 587:
+                                smtp.port = None
+                        else:
+                            smtp.protocol = 'unencrypted'
+                        if not error:
+                            session.commit()
+                        else:
+                            for each_error in error:
+                                print("Error: {}".format(each_error))
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
+        elif each_revision == '0a8a5eb1be4b':
+            print("Executing post-alembic code for revision {}".format(
+                each_revision))
+            try:
+                from mycodo.databases.models import Input
+
+                with session_scope(MYCODO_DB_PATH) as session:
+                    for each_input in session.query(Input).all():
+                        error = []
+                        if each_input.device == 'DS18B20' and 'library,ow_shell' in each_input.custom_options:
+                            each_input.device = 'DS18B20_OWS'
+                        each_input.custom_options = ''
+                        if not error:
+                            session.commit()
+                        else:
+                            for each_error in error:
+                                print("Error: {}".format(each_error))
+            except Exception:
+                msg = "ERROR: post-alembic revision {}: {}".format(
+                    each_revision, traceback.format_exc())
+                error.append(msg)
+                print(msg)
+
         elif each_revision == '55aca47c2362':
             print("Executing post-alembic code for revision {}".format(
                 each_revision))
@@ -115,8 +338,12 @@ if __name__ == "__main__":
             print("Executing post-alembic code for revision {}".format(
                 each_revision))
             try:
+                from mycodo.databases.models import Actions
                 from mycodo.databases.models import Conditional
-                from databases.alembic_post_utils import save_conditional_code
+                from mycodo.utils.conditional import save_conditional_code
+
+                conditions = conditional_sess.query(ConditionalConditions).all()
+                actions = conditional_sess.query(Actions).all()
 
                 with session_scope(MYCODO_DB_PATH) as cond_sess:
                     for each_cond in cond_sess.query(Conditional).all():
@@ -131,7 +358,12 @@ if __name__ == "__main__":
                             for each_error in error:
                                 print("Error: {}".format(each_error))
 
-                save_conditional_code()
+                        save_conditional_code(
+                            [],
+                            each_cond.conditional_statement,
+                            each_cond.unique_is,
+                            conditions,
+                            actions)
             except Exception:
                 msg = "ERROR: post-alembic revision {}: {}".format(
                     each_revision, traceback.format_exc())
@@ -234,23 +466,33 @@ if __name__ == "__main__":
             print("Executing post-alembic code for revision {}".format(
                 each_revision))
             try:
+                from mycodo.databases.models import Actions
                 from mycodo.databases.models import Conditional
                 from mycodo.databases.models import Input
                 from mycodo.inputs.python_code import execute_at_creation
-                from databases.alembic_post_utils import save_conditional_code
+                from mycodo.utils.conditional import save_conditional_code
 
-                save_conditional_code()
+                conditions = conditional_sess.query(ConditionalConditions).all()
+                actions = conditional_sess.query(Actions).all()
 
                 with session_scope(MYCODO_DB_PATH) as conditional_sess:
-                    with session_scope(MYCODO_DB_PATH) as input_sess:
-                        for each_input in input_sess.query(Input).all():
-                            if each_input.device == 'PythonCode' and each_input.cmd_command:
-                                try:
-                                    execute_at_creation(each_input.unique_id,
-                                                        each_input.cmd_command,
-                                                        None)
-                                except Exception as msg:
-                                    print("Exception: {}".format(msg))
+                    for each_conditional in conditional_sess.query(Conditional).all():
+                        save_conditional_code(
+                            [],
+                            each_conditional.conditional_statement,
+                            each_conditional.unique_is,
+                            conditions,
+                            actions)
+
+                with session_scope(MYCODO_DB_PATH) as input_sess:
+                    for each_input in input_sess.query(Input).all():
+                        if each_input.device == 'PythonCode' and each_input.cmd_command:
+                            try:
+                                execute_at_creation(each_input.unique_id,
+                                                    each_input.cmd_command,
+                                                    None)
+                            except Exception as msg:
+                                print("Exception: {}".format(msg))
             except Exception:
                 msg = "ERROR: post-alembic revision {}: {}".format(
                     each_revision, traceback.format_exc())
@@ -261,10 +503,14 @@ if __name__ == "__main__":
             print("Executing post-alembic code for revision {}".format(
                 each_revision))
             try:
+                from mycodo.databases.models import Actions
                 from mycodo.databases.models import Conditional
                 from mycodo.databases.models import Input
                 from mycodo.inputs.python_code import execute_at_creation
-                from databases.alembic_post_utils import save_conditional_code
+                from mycodo.utils.conditional import save_conditional_code
+
+                conditions = conditional_sess.query(ConditionalConditions).all()
+                actions = conditional_sess.query(Actions).all()
 
                 # Conditionals
                 with session_scope(MYCODO_DB_PATH) as conditional_sess:
@@ -289,9 +535,14 @@ if __name__ == "__main__":
                             except Exception as msg:
                                 print("Exception: {}".format(msg))
 
-                    conditional_sess.commit()
+                        conditional_sess.commit()
 
-                    save_conditional_code()
+                        save_conditional_code(
+                            [],
+                            each_conditional.conditional_statement,
+                            each_conditional.unique_is,
+                            conditions,
+                            actions)
 
                 # Inputs
                 with session_scope(MYCODO_DB_PATH) as input_sess:

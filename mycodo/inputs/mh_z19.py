@@ -1,6 +1,7 @@
 # coding=utf-8
 import time
 
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -36,16 +37,19 @@ INPUT_INFORMATION = {
     'input_name_unique': 'MH_Z19',
     'input_manufacturer': 'Winsen',
     'input_name': 'MH-Z19',
+    'input_library': 'serial',
     'measurements_name': 'CO2',
     'measurements_dict': measurements_dict,
+    'url_datasheet': 'https://www.winsen-sensor.com/d/files/PDF/Infrared%20Gas%20Sensor/NDIR%20CO2%20SENSOR/MH-Z19%20CO2%20Ver1.0.pdf',
+
+    'message': 'This is the version of the sensor that does not include the ability to conduct '
+               'automatic baseline correction (ABC). See the B version of the sensor if you wish to use ABC.',
 
     'options_enabled': [
         'uart_location',
         'uart_baud_rate',
-        'custom_options',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -54,13 +58,6 @@ INPUT_INFORMATION = {
     'uart_baud_rate': 9600,
 
     'custom_options': [
-        {
-            'id': 'abc_enable',
-            'type': 'bool',
-            'default_value': False,
-            'name': lazy_gettext('Enable ABC'),
-            'phrase': lazy_gettext('Enable automatic baseline correction (ABC)')
-        },
         {
             'id': 'measure_range',
             'type': 'select',
@@ -76,6 +73,32 @@ INPUT_INFORMATION = {
             'name': lazy_gettext('Measurement Range'),
             'phrase': lazy_gettext('Set the measuring range of the sensor')
         }
+    ],
+
+    'custom_actions_message': 'Zero point calibration: activate the sensor in a 400 ppmv CO2 environment, allow to run '
+                              'for 20 minutes, then press the Calibrate Zero Point button.<br>Span point calibration: '
+                              'activate the sensor in an environment with a stable CO2 concentration in the 1000 to '
+                              '2000 ppmv range, allow to run for 20 minutes, enter the ppmv value in the Span Point '
+                              '(ppmv) input field, then press the Calibrate Span Point button. If running a span '
+                              'point calibration, run a zero point calibration first.',
+    'custom_actions': [
+        {
+            'id': 'calibrate_zero_point',
+            'type': 'button',
+            'name': lazy_gettext('Calibrate Zero Point')
+        },
+        {
+            'id': 'span_point_value_ppmv',
+            'type': 'integer',
+            'default_value': 1500,
+            'name': lazy_gettext('Span Point (ppmv)'),
+            'phrase': 'The ppmv concentration for a span point calibration'
+        },
+        {
+            'id': 'calibrate_span_point',
+            'type': 'button',
+            'name': lazy_gettext('Calibrate Span Point')
+        }
     ]
 }
 
@@ -86,84 +109,71 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        # Initialize custom options
+        self.ser = None
+        self.measuring = None
+        self.calibrating = None
+
         self.measure_range = None
-        self.abc_enable = False
-        # Set custom options
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
         if not testing:
-            import serial
+            self.initialize_input()
 
-            self.uart_location = input_dev.uart_location
-            self.baud_rate = input_dev.baud_rate
+    def initialize_input(self):
+        import serial
 
-            # Check if device is valid
-            self.serial_device = is_device(self.uart_location)
-            if self.serial_device:
-                try:
-                    self.ser = serial.Serial(
-                        self.serial_device,
-                        baudrate=self.baud_rate,
-                        timeout=1)
-                except serial.SerialException:
-                    self.logger.exception('Opening serial')
-            else:
-                self.logger.error(
-                    'Could not open "{dev}". '
-                    'Check the device location is correct.'.format(
-                        dev=self.uart_location))
+        if is_device(self.input_dev.uart_location):
+            try:
+                self.ser = serial.Serial(
+                    port=self.input_dev.uart_location,
+                    baudrate=self.input_dev.baud_rate,
+                    timeout=1,
+                    writeTimeout=5)
+            except serial.SerialException:
+                self.logger.exception('Opening serial')
+        else:
+            self.logger.error('Could not open "{dev}". Check the device location is correct.'.format(
+                dev=self.input_dev.uart_location))
 
-            if self.abc_enable:
-                self.abcon()
-            else:
-                self.abcoff()
+        if self.measure_range:
+            self.set_measure_range(self.measure_range)
 
-            if self.measure_range:
-                self.set_measure_range(self.measure_range)
-
-            time.sleep(0.1)
+        time.sleep(0.1)
 
     def get_measurement(self):
-        """ Gets the MH-Z19's CO2 concentration in ppmv via UART"""
-        self.return_dict = measurements_dict.copy()
+        """ Gets the MH-Z19's CO2 concentration in ppmv """
+        if not self.ser:
+            self.logger.error("Input not set up")
+            return
 
-        co2 = None
+        self.return_dict = copy.deepcopy(measurements_dict)
 
-        if not self.serial_device:  # Don't measure if device isn't validated
-            return None
+        while self.calibrating:
+            time.sleep(0.1)
+        self.measuring = True
 
-        self.ser.flushInput()
-        self.ser.write(bytearray([0xff, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79]))
-        time.sleep(.01)
-        resp = self.ser.read(9)
+        try:
+            self.ser.flushInput()
+            self.ser.write(bytearray([0xff, 0x01, 0x86, 0x00, 0x00, 0x00, 0x00, 0x00, 0x79]))
+            time.sleep(.01)
+            resp = self.ser.read(9)
 
-        if resp[0] != 0xff or resp[1] != 0x86:
-            self.logger.error("Bad checksum")
-        elif len(resp) >= 4:
-            high = resp[2]
-            low = resp[3]
-            co2 = (high * 256) + low
-        else:
-            self.logger.error("Bad response")
-
-        self.value_set(0, co2)
+            if resp[0] != 0xff or resp[1] != 0x86:
+                self.logger.error("Bad checksum")
+            elif len(resp) >= 4:
+                high = resp[2]
+                low = resp[3]
+                co2 = (high * 256) + low
+                self.value_set(0, co2)
+            else:
+                self.logger.error("Bad response")
+        except:
+            self.logger.exception("get_measurement()")
+        finally:
+            self.measuring = False
 
         return self.return_dict
-
-    def abcoff(self):
-        """
-        Turns off Automatic Baseline Correction feature of "B" type sensor.
-        Should be run once at the beginning of every activation.
-        """
-        self.ser.write(bytearray([0xff, 0x01, 0x79, 0x00, 0x00, 0x00, 0x00, 0x00, 0x86]))
-
-    def abcon(self):
-        """
-        Turns on Automatic Baseline Correction feature of "B" type sensor.
-        """
-        self.ser.write(bytearray([0xff, 0x01, 0x79, 0xa0, 0x00, 0x00, 0x00, 0x00, 0xe6]))
 
     def set_measure_range(self, measure_range):
         """
@@ -181,3 +191,62 @@ class InputModule(AbstractInput):
             self.ser.write(bytearray([0xff, 0x01, 0x99, 0x00, 0x00, 0x00, 0x13, 0x88, 0xcb]))
         else:
             return "out of range"
+
+    def calibrate_span_point(self, args_dict):
+        """
+        Span Point Calibration
+        from https://github.com/UedaTakeyuki/mh-z19
+        """
+        if 'span_point_value_ppmv' not in args_dict:
+            self.logger.error("Cannot conduct span point calibration without a ppmv value")
+            return
+        if not isinstance(args_dict['span_point_value_ppmv'], int):
+            self.logger.error("ppmv value does not represent an integer: '{}', type: {}".format(
+                args_dict['span_point_value_ppmv'], type(args_dict['span_point_value_ppmv'])))
+            return
+
+        while self.measuring:
+            time.sleep(0.1)
+        self.calibrating = True
+
+        try:
+            self.logger.info("Conducting span point calibration with a value of {} ppmv".format(
+                args_dict['span_point_value_ppmv']))
+            b3 = args_dict['span_point_value_ppmv'] // 256
+            b4 = args_dict['span_point_value_ppmv'] % 256
+            c = self.checksum([0x01, 0x88, b3, b4])
+            self.ser.write(bytearray([0xff, 0x01, 0x88, b3, b4, 0x00, 0x0b, 0xb8, c]))
+            time.sleep(0.1)
+        except:
+            self.logger.exception()
+        finally:
+            self.calibrating = False
+        # byte3 = struct.pack('B', b3)
+        # byte4 = struct.pack('B', b4)
+        # request = b"\xff\x01\x88" + byte3 + byte4 + b"\x00\x00\x00" + c
+        # self.ser.write(request)
+
+    def calibrate_zero_point(self, args_dict):
+        """
+        Zero Point Calibration
+        from https://github.com/UedaTakeyuki/mh-z19
+        """
+        while self.measuring:
+            time.sleep(0.1)
+        self.calibrating = True
+
+        try:
+            self.logger.info("Conducting zero point calibration")
+            self.ser.write(bytearray([0xff, 0x01, 0x87, 0x00, 0x00, 0x00, 0x00, 0x00, 0x78]))
+            time.sleep(0.1)
+        except:
+            self.logger.exception()
+        finally:
+            self.calibrating = False
+        # request = b"\xff\x01\x87\x00\x00\x00\x00\x00\x78"
+        # self.ser.write(request)
+
+    @staticmethod
+    def checksum(array):
+        return 0xff - (sum(array) % 0x100) + 1
+        # return struct.pack('B', 0xff - (sum(array) % 0x100) + 1)

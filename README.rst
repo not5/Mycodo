@@ -3,7 +3,7 @@ Mycodo
 
 Environmental Regulation System
 
-Latest version: 8.2.1
+Latest version: 8.6.4
 
 Mycodo is open source software for the Raspberry Pi that couples inputs
 and outputs in interesting ways to sense and manipulate the environment.
@@ -23,7 +23,16 @@ and outputs in interesting ways to sense and manipulate the environment.
 
 `Mycodo on GitHub.io <https://kizniche.github.io/Mycodo/>`__
 
-For technical support discussion, use the `Mycodo Forum <https://kylegabriel.com/forum>`__ and `mycodo.slack.com <https://mycodo.slack.com>`__
+`Mycodo Custom Inputs and Controllers Repository <https://github.com/kizniche/Mycodo-custom>`__
+
+For technical support discussion, use the `Mycodo Forum <https://kylegabriel.com/forum>`__
+
+.. image:: https://kylegabriel.com/projects/wp-content/uploads/sites/3/2020/06/Screenshot_2020-04-25-hydra-Default-Dashboard-Mycodo-8-4-0-dashboard_2.png
+   :target: https://kylegabriel.com/projects/wp-content/uploads/sites/3/2020/06/Screenshot_2020-04-25-hydra-Default-Dashboard-Mycodo-8-4-0-dashboard_2.png
+
+Figure: `Automated Hydroponic System Build <https://kylegabriel.com/projects/2020/06/automated-hydroponic-system-build.html>`__
+
+--------------
 
 .. contents:: Table of Contents
    :depth: 1
@@ -31,20 +40,18 @@ For technical support discussion, use the `Mycodo Forum <https://kylegabriel.com
 Features
 --------
 
--  `Inputs <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#input>`__ that record measurements from a number of places, including sensors, GPIO pin states, analog-to-digital converters, and custom input modules.
--  `Outputs <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#output>`__ that perform actions such as switching GPIO pins high/low, generating pulse-width-modulation, sending information to LCD displays, and executing Linux shell commands and Python code.
--  `Web Interface <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#web-interface>`__ for securely accessing the system using a web browser on your local network or anywhere in the world with an internet connection.
--  `Dashboard <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#dashboard>`__ that display configurable widgets, including interactive live and historical graphs, gauges, output state indicators, text measurements.
--  `Proportional Integral Derivative (PID) controllers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#pid-controller>`__ that regulate environmental conditions with feedback loops utilizing Inputs and Outputs.
--  `Setpoint Tracking <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#methods>`__ for changing a PID controller setpoint over time, for use with things like reptile terrariums, reflow ovens, thermal cyclers, sous-vide cooking, and more.
--  `Conditional Statements <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#conditional>`__ that react to input measurements, manipulate outputs, and execute actions based on user-generated code. This is a very powerful feature that enables custom user-created `conditions <https://en.wikipedia.org/wiki/Conditional_(computer_programming)>`__ for Inputs, Outputs, Actions, and other parts of the system.
--  `Triggers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#trigger>`__ that can trigger actions at periodic intervals (daily, duration, sunrise/sunset, etc.).
--  `Alerts <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#alerts>`__ to notify via email when measurements reach or exceed user-specified thresholds.
--  `Notes <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#notes>`__ to keep track of events, alerts, and other important points in time.
--  `Camera Feed <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#camera>`__ for remote live stream, image capture, or time-lapse photography.
--  `Energy Usage Statistics <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#energy-usage>`__ to calculate and track power consumption and cost over time.
--  `Upgrade System <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#upgrading>`__ to easily upgrade the Mycodo system to the latest release or restore to a previously-backed up version.
--  `Translation <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#translations>`__ to several languages, including English, Chinese, Dutch, German, French, Italian, Norwegian, Portuguese, Russian, Serbian, Spanish, and Swedish.
+-  `Inputs <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#input>`__ that record measurements from sensors, GPIO pin states, analog-to-digital converters, etc. (or create your own `Custom Inputs <#custom-inputs>`__).
+-  `Outputs <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#output>`__ that perform actions such as switching GPIO pins high/low, generating PWM signals, executing shell scripts and Python code, etc. (or create your own `Custom Outputs <#custom-outputs>`__).
+-  `Functions <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#functions>`__ that perform tasks, such as coupling Inputs and Outputs in interesting ways, such as `PID controllers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#pid-controller>`__, `Conditional Controllers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#conditional>`__, `Trigger Controllers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#trigger>`__, to name a few (or create your own `Custom Controllers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#custom-controllers>`__).
+-  `Web Interface <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#web-interface>`__ for securely accessing Mycodo using a web browser on your local network or anywhere in the world with an internet connection, to view and configure the system, which includes several light and dark themes to suit your style.
+-  `Dashboards <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#dashboard>`__ that display configurable widgets, including interactive live and historical graphs, gauges, output state indicators, text measurements, among others.
+-  `Alert Notifications <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#alerts>`__ to send emails when measurements reach or exceed user-specified thresholds, important for knowing immediately when issues arise.
+-  `Setpoint Tracking <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#methods>`__ for changing a PID controller setpoint over time, for use with things like terrariums, reflow ovens, thermal cyclers, sous-vide cooking, and more.
+-  `Notes <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#notes>`__ to record events, alerts, and other important points in time, which can be overlaid on graphs to visualize events with your measurement data.
+-  `Cameras <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#camera>`__ for remote live streaming, image capture, and time-lapse photography.
+-  `Energy Usage Measurement <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#energy-usage>`__ for calculating and tracking power consumption and cost over time.
+-  `Upgrade System <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#upgrading>`__ to easily upgrade the Mycodo system to the latest release to get the newest features or restore to a previously-backed up version.
+-  `Translations <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#translations>`__ that enable the web interface to be presented in different `Languages <https://github.com/kizniche/Mycodo#features>`__.
 
 Uses
 ----
@@ -52,28 +59,38 @@ Uses
 Originally developed to cultivate edible mushrooms, Mycodo has evolved to do much more. Here are a few things that have been done with Mycodo:
 
 My projects
+~~~~~~~~~~~
 
--  `Growing mushrooms <http://kylegabriel.com/projects/2015/04/mushroom-cultivation-revisited.html>`__
--  `Growing plants <https://www.youtube.com/watch?v=QNCx_VE7D-8>`__
--  `Maintaining honey bee apiary homeostasis <https://kylegabriel.com/projects/2015/12/environmentally-controlled-apiary.html>`__
--  `Maintaining humidity in an underground artificial bat cave <https://kylegabriel.com/projects/2015/10/artificial-bat-cave.html>`__
--  `Remote radiation monitoring and mapping <https://kylegabriel.com/projects/2019/08/remote-radiation-monitoring.html>`__
--  `Cooking sous-vide <https://hackaday.io/project/11997-mycodo-environmental-regulation-system/log/45733-sous-vide-pid-tuning-and-the-unexpected-electrical-fire>`__
+-  `Hydroponic System Automation <https://kylegabriel.com/projects/2020/06/automated-hydroponic-system-build.html>`__ (`Archive <http://archive.is/mB2zc>`__)
+-  `Mushroom cultivation <https://kylegabriel.com/projects/2015/04/mushroom-cultivation-revisited.html>`__ (`Archive <http://archive.is/J92Xa>`__)
+-  `Ground-based plant cultivation <https://www.youtube.com/watch?v=QNCx_VE7D-8>`__
+-  `Maintaining honey bee apiary homeostasis <https://kylegabriel.com/projects/2015/12/environmentally-controlled-apiary.html>`__ (`Archive <http://archive.is/RLo6n>`__)
+-  `Maintaining humidity in an underground artificial bat cave <https://kylegabriel.com/projects/2015/10/artificial-bat-cave.html>`__ (`Archive <http://archive.is/QIJ5G>`__)
+-  `Remote radiation monitoring and mapping <https://kylegabriel.com/projects/2019/08/remote-radiation-monitoring.html>`__ (`Archive <http://archive.is/PF44Z>`__)
+-  `Cooking sous-vide <https://hackaday.io/project/11997-mycodo-environmental-regulation-system/log/45733-sous-vide-pid-tuning-and-the-unexpected-electrical-fire>`__ (`Archive <http://archive.is/Mx52U>`__)
+-  `Maintaining a light schedule and regulating humidity <https://fieldstation.kennesaw.edu/summer-days-2020.php#2020_07_16_gabriel_chestnut>`__, ramping from 90 % to 50 % over a 4 week period to acclimatize micropropagated American chestnut plantlets from laboratory to ambient outdoor conditions (`Archive <http://archive.is/Jp60P>`__)
+
+Featured
+~~~~~~~~
+
+.. image:: https://kylegabriel.com/projects/wp-content/uploads/sites/3/2020/07/VID_PROJ_HYDRO_512x288.jpg
+   :target: https://www.youtube.com/watch?v=nyqykZK2Ev4
 
 Projects of others
+~~~~~~~~~~~~~~~~~~
 
 -  Maintaining aquatic systems (e.g. fish, hydroponic, aquaponic)
 -  Maintaining terrarium, herpetarium, and vivarium environments
 -  Incubating young animals and eggs
 -  Aging cheese
--  Dry-aging, curing, and smoking meat
+-  `Dry-aging, curing, and smoking meat <http://www.charcuterie-worst.nl/forum/index.php/topic,425.0.html>`__ (`Archive <http://archive.is/NHKqp>`__)
 -  Fermenting beer, food, and tobacco
 -  Controlling reflow ovens
 -  Culturing microorganisms
--  Treating agricultural waste water
+-  `Treating agricultural waste water <https://projects.sare.org/project-reports/gne17-158/>`__ (`Archive <http://archive.is/enJQs>`__)
 -  ...and more
 
-`Let me know <https://kylegabriel.com/contact/>`__ how you use Mycodo, and I may include it on this list.
+`Let me know <https://kylegabriel.com/contact/>`__ how you use Mycodo and I may include it on this list.
 
 Screenshots
 -----------
@@ -87,21 +104,21 @@ Prerequisites
 ~~~~~~~~~~~~~
 
 -  `Raspberry Pi <https://www.raspberrypi.org>`__ single-board computer (any version: Zero, 1, 2, 3, or 4)
--  `Raspbian OS <https://www.raspberrypi.org/downloads/raspbian/>`__ flashed to a micro SD card
+-  `Raspberry Pi Operating System <https://www.raspberrypi.org/downloads/raspberry-pi-os/>`__ flashed to a micro SD card
 -  An active internet connection
 
-Mycodo has been tested to work with Raspbian Buster Lite (2019-09-26).
+Mycodo has been tested to work with Raspberry Pi OS Lite (2020-05-27), and also the Desktop version if using Mycodo version => 8.6.0.
 
 Install
 ~~~~~~~
 
-Once you have the Raspberry Pi booted into Raspbian with an internet
+Once you have the Raspberry Pi booted into the Raspberry Pi OS with an internet
 connection, run the following command in a terminal to initiate the
 Mycodo install:
 
 .. code:: bash
 
-    curl -L https://raw.githubusercontent.com/kizniche/Mycodo/master/install/install | bash
+    curl -L https://kizniche.github.io/Mycodo/install | bash
 
 
 Install Notes
@@ -112,55 +129,49 @@ output will be created at ``~/Mycodo/install/setup.log``.
 
 If the install is successful, the web user interface should be
 accessible by navigating a web browser to ``https://127.0.0.1/``,
-replacing ``127.0.0.1`` with your Raspberry Pi's IP address. The first
-time you visit this page, you will be prompted to create an admin user.
-You will then be redirected to the login page. Once logged in, check
-that the host name and version number at the top left of the page is
+replacing ``127.0.0.1`` with your Raspberry Pi's IP address. Upon your first visit, you will be prompted to create an admin user before being redirected to the login page. Once logged in, check
+that the time is correct at the top left of the page. Incorrect time can cause a number of issues with measurement storage and retrieval, among others. Also ensure the host name and version number at the top left of the page is
 green, indicating the daemon is running. Red indicates the
-daemon is inactive or unresponsive. Ensure any java-blocking plugins are
+daemon is inactive or unresponsive. Last, ensure any java-blocking plugins of your browser are
 disabled for all parts of the web interface to function properly.
 
-If you receive an unresolvable error during the install, please `create
-an issue <https://github.com/kizniche/Mycodo/issues>`__. If you want to
-try to diagnose the issue yourself, see `Diagnosing
-Issues <#diagnosing-issues>`__.
+If you receive an error during the install that you believe is preventing your system from operating, please `create
+an issue <https://github.com/kizniche/Mycodo/issues>`__ with the install log attached. If you would first like to attempt to
+diagnose the issue yourself, see `Diagnosing Issues <#diagnosing-issues>`__.
 
 A minimal set of anonymous usage statistics are collected to help
 improve development. No identifying information is saved from the
 information that is collected and it is only used to improve Mycodo. No
 other sources will have access to this information. The data collected
-is mainly how much specific features are used, and other similar
-statistics. The data that's collected can be viewed from the 'View
-collected statistics' link in the ``Settings -> General`` page. You may
-opt out from the General Settings page.
+is mainly what and how many features are used, and other similar
+information. The data that's collected can be viewed from the 'View
+collected statistics' link in the ``Settings -> General`` page. There is an
+opt out option on the General Settings page.
 
 Support
 -------
 
-Before making a post to the forum, slack, or issue tracker on github, please read the
+Before making a post to the forum or issue tracker on github, please read the
 `Manual <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst>`__.
 
 Need assistance with Mycodo
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-If you Mycodo is supposedly operating correctly and you would like assistance with how to
+If Mycodo is supposedly operating correctly and you would like assistance with how to
 configure the system or to merely discuss something related to Mycodo, do a search on the
-`Mycodo Forum <https://kylegabriel.com/forum/mycodo/>`__ for a similar discussion. If a pertinent
+`Mycodo Forum <https://kylegabriel.com/forum/mycodo/>`__ for a similar discussion. If a similar
 topic doesn't already exist on the forum, create a new post in the appropriate subforum.
-
-You can also find Mycodo on slack at `mycodo.slack.com <https://mycodo.slack.com>`__.
-
 
 Bug in the Mycodo Software
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If you believe there is a bug in the Mycodo software, first search through the guthub
-`Issues <https://github.com/kizniche/Mycodo/issues>`__ and see if your issue has already
-been discussed or resolved. If your issue is novel, you can create a
+`Issues <https://github.com/kizniche/Mycodo/issues>`__ and see if your issue has already recently
+been discussed or resolved. If your issue is novel or significantly mre recent than a similar one, you should create a
 `New Issue <https://github.com/kizniche/Mycodo/issues/new>`__. When creating a new issue,
 make sure to read all information in the issue template and follow the instructions. Replace
-the template text with the actual information, such as "step 1" under "Steps to Reproduce
-the issue" should be replaced with the actual step to reproduce the issue.
+the template text with the information being requested (e.g. "step 1" under "Steps to Reproduce
+the issue" should be replaced with the actual steps to reproduce the issue). The more information you provide, the easier it is to reproduce and diagnose the issue. If the issue is not able to reproduced because not enough information is provided, it may delay or prevent solving the issue.
 
 Manual
 ------
@@ -176,9 +187,7 @@ The `Mycodo Wiki <https://github.com/kizniche/Mycodo/wiki>`__ also contains usef
 REST API
 --------
 
-The latest API documentation can be found here: `Mycodo API Docs <https://kizniche.github.io/Mycodo/mycodo-api.html>`__
-
-If a new API version is released, older documentation will be provided here.
+The latest API documentation can be found here: `API Information <https://github.com/kizniche/Mycodo/blob/master/mycodo-api.rst>`__ and `API Endpoint Documentation <https://kizniche.github.io/Mycodo/mycodo-api.html>`__.
 
 About PID Control
 -----------------
@@ -191,7 +200,7 @@ temperature, to a desired state (setpoint). A well-tuned PID controller
 can raise to a setpoint quickly, have minimal overshoot, and maintain
 the setpoint with little oscillation.
 
-.. figure:: manual_images/PID-animation.gif
+.. figure:: manual_images/PID-Animation.gif
    :alt: PID Animation
 
 
@@ -212,36 +221,42 @@ and
 `PID Tuning <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#pid-tuning>`__
 sections of the manual for more information.
 
-Supported Inputs
-----------------
+Supported Inputs and Outputs
+----------------------------
 
-All supported Inputs can be found under the
-`Input Devices <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#input-devices>`__
-and `Input Device Details <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#input-device-details>`__
-sections of the manual.
+All supported Inputs, Outputs, and other devices can be found under the
+`Devices <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#devices>`__
+section of the manual.
 
-Additionally, I have another github repository devoted to Custom Inputs that are not included in
-the built-in set. These can be found at `kizniche/Mycodo-custom-inputs <https://github.com/kizniche/Mycodo-custom-inputs>`__.
+Custom Inputs, Outputs, and Controllers
+---------------------------------------
+
+Mycodo supports importing custom Input, Output, and Controller modules. you can find more information about each in the manual under `Custom Inputs <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#custom-inputs>`__, `Custom Outputs <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#custom-outputs>`__, and `Custom Controllers <https://github.com/kizniche/Mycodo/blob/master/mycodo-manual.rst#custom-controllers>`__.
+
+If you would like to add to the list of supported Inputs, Outputs, and Controllers, submit a pull request with the module you created or start a
+`New Issue <https://github.com/kizniche/Mycodo/issues/new?assignees=&labels=&template=feature-request.md&title=>`__.
+
+Additionally, I have another github repository devoted to custom Inputs, Outputs, and Controllers that do not
+necessarily fit with the built-in set and are not included by default with Mycodo, but can be imported.
+These can be found at `kizniche/Mycodo-custom <https://github.com/kizniche/Mycodo-custom>`__.
 
 Donate
 ------
 
-I have always made Mycodo free, and I don't intend on changing that to
-make a profit. However, if you would like to make a donation, you can
-find several options to do so at
-`KyleGabriel.com/donate <http://kylegabriel.com/donate>`__
+I have always made Mycodo free and I don't intend on changing that. However, if you would like to make a donation, you can
+find several options to do so at `KyleGabriel.com/donate <https://kylegabriel.com/donate>`__.
 
 Links
 -----
 
-Thanks for using and supporting Mycodo, however it may not be the latest
-version or it may have been altered if not obtained through an official
+Thanks for using and supporting Mycodo, however depending where you found this documentation, you may not have the latest
+version or it may have been altered, if not obtained through an official
 distribution site. You should be able to find the latest version on
-github or my web site.
+github or my web site at the following links.
 
 https://github.com/kizniche/Mycodo
 
-http://KyleGabriel.com
+https://KyleGabriel.com
 
 License
 -------
@@ -554,8 +569,8 @@ Mycodo最初设计用于种植可食用的蘑菇，已经发展到能够做更�
    :target: https://www.codacy.com/app/Mycodo/Mycodo?utm_source=github.com&utm_medium=referral&utm_content=kizniche/Mycodo&utm_campaign=Badge_Grade
 .. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.824199.svg
    :target: https://doi.org/10.5281/zenodo.824199
-.. |Mycodo| image:: http://kylegabriel.com/projects/wp-content/uploads/sites/3/2016/05/Mycodo-3.6.0-tango-Graph-2016-05-21-11-15-26.png
-   :target: http://kylegabriel.com/projects/
+.. |Mycodo| image:: https://kylegabriel.com/projects/wp-content/uploads/sites/3/2016/05/Mycodo-3.6.0-tango-Graph-2016-05-21-11-15-26.png
+   :target: https://kylegabriel.com/projects/
 
 Thanks
 ------

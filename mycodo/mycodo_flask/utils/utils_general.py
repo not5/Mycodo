@@ -21,8 +21,6 @@ from mycodo.config import FUNCTION_INFO
 from mycodo.config import LCD_INFO
 from mycodo.config import MATH_INFO
 from mycodo.config import METHOD_INFO
-from mycodo.config import OUTPUTS_PWM
-from mycodo.config import OUTPUT_INFO
 from mycodo.config import PATH_CAMERAS
 from mycodo.config_devices_units import MEASUREMENTS
 from mycodo.config_devices_units import UNITS
@@ -31,19 +29,21 @@ from mycodo.databases.models import Camera
 from mycodo.databases.models import Conditional
 from mycodo.databases.models import Conversion
 from mycodo.databases.models import CustomController
-from mycodo.databases.models import Widget
 from mycodo.databases.models import Dashboard
 from mycodo.databases.models import DeviceMeasurements
 from mycodo.databases.models import Input
 from mycodo.databases.models import LCD
 from mycodo.databases.models import Math
+from mycodo.databases.models import Output
 from mycodo.databases.models import PID
 from mycodo.databases.models import Role
 from mycodo.databases.models import Trigger
 from mycodo.databases.models import User
+from mycodo.databases.models import Widget
 from mycodo.mycodo_flask.extensions import db
 from mycodo.utils.controllers import parse_controller_information
 from mycodo.utils.inputs import parse_input_information
+from mycodo.utils.outputs import parse_output_information
 from mycodo.utils.system_pi import add_custom_measurements
 from mycodo.utils.system_pi import add_custom_units
 from mycodo.utils.system_pi import dpkg_package_exists
@@ -61,8 +61,18 @@ logger = logging.getLogger(__name__)
 def custom_options_return_string(error, dict_options, mod_dev, request_form):
     # Custom options
     list_options = []
-    if 'custom_options' in dict_options[mod_dev.device]:
-        for each_option in dict_options[mod_dev.device]['custom_options']:
+
+    # TODO: name same name in next major release
+    if hasattr(mod_dev, 'device'):
+        device = mod_dev.device
+    elif hasattr(mod_dev, 'output_type'):
+        device = mod_dev.output_type
+    else:
+        logger.error("Unknown device")
+        return
+
+    if 'custom_options' in dict_options[device]:
+        for each_option in dict_options[device]['custom_options']:
             null_value = True
             for key in request_form.keys():
                 if each_option['id'] == key:
@@ -348,6 +358,14 @@ def choices_inputs(inputs, dict_units, dict_measurements):
     return choices
 
 
+def choices_input_devices(input_dev):
+    """ populate form multi-select choices from Output entries """
+    choices = []
+    for each_input in input_dev:
+        choices = form_input_choices_devices(choices, each_input)
+    return choices
+
+
 def choices_lcd(inputs, maths, pids, outputs, dict_units, dict_measurements):
     choices = [
         {'value': '0000,BLANK', 'item': 'Blank Line'},
@@ -480,11 +498,12 @@ def choices_output_devices(output):
     return choices
 
 
-def choices_outputs_pwm(output, dict_units, dict_measurements):
+def choices_outputs_pwm(output, dict_units, dict_measurements, dict_outputs):
     """ populate form multi-select choices from Output entries """
     choices = []
     for each_output in output:
-        if each_output.output_type in OUTPUTS_PWM:
+        if ('output_types' in dict_outputs[each_output.output_type] and
+                'pwm' in dict_outputs[each_output.output_type]['output_types']):
             choices = form_output_choices(
                 choices, each_output, dict_units, dict_measurements)
     return choices
@@ -590,6 +609,15 @@ def form_input_choices(choices, each_input, dict_units, dict_measurements):
 
             choices.append({'value': value, 'item': display})
 
+    return choices
+
+
+def form_input_choices_devices(choices, each_input):
+    value = '{id},input'.format(id=each_input.unique_id)
+    display = '[Input {id:02d}] {name}'.format(
+        id=each_input.id,
+        name=each_input.name)
+    choices.append({'value': value, 'item': display})
     return choices
 
 
@@ -789,7 +817,7 @@ def choices_id_name(table):
     return choices
 
 
-def user_has_permission(permission):
+def user_has_permission(permission, silent=False):
     """
     Determine if the currently-logged-in user has permission to perform a
     specific action.
@@ -802,9 +830,11 @@ def user_has_permission(permission):
             (permission == 'view_settings' and role.view_settings) or
             (permission == 'view_camera' and role.view_camera) or
             (permission == 'view_stats' and role.view_stats) or
-            (permission == 'view_logs' and role.view_logs)):
+            (permission == 'view_logs' and role.view_logs) or
+            (permission == 'reset_password' and role.reset_password)):
         return True
-    flash("You don't have permission to do that", "error")
+    if not silent:
+        flash("Insufficient permissions: {}".format(permission), "error")
     return False
 
 
@@ -1008,6 +1038,7 @@ def get_camera_image_info():
     latest_img_still = {}
     latest_img_tl_ts = {}
     latest_img_tl = {}
+    time_lapse_imgs = {}
 
     camera = Camera.query.all()
 
@@ -1030,11 +1061,22 @@ def get_camera_image_info():
             latest_img_still[each_camera.unique_id] = None
 
         try:
+            # Get list of timelapse filename sets for generating a video from images
+            time_lapse_imgs[each_camera.unique_id] = []
+            timelapse_path = os.path.join(camera_path, 'timelapse')
+            for i in os.listdir(timelapse_path):
+                if (os.path.isfile(os.path.join(timelapse_path, i)) and
+                        i[:-10] not in time_lapse_imgs[each_camera.unique_id]):
+                    time_lapse_imgs[each_camera.unique_id].append(i[:-10])
+            time_lapse_imgs[each_camera.unique_id].sort()
+        except Exception:
+            pass
+
+        try:
             latest_time_lapse_img_full_path = max(glob.iglob(
                 '{path}/timelapse/Timelapse-{cam_id}-*.jpg'.format(
                     path=camera_path,
-                    cam_id=each_camera.id)),
-                key=os.path.getmtime)
+                    cam_id=each_camera.id)), key=os.path.getmtime)
         except ValueError:
             latest_time_lapse_img_full_path = None
         if latest_time_lapse_img_full_path:
@@ -1047,7 +1089,7 @@ def get_camera_image_info():
             latest_img_tl[each_camera.unique_id] = None
 
     return (latest_img_still_ts, latest_img_still,
-            latest_img_tl_ts, latest_img_tl)
+            latest_img_tl_ts, latest_img_tl, time_lapse_imgs)
 
 
 def return_dependencies(device_type):
@@ -1057,6 +1099,7 @@ def return_dependencies(device_type):
     list_dependencies = [
         parse_controller_information(),
         parse_input_information(),
+        parse_output_information(),
         CALIBRATION_INFO,
         CAMERA_INFO,
         FUNCTION_ACTION_INFO,
@@ -1064,7 +1107,6 @@ def return_dependencies(device_type):
         LCD_INFO,
         MATH_INFO,
         METHOD_INFO,
-        OUTPUT_INFO
     ]
 
     for each_section in list_dependencies:
@@ -1177,3 +1219,85 @@ def generate_form_input_list(dict_inputs):
     for each_input in list_tuples_sorted:
         list_inputs_sorted.append(each_input[0])
     return list_inputs_sorted
+
+
+def generate_form_output_list(dict_outputs):
+    # Sort dictionary entries by output_name
+    # Results in list of sorted dictionary keys
+    list_tuples_sorted = sorted(dict_outputs.items(), key=lambda x: (x[1]['output_name']))
+    list_outputs_sorted = []
+    for each_output in list_tuples_sorted:
+        list_outputs_sorted.append(each_output[0])
+    return list_outputs_sorted
+
+
+def custom_action(controller, dict_device, unique_id, form):
+    action = '{action}, {controller}'.format(
+        action=gettext("Action"),
+        controller=TRANSLATIONS['controller']['title'])
+    error = []
+
+    if controller == "Output":
+        controller_type = Output.query.filter(
+            Output.unique_id == unique_id).first().output_type
+    elif controller == "Input":
+        controller_type = Input.query.filter(
+            Input.unique_id == unique_id).first().device
+    else:
+        logger.error("Unknown controller: {}".format(controller))
+        return
+
+    try:
+        option_types = {}
+        if 'custom_actions' in dict_device[controller_type]:
+            for each_option in dict_device[controller_type]['custom_actions']:
+                if 'id' in each_option and 'type' in each_option:
+                    option_types[each_option['id']] = each_option['type']
+
+        args_dict = {}
+        button_id = None
+        for key in form.keys():
+            if key.startswith('custom_button_'):
+                button_id = key[14:]
+            else:
+                for value in form.getlist(key):
+                    if key in option_types:
+                        if option_types[key] == 'integer':
+                            try:
+                                args_dict[key] = int(value)
+                            except:
+                                logger.error("Value of option '{}' doesn't represent integer: '{}'".format(key, value))
+                        elif option_types[key] == 'float':
+                            try:
+                                args_dict[key] = float(value)
+                            except:
+                                logger.error("Value of option '{}' doesn't represent float: '{}'".format(key, value))
+                        elif option_types[key] == 'bool':
+                            try:
+                                args_dict[key] = bool(value)
+                            except:
+                                logger.error("Value of option '{}' doesn't represent bool: '{}'".format(key, value))
+                        elif option_types[key] == 'text':
+                            try:
+                                args_dict[key] = str(value)
+                            except:
+                                logger.error("Value of option '{}' doesn't represent string: '{}'".format(key, value))
+                        else:
+                            args_dict[key] = float(value)
+
+        if not button_id:
+            return
+
+        if not error and button_id:
+            from mycodo.mycodo_client import DaemonControl
+            control = DaemonControl()
+            status = control.custom_button(
+                controller, unique_id, button_id, args_dict)
+            if status[0]:
+                flash("Custom Button: {}".format(status[1]), "error")
+            else:
+                flash("Custom Button: {}".format(status[1]), "success")
+    except Exception as except_msg:
+        logger.exception(1)
+        error.append(except_msg)
+    flash_success_errors(error, action, url_for('routes_page.page_data'))

@@ -8,7 +8,7 @@
 {% block settings %}
   <!-- Route: /settings/measurement -->
   <div class="container">
-    <h3 style="text-align: right; padding-bottom: 1.3em;"><a href="/help#measurement-settings" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a> {{_('Measurement Settings')}}</h3>
+    <h3 style="text-align: right; padding-bottom: 1.3em;"><a href="/static/manual/mycodo-manual.html#measurement-settings" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a> {{_('Measurement Settings')}}</h3>
 
     <h3>{{_('Add Measurement')}}</h3>
 
@@ -16,6 +16,12 @@
     {{form_add_measurement.hidden_tag()}}
 
     <div class="row align-items-end small-gutters">
+      <div class="col-6 col-sm-3 col-md-3">
+        {{form_add_measurement.id.label(class_='control-label')}}
+        <div>
+          {{form_add_measurement.id(class_='form-control')}}
+        </div>
+      </div>
       <div class="col-6 col-sm-3 col-md-3">
         {{form_add_measurement.name.label(class_='control-label')}}
         <div>
@@ -47,6 +53,12 @@
     {{form_add_unit.hidden_tag()}}
 
     <div class="row align-items-end small-gutters">
+      <div class="col-6 col-sm-3 col-md-3">
+        {{form_add_unit.id.label(class_='control-label')}}
+        <div>
+          {{form_add_unit.id(class_='form-control')}}
+        </div>
+      </div>
       <div class="col-6 col-sm-3 col-md-3">
         {{form_add_unit.name.label(class_='control-label')}}
         <div>
@@ -118,7 +130,7 @@
     <div class="table-responsive">
       <table class="table">
         <tr>
-          <td>ID</td>
+          <td>{{form_mod_measurement.id.label(class_='control-label')}}</td>
           <td>{{form_mod_measurement.name.label(class_='control-label')}}</td>
           <td>{{form_add_measurement.units.label(class_='control-label')}}</td>
           <td></td>
@@ -132,7 +144,7 @@
     {{form_mod_measurement.measurement_id(value=each_measurement.unique_id)}}
 
         <tr>
-          <td>{{each_measurement.name_safe}}</td>
+          <td>{{form_mod_measurement.id(class_='form-control', value=each_measurement.name_safe)}}</td>
           <td>{{form_mod_measurement.name(class_='form-control', value=each_measurement.name)}}</td>
           <td>
             <select class="form-control" id="units" name="units" multiple>
@@ -175,7 +187,7 @@
     <div class="table-responsive">
       <table class="table">
         <tr>
-          <td>ID</td>
+          <td>{{form_mod_unit.id.label(class_='control-label')}}</td>
           <td>{{form_mod_unit.name.label(class_='control-label')}}</td>
           <td>{{form_mod_unit.unit.label(class_='control-label')}}</td>
           <td></td>
@@ -188,7 +200,7 @@
       {{form_mod_unit.unit_id(value=each_unit.unique_id)}}
 
         <tr>
-          <td>{{each_unit.name_safe}}</td>
+          <td>{{form_mod_unit.id(class_='form-control', value=each_unit.name_safe)}}</td>
           <td>{{form_mod_unit.name(class_='form-control', value=each_unit.name)}}</td>
           <td>{{form_mod_unit.unit(class_='form-control', value=each_unit.unit)}}</td>
           <td>
@@ -295,7 +307,7 @@
     <div class="table-responsive">
       <table class="table">
         <tr>
-          <td>ID</td>
+          <td>{{form_mod_measurement.id.label(class_='control-label')}}</td>
           <td>{{form_mod_measurement.name.label(class_='control-label')}}</td>
           <td>{{form_add_measurement.units.label(class_='control-label')}}</td>
           <td></td>
@@ -322,7 +334,7 @@
     <div class="table-responsive">
     <table class="table">
       <tr>
-        <td>ID</td>
+        <td>{{form_mod_unit.id.label(class_='control-label')}}</td>
         <td>{{form_mod_unit.name.label(class_='control-label')}}</td>
         <td>{{form_mod_unit.unit.label(class_='control-label')}}</td>
         <td></td>

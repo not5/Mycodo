@@ -1,11 +1,12 @@
 # coding=utf-8
 import logging
+import os
+import subprocess
 import threading
 import time
 
-import os
-
 from mycodo.config import FUNCTION_ACTION_INFO
+from mycodo.config import INSTALL_DIRECTORY
 from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.databases.models import Actions
 from mycodo.databases.models import Camera
@@ -258,6 +259,40 @@ def get_past_measurements(unique_id, unit, measurement, channel, duration_sec):
         return string_ts_values
 
 
+def action_clear_flow_meter_total_volume(cond_action, message):
+    """Clears the total volume of a flow meter input"""
+    control = DaemonControl()
+    unique_id = cond_action.do_unique_id.split(",")[0]
+    this_input = db_retrieve_table_daemon(
+        Input, unique_id=unique_id, entry='first')
+    message += " Clear total volume of Input {unique_id} ({id}, {name}).".format(
+        unique_id=unique_id,
+        id=this_input.id,
+        name=this_input.name)
+    clear_volume = threading.Thread(
+        target=control.custom_button,
+        args=("Input", this_input.unique_id, "clear_total_volume", {},))
+    clear_volume.start()
+    return message
+
+
+def action_input_force_measurements(cond_action, message):
+    """Forces measurements to be conducted for an input"""
+    control = DaemonControl()
+    unique_id = cond_action.do_unique_id.split(",")[0]
+    this_input = db_retrieve_table_daemon(
+        Input, unique_id=unique_id, entry='first')
+    message += " Force measuring from Input {unique_id} ({id}, {name}).".format(
+        unique_id=unique_id,
+        id=this_input.id,
+        name=this_input.name)
+    clear_volume = threading.Thread(
+        target=control.input_force_measurements,
+        args=(this_input.unique_id,))
+    clear_volume.start()
+    return message
+
+
 def action_pause(cond_action, message):
     message += " [{id}] Pause actions for {sec} seconds.".format(
         id=cond_action.id,
@@ -312,7 +347,8 @@ def action_output(cond_action, message):
         target=control.output_on_off,
         args=(cond_action.do_unique_id,
               cond_action.do_output_state,),
-        kwargs={'amount': cond_action.do_output_duration})
+        kwargs={'output_type': 'sec',
+                'amount': cond_action.do_output_duration})
     output_on_off.start()
     return message
 
@@ -330,7 +366,8 @@ def action_output_pwm(cond_action, message):
     output_on = threading.Thread(
         target=control.output_on,
         args=(cond_action.do_unique_id,),
-        kwargs={'duty_cycle': cond_action.do_output_pwm})
+        kwargs={'output_type': 'pwm',
+                'duty_cycle': cond_action.do_output_pwm})
     output_on.start()
     return message
 
@@ -367,7 +404,8 @@ def action_output_ramp_pwm(cond_action, message):
     output_on = threading.Thread(
         target=control.output_on,
         args=(cond_action.do_unique_id,),
-        kwargs={'duty_cycle': start_duty_cycle})
+        kwargs={'output_type': 'pwm',
+                'duty_cycle': start_duty_cycle})
     output_on.start()
 
     loop_running = True
@@ -390,11 +428,31 @@ def action_output_ramp_pwm(cond_action, message):
             output_on = threading.Thread(
                 target=control.output_on,
                 args=(cond_action.do_unique_id,),
-                kwargs={'duty_cycle': current_duty_cycle})
+                kwargs={'output_type': 'pwm',
+                        'duty_cycle': current_duty_cycle})
             output_on.start()
 
             if not loop_running:
                 break
+    return message
+
+
+def action_output_volume(cond_action, message):
+    control = DaemonControl()
+    this_output = db_retrieve_table_daemon(
+        Output, unique_id=cond_action.do_unique_id, entry='first')
+    message += " Output {unique_id} ({id}, {name}) volume of {volume}.".format(
+        unique_id=cond_action.do_unique_id,
+        id=this_output.id,
+        name=this_output.name,
+        volume=cond_action.do_output_pwm)
+
+    output_on = threading.Thread(
+        target=control.output_on,
+        args=(cond_action.do_unique_id,),
+        kwargs={'output_type': 'vol',
+                'amount': cond_action.do_output_amount})
+    output_on.start()
     return message
 
 
@@ -524,7 +582,7 @@ def action_email(logger_actions,
         smtp_wait_timer, allowed_to_send_notice = check_allowed_to_email()
         if allowed_to_send_notice and cond_action.do_action_string:
             smtp = db_retrieve_table_daemon(SMTP, entry='first')
-            send_email(smtp.host, smtp.ssl, smtp.port,
+            send_email(smtp.host, smtp.protocol, smtp.port,
                        smtp.user, smtp.passw, smtp.email_from,
                        [cond_action.do_action_string], message,
                        attachment_file, attachment_type)
@@ -555,7 +613,7 @@ def action_email(logger_actions,
             smtp_wait_timer, allowed_to_send_notice = check_allowed_to_email()
             if allowed_to_send_notice and cond_action.do_action_string:
                 smtp = db_retrieve_table_daemon(SMTP, entry='first')
-                send_email(smtp.host, smtp.ssl, smtp.port,
+                send_email(smtp.host, smtp.protocol, smtp.port,
                            smtp.user, smtp.passw, smtp.email_from,
                            cond_action.do_action_string.split(','), message,
                            attachment_file, attachment_type)
@@ -840,6 +898,22 @@ def action_lcd_backlight_on(cond_action, message):
     return message
 
 
+def action_system_restart(message):
+    message += " System restarting in 10 seconds."
+    cmd = '{path}/mycodo/scripts/mycodo_wrapper restart 2>&1'.format(
+        path=INSTALL_DIRECTORY)
+    subprocess.Popen(cmd, shell=True)
+    return message
+
+
+def action_system_shutdown(message):
+    message += " System shutting down in 10 seconds."
+    cmd = '{path}/mycodo/scripts/mycodo_wrapper shutdown 2>&1'.format(
+        path=INSTALL_DIRECTORY)
+    subprocess.Popen(cmd, shell=True)
+    return message
+
+
 def trigger_action(
         cond_action_id,
         message='',
@@ -911,11 +985,19 @@ def trigger_action(
                 0 <= cond_action.do_output_pwm2 <= 100 and
                 cond_action.do_output_duration > 0):
             message = action_output_ramp_pwm(cond_action, message)
+        elif (cond_action.action_type == 'output_volume' and
+                cond_action.do_unique_id and
+                cond_action.do_output_amount > 0):
+            message = action_output_volume(cond_action, message)
         elif cond_action.action_type == 'command':
             message = action_command(cond_action, message)
         elif cond_action.action_type == 'create_note':
             message, note_tags = action_create_note(
                 cond_action, message, single_action, note_tags)
+        elif cond_action.action_type == 'clear_total_volume':
+            message = action_clear_flow_meter_total_volume(cond_action, message)
+        elif cond_action.action_type == 'input_force_measurements':
+            message = action_input_force_measurements(cond_action, message)
         elif cond_action.action_type in ['photo', 'photo_email']:
             message, attachment_file = action_photo(cond_action, message)
         elif cond_action.action_type in ['video', 'video_email']:
@@ -955,6 +1037,10 @@ def trigger_action(
             message = action_lcd_backlight_off(cond_action, message)
         elif cond_action.action_type == 'lcd_backlight_on':
             message = action_lcd_backlight_on(cond_action, message)
+        elif cond_action.action_type == 'system_restart':
+            message = action_system_restart(message)
+        elif cond_action.action_type == 'system_shutdown':
+            message = action_system_shutdown(message)
 
     except Exception:
         logger_actions.exception("Error triggering action:")
@@ -1031,7 +1117,7 @@ def trigger_function_actions(function_id, message='', debug=False):
         smtp_wait_timer, allowed_to_send_notice = check_allowed_to_email()
         if allowed_to_send_notice:
             smtp = db_retrieve_table_daemon(SMTP, entry='first')
-            send_email(smtp.host, smtp.ssl, smtp.port,
+            send_email(smtp.host, smtp.protocol, smtp.port,
                        smtp.user, smtp.passw, smtp.email_from,
                        email_recipients, message,
                        attachment_file, attachment_type)

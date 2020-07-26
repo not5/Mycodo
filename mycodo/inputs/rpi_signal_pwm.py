@@ -1,6 +1,8 @@
 # coding=utf-8
 import time
 
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 
 # Measurements
@@ -24,6 +26,7 @@ INPUT_INFORMATION = {
     'input_name_unique': 'SIGNAL_PWM',
     'input_manufacturer': 'Raspberry Pi',
     'input_name': 'Signal (PWM)',
+    'input_library': 'pigpio',
     'measurements_name': 'Frequency/Pulse Width/Duty Cycle',
     'measurements_dict': measurements_dict,
 
@@ -33,8 +36,7 @@ INPUT_INFORMATION = {
         'weighting',
         'sample_time',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -50,28 +52,34 @@ INPUT_INFORMATION = {
 
 class InputModule(AbstractInput):
     """ A sensor support class that monitors pwm """
-
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
-        if not testing:
-            import pigpio
+        self.pigpio = None
+        self.gpio = None
+        self.weighting = None
+        self.sample_time = None
 
-            self.gpio = int(input_dev.gpio_location)
-            self.weighting = input_dev.weighting
-            self.sample_time = input_dev.sample_time
-            self.pigpio = pigpio
+        if not testing:
+            self.initialize_input()
+
+    def initialize_input(self):
+        import pigpio
+
+        self.pigpio = pigpio
+
+        self.gpio = int(self.input_dev.gpio_location)
+        self.weighting = self.input_dev.weighting
+        self.sample_time = self.input_dev.sample_time
 
     def get_measurement(self):
         """ Gets the pwm """
-        self.return_dict = measurements_dict.copy()
-
         pi = self.pigpio.pi()
         if not pi.connected:  # Check if pigpiod is running
-            self.logger.error(
-                "Could not connect to pigpiod."
-                "Ensure it is running and try again.")
+            self.logger.error("Could not connect to pigpiod. Ensure it is running and try again.")
             return None
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         read_pwm = ReadPWM(pi, self.gpio, self.pigpio, self.weighting)
 

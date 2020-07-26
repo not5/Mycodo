@@ -15,6 +15,7 @@
 # David J Taylor, Edinburgh (www.satsignal.eu)
 import time
 
+import copy
 from flask_babel import lazy_gettext
 
 from mycodo.inputs.base_input import AbstractInput
@@ -56,20 +57,25 @@ INPUT_INFORMATION = {
     'input_name_unique': 'BME280_TTN',
     'input_manufacturer': 'BOSCH',
     'input_name': 'BME280 (->Serial->TTN)',
-    'input_library': 'Adafruit_BME280',
+    'input_library': 'Adafruit_BME280/pyserial',
     'measurements_name': 'Pressure/Humidity/Temperature',
     'measurements_dict': measurements_dict,
     'measurements_use_same_timestamp': True,
+    'url_manufacturer': 'https://www.bosch-sensortec.com/bst/products/all_products/bme280',
+    'url_datasheet': 'https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf',
+    'url_product_purchase': [
+        'https://www.adafruit.com/product/2652',
+        'https://www.sparkfun.com/products/13676'
+    ],
 
-    'message': "Note: This is just an informative note to the user.",
+    'message': "This input outputs the measurements from the BME280 to a serial device that is expected to send "
+               "the data to The Things Network. See the Additional URL for more information.",
 
     'options_enabled': [
         'i2c_location',
-        'custom_options',
         'measurements_select',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -80,10 +86,7 @@ INPUT_INFORMATION = {
     ],
 
     'interfaces': ['I2C'],
-    'i2c_location': [
-        '0x76',
-        '0x77'
-    ],
+    'i2c_location': ['0x76', '0x77'],
     'i2c_address_editable': False,
 
     'custom_options': [
@@ -108,6 +111,10 @@ class InputModule(AbstractInput):
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.serial = None
+        self.serial_send = None
+        self.lock_file = "/var/lock/mycodo_ttn.lock"
+        self.ttn_serial_error = False
         self.timer = 0
 
         # Initialize custom options
@@ -116,22 +123,18 @@ class InputModule(AbstractInput):
         self.setup_custom_options(
             INPUT_INFORMATION['custom_options'], input_dev)
 
-        if not testing:
-            from Adafruit_BME280 import BME280
-            import serial
+    def initialize_input(self):
+        from Adafruit_BME280 import BME280
+        import serial
 
-            self.i2c_address = int(str(input_dev.i2c_location), 16)
-            self.i2c_bus = input_dev.i2c_bus
-            self.sensor = BME280(address=self.i2c_address,
-                                 busnum=self.i2c_bus)
-            self.serial = serial
-            self.serial_send = None
-            self.lock_file = "/var/lock/mycodo_ttn.lock"
-            self.ttn_serial_error = False
+        self.sensor = BME280(
+            address=int(str(self.input_dev.i2c_location), 16),
+            busnum=self.input_dev.i2c_bus)
+        self.serial = serial
 
     def get_measurement(self):
         """ Gets the measurement in units by reading the """
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.is_enabled(0):
             self.value_set(0, self.sensor.read_temperature())
@@ -169,10 +172,14 @@ class InputModule(AbstractInput):
                     self.value_get(1),
                     self.value_get(2),
                     self.value_get(0))
-                self.lock_acquire(self.lock_file, timeout=10)
-                if self.locked[self.lock_file]:
+
+                if self.lock_acquire(self.lock_file, timeout=10):
                     try:
-                        self.serial_send = self.serial.Serial(self.serial_device, 9600)
+                        self.serial_send = self.serial.Serial(
+                            port=self.serial_device,
+                            baudrate=9600,
+                            timeout=5,
+                            writeTimeout=5)
                         self.serial_send.write(string_send.encode())
                         time.sleep(4)
                     finally:

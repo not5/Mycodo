@@ -43,7 +43,9 @@ from mycodo.config import INFLUXDB_PORT
 from mycodo.config import INFLUXDB_USER
 from mycodo.config import PYRO_URI
 from mycodo.databases.models import Misc
+from mycodo.databases.models import SMTP
 from mycodo.utils.database import db_retrieve_table_daemon
+from mycodo.utils.send_data import send_email as send_email_notification
 
 
 logging.basicConfig(
@@ -205,23 +207,19 @@ class DaemonControl:
     # Output Controller
     #
 
-    def output_duty_cycle(self, output_id, duty_cycle, trigger_conditionals=True):
-        return self.proxy().output_duty_cycle(
-            output_id, duty_cycle, trigger_conditionals)
-
     def output_off(self, output_id, trigger_conditionals=True):
         return self.proxy().output_off(output_id, trigger_conditionals)
 
-    def output_on(self, output_id, amount=0.0, min_off=0.0,
+    def output_on(self, output_id, amount=0.0, output_type=None, min_off=0.0,
                   duty_cycle=0.0, trigger_conditionals=True):
         return self.proxy().output_on(
-            output_id, amount=amount, min_off=min_off,
+            output_id, output_type=output_type, amount=amount, min_off=min_off,
             duty_cycle=duty_cycle, trigger_conditionals=trigger_conditionals)
 
-    def output_on_off(self, output_id, state, amount=0.0):
+    def output_on_off(self, output_id, state, output_type=None, amount=0.0):
         """ Turn an output on or off """
         if state in ['on', 1, True]:
-            return self.output_on(output_id, amount)
+            return self.output_on(output_id, amount=amount, output_type=output_type)
         elif state in ['off', 0, False]:
             return self.output_off(output_id)
         else:
@@ -236,6 +234,9 @@ class DaemonControl:
 
     def output_state(self, output_id):
         return self.proxy().output_state(output_id)
+
+    def output_states_all(self):
+        return self.proxy().output_states_all()
 
     #
     # PID Controller
@@ -258,6 +259,24 @@ class DaemonControl:
 
     def pid_set(self, pid_id, setting, value):
         return self.proxy().pid_set(pid_id, setting, value)
+
+    #
+    # Miscellaneous
+    #
+
+    def send_email(self, recipients, message, subject=''):
+        smtp = db_retrieve_table_daemon(SMTP, entry='first')
+        send_email_notification(
+            smtp.host, smtp.protocol, smtp.port,
+            smtp.user, smtp.passw, smtp.email_from,
+            recipients, message, subject=subject)
+
+    def custom_button(self, controller_type, unique_id, button_id, args_dict):
+        try:
+            return self.proxy().custom_button(
+                controller_type, unique_id, button_id, args_dict)
+        except Exception:
+            return 0, traceback.format_exc()
 
 
 def daemon_active():
@@ -450,7 +469,7 @@ if __name__ == "__main__":
                          "connection. Ensure influxdb is running.")
             last_measurement = None
 
-        if last_measurement and 'series' in last_measurement:
+        if last_measurement and 'series' in last_measurement and last_measurement['series']:
             try:
                 number = len(last_measurement['series'][0]['values'])
                 last_time = last_measurement['series'][0]['values'][number - 1][0]

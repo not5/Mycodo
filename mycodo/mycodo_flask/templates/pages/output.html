@@ -73,20 +73,12 @@
     $('.output_on_amt').click(function() {
       var btn_val = this.name;
       var id = btn_val.split('/')[0];
-      var on_amt = $('#sec_on_amt_' + id).val();
+      var on_type = btn_val.split('/')[2];
+      var on_amt = $('#' + on_type + '_on_amt_' + id).val();
       {% if not misc.hide_alert_info %}
-      toastr['info']('Command sent to turn output ' + id + ' On for ' + on_amt);
+      toastr['info']('Command sent to turn output ' + id + ' On for ' + on_amt + ' ' + on_type);
       {% endif %}
       getAjax(btn_val + on_amt);
-    });
-    $('.duty_cycle_on_amt').click(function() {
-      var btn_val = this.name;
-      var id = btn_val.split('/')[0];
-      var dc = $('#duty_cycle_on_amt_' + id).val();
-      {% if not misc.hide_alert_info %}
-      toastr['info']('Command sent to turn output ' + id + ' on with a duty cycle of ' + dc + '%');
-      {% endif %}
-      getAjax(btn_val + dc);
     });
   });
 </script>
@@ -146,13 +138,13 @@
   <main role="main" class="container">
     {% include 'flash_messages.html' %}
 
-    <h4>{{dict_translation['output']['title']}} <a href="/help#{{help_page[0]}}" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a></h4>
+    <h4>{{dict_translation['output']['title']}} <a href="/static/manual/mycodo-manual.html#{{help_page[0]}}" target="_blank"><span style="font-size: 16px" class="fas fa-question-circle"></span></a></h4>
 
     <p>{{_('Output devices enable Mycodo to manipulate things through the use of outputs (wired and wireless), PWM signals, and executing commands. When linked to a PID controller, with an input, output devices can be used for feedback regulation.')}}</p>
 
     <div style="clear: both; padding: 0.5em 0;"></div>
 
-    <form method="post" action="/output">
+    <form id="new_output_form" method="post" action="/output">
       {{form_add_output.hidden_tag()}}
 
       <div class="row small-gutters" style="padding-left: 0.75em">
@@ -175,10 +167,16 @@
         {%- for each_output in output if each_output.unique_id == order -%}
 
       <div class="container" style="border: 2px solid #ddd; border-radius: 5px;">
-        <form method="post" action="/output">
+        <form id="mod_output_form" method="post" action="/output">
         {{form_mod_output.csrf_token}}
         {{form_mod_output.output_id(class_='form-control', value=each_output.unique_id)}}
         {{form_mod_output.output_pin(class_='form-control', value=each_output.pin)}}
+
+        {% set form = form_mod_output %}
+        {% set dict_options = dict_outputs[each_output.output_type] %}
+        {% set each_device = each_output %}
+        {% set unique_id = each_output.unique_id %}
+        {% set custom_options_values = custom_options_values_outputs %}
 
         <div class="row small-gutters pause-background" style="border-bottom: 1px solid #ddd; padding: 0.4em 0.2em 0.4em 0;" id="{{each_output.unique_id}}-output-state">
 
@@ -188,32 +186,28 @@
             </a>
           </div>
 
-          <div class="col-5 col-lg-3 small-gutters">
-            {{form_mod_output.name(class_='form-control', value=each_output.name, **{'title': dict_translation['name']['phrase']})}}
+          <div class="col-5 col-md-2 small-gutters">
+            <input class="form-control" disabled="" value="{{each_output.name}}" type="text">
           </div>
-          <div class="col-5 col-md-6 col-lg-2 small-gutters">
-            <input class="form-control btn btn-sm btn-block" type="button" onclick="setClipboard('{{each_output.unique_id}}')" id="{{each_output.unique_id}}-input-output-state" title="[{{'%02d' % each_output.id}}] UUID: {{each_output.unique_id}}, {{dict_translation['copy_to_clipboard']['phrase']}}" value="{{ _('Unconfigured')}}">
+          <div class="col-5 col-md-3 small-gutters">
+            <input class="form-control" disabled="" value="[{{each_output.interface}}] {{dict_outputs[each_output.output_type]['output_name']}}{% if dict_outputs[each_output.output_type]['output_library'] %} ({{dict_outputs[each_output.output_type]['output_library']}}){% endif %}" type="text">
+          </div>
+          <div class="col-4 col-md-2 small-gutters">
+            <input class="form-control btn btn-primary btn-sm btn-block" type="button" onclick="setClipboard('{{each_output.unique_id}}')" id="{{each_output.unique_id}}-input-output-state" title="[{{'%02d' % each_output.id}}] UUID: {{each_output.unique_id}}, {{dict_translation['copy_to_clipboard']['phrase']}}" value="{{ _('Unconfigured')}}">
           </div>
 
-        {% if each_output.output_type not in ['pwm', 'command_pwm', 'python_pwm', 'atlas_ezo_pmp'] -%}
-          <div class="col-4 col-md-4 col-lg-2 small-gutters">
-            <input class="form-control btn btn-sm btn-success btn-block turn_on" id="turn_on" name="{{each_output.unique_id}}/on/sec/0" type="button" value="{{dict_translation['on']['title']}}">
+        {% if 'button_on' in dict_options['options_enabled'] -%}
+          <div class="col-4 col-md-2 small-gutters">
+            <input class="form-control btn btn-primary btn-sm btn-success btn-block turn_on" id="turn_on" name="{{each_output.unique_id}}/on/sec/0" type="button" value="{{dict_translation['on']['title']}}">
           </div>
         {%- endif %}
 
-        {% if each_output.output_type not in ['pwm', 'command_pwm', 'python_pwm', 'atlas_ezo_pmp'] -%}
-          <div class="col-4 col-md-4 col-lg-2 small-gutters">
+        {% if 'button_on' in dict_options['options_enabled'] -%}
+          <div class="col-4 col-md-2 small-gutters">
         {% else %}
-          <div class="col-8 col-md-8 col-lg-4 small-gutters">
+          <div class="col-8 col-md-4 small-gutters">
         {% endif %}
-            <input class="form-control btn btn-sm btn-danger btn-block turn_off" id="turn_off" name="{{each_output.unique_id}}/off/sec/0" type="button" value="{{dict_translation['off']['title']}}">
-          </div>
-
-          <div class="col-2 col-lg-1 small-gutters">
-            {{form_mod_output.order_up(class_='form-control btn btn-sm btn-block')}}
-          </div>
-          <div class="col-2 col-lg-1 small-gutters">
-            {{form_mod_output.order_down(class_='form-control btn btn-sm btn-block')}}
+            <input class="form-control btn btn-primary btn-sm btn-danger btn-block turn_off" id="turn_off" name="{{each_output.unique_id}}/off/sec/0" type="button" value="{{dict_translation['off']['title']}}">
           </div>
 
         </div>
@@ -221,77 +215,169 @@
         <div class="collapse" id="collapseContainer{{each_output.unique_id}}" style="padding: 0.5em">
 
           <div class="row small-gutters">
-            <div class="col-6 col-sm-6 col-md-4">
-              <input class="form-control" disabled="" value="{{output_info[each_output.output_type]['name']}} ({{each_output.interface}})" type="text">
+            <div class="col-auto">
+              {{form_mod_output.save(class_='form-control btn btn-primary btn-sm btn-block')}}
             </div>
-            <div class="col-3 col-sm-3 col-md-4">
-              {{form_mod_output.save(class_='form-control btn btn-sm btn-block')}}
+            <div class="col-auto">
+              {{form_mod_output.delete(class_='form-control btn btn-primary btn-sm btn-block', **{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
             </div>
-            <div class="col-3 col-sm-3 col-md-4">
-              {{form_mod_output.delete(class_='form-control btn btn-sm btn-block', **{'onclick':'return confirm("Are you sure you want to delete this?")'})}}
+          </div>
+
+          <div class="row small-gutters" style="padding: 0.5em">
+
+            <div class="col-12">
+              {{_("Model")}}: {{dict_outputs[each_output.output_type]['output_name']}}
             </div>
 
-          {% for each_output_template in output_templates if each_output_template[:-5] == each_output.output_type %}
-            {% include 'pages/output_options/'+each_output_template %}
+        {% if 'dependencies_module' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['dependencies_module'] %}
+            <div class="col-12">
+          {{_("Library")}}:
+          {% for each_lib in dict_outputs[each_output.output_type]['dependencies_module'] -%}
+            {% if each_lib[0] == 'pip-pypi' %}
+              <a href="https://pypi.org/project/{{each_lib[2]}}" target="_blank">{{each_lib[2]}}</a>
+            {% else %}
+              {{each_lib[1]}}
+            {% endif %}
+            {%- if not loop.last %}, {% endif %}
           {% endfor %}
-
-            <div class="col-6 col-sm-4 col-md-3">
-              {{form_mod_output.amps.label(class_='control-label')}}
-              <div>
-                {{form_mod_output.amps(class_='form-control', value=each_output.amps, **{'title': dict_translation['amps']['phrase']})}}
-               </div>
             </div>
+        {% endif %}
+        
+        {% set manufacturer_url = 'url_manufacturer' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['url_manufacturer'] %}
+        {% set datasheet_url = 'url_datasheet' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['url_datasheet'] %}
+        {% set product_purchase_url = 'url_product_purchase' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['url_product_purchase'] %}
+        {% set additional_url = 'url_additional' in dict_outputs[each_output.output_type] and dict_outputs[each_output.output_type]['url_additional'] %}
+  
+        {% if manufacturer_url or datasheet_url or product_purchase_url or additional_url %}
+            <div class="col-12">
+          {{_('Literature') + ': '}}
+        {%- if manufacturer_url -%}
+          {{_("Manufacturer")}} {% for each_url in dict_outputs[each_output.output_type]['url_manufacturer'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+        {%- endif -%}
+        {%- if datasheet_url -%}
+          {% if manufacturer_url %}; {% endif -%}
+          {{_("Datasheet")}} {% for each_url in dict_outputs[each_output.output_type]['url_datasheet'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+        {%- endif -%}
+        {%- if product_purchase_url -%}
+          {% if manufacturer_url or datasheet_url %}; {% endif -%}
+          {{_("Product")}} {% for each_url in dict_outputs[each_output.output_type]['url_product_purchase'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+        {%- endif -%}
+        {%- if additional_url -%}
+          {% if manufacturer_url or datasheet_url or product_purchase_url %}; {% endif -%}
+          {{_("Additional")}} {% for each_url in dict_outputs[each_output.output_type]['url_additional'] %}<a href="{{each_url}}" target="_blank">Link {{loop.index}}</a>{{ ", " if not loop.last }}{% endfor %}
+        {%- endif -%}.
+            </div>
+        {% endif %}
+
+        {% if 'message' in dict_outputs[each_output.output_type] %}
+            <div class="col-12" style="padding-top: 0.3em">
+              {{dict_outputs[each_output.output_type]['message']|safe}}
+            </div>
+        {% endif %}
 
           </div>
 
-          {% if each_output.output_type in ['wired', 'wireless_rpi_rf', 'command', 'python'] %}
+        {% if each_output.output_type in custom_actions and custom_actions[each_output.output_type] %}
+          <div class="row small-gutters align-items-end" style="padding: 0.5em">
+            <div class="col-12">
+              <h5>{{_('Actions')}}</h5>
+            </div>
+            {% include 'pages/form_options/Custom_Actions_Message.html' %}
+              {% set running_custom_action = true %}
+              {% if 'custom_actions' in dict_options %}
+                {% for each_option in dict_options['custom_actions'] %}
+                  {% include 'pages/form_options/Custom_Options.html' %}
+                {% endfor %}
+            {% endif %}
+          </div>
+        {% endif %}
 
-          <div class="row">
-            <div class="col">
-              <label class='control-label'>{{dict_translation['duration_on_seconds']['title']}}</label>
+          <div class="row small-gutters" style="padding: 0.5em">
+            <div class="col-12">
+              <h5>{{_('Options')}}</h5>
+            </div>
+
+            <div class="col-auto">
+              {{form_mod_output.name.label(class_='control-label')}}
               <div>
-                <div class="row small-gutters">
-                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
-                    <input class="form-control" id="sec_on_amt_{{each_output.unique_id}}" name="sec_on_amt_{{each_output.unique_id}}" title="{{dict_translation['duration_on_seconds']['phrase']}}" type="text" value="">
-                  </div>
-                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
-                    <input class="btn btn-success btn-block output_on_amt" id="turn_on" name="{{each_output.unique_id}}/on/sec/" type="button" value="{{_('Turn On')}}">
-                  </div>
-                </div>
+                {{form_mod_output.name(class_='form-control', value=each_output.name, **{'title': dict_translation['name']['phrase']})}}
               </div>
             </div>
-          </div>
-
-          {% elif each_output.output_type == 'atlas_ezo_pmp' %}
-
-          <div class="row">
-            <div class="col">
-              <label class='control-label'>{{dict_translation['pump_amount']['title']}}</label>
-              <div>
-                <div class="row small-gutters">
-                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
-                    <input class="form-control" id="sec_on_amt_{{each_output.unique_id}}" name="sec_on_amt_{{each_output.unique_id}}" title="{{dict_translation['pump_amount']['phrase']}}" type="text" value="">
-                  </div>
-                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
-                    <input class="btn btn-success btn-block output_on_amt" id="turn_on" name="{{each_output.unique_id}}/on/sec/" type="button" value="{{_('Pump Volume')}}">
-                  </div>
-                </div>
+            <div class="col-auto">
+              {{form_mod_output.log_level_debug.label(class_='control-label')}}
+              <div class="input-group-text">
+                <input id="log_level_debug" name="log_level_debug" type="checkbox" value="y"{% if each_output.log_level_debug %} checked{% endif %}>
               </div>
             </div>
+
+      {% include 'pages/form_options/Interface.html' %}
+      {% include 'pages/form_options/GPIO.html' %}
+      {% include 'pages/form_options/GPIO_Pin.html' %}
+      {% include 'pages/form_options/Bluetooth.html' %}
+      {% include 'pages/form_options/I2C.html' %}
+      {% include 'pages/form_options/FTDI.html' %}
+      {% include 'pages/form_options/UART.html' %}
+      {% include 'pages/form_options/Baud_Rate.html' %}
+      {% include 'pages/form_options/Location.html' %}
+      {% include 'pages/form_options/Period.html' %}
+
+      {% include 'pages/form_options/Wireless_Protocol.html' %}
+      {% include 'pages/form_options/Wireless_Pulse_Length.html' %}
+      {% include 'pages/form_options/Wireless_Command_On.html' %}
+      {% include 'pages/form_options/Wireless_Command_Off.html' %}
+      {% include 'pages/form_options/Pump_Output_Mode.html' %}
+      {% include 'pages/form_options/Pump_Flow_Rate.html' %}
+      {% include 'pages/form_options/Command_On.html' %}
+      {% include 'pages/form_options/Command_Off.html' %}
+      {% include 'pages/form_options/Python_PWM.html' %}
+      {% include 'pages/form_options/Python_On.html' %}
+      {% include 'pages/form_options/Python_Off.html' %}
+      {% include 'pages/form_options/PWM_Command.html' %}
+      {% include 'pages/form_options/PWM_Library.html' %}
+      {% include 'pages/form_options/PWM_Frequency.html' %}
+      {% include 'pages/form_options/PWM_Invert_Signal.html' %}
+      {% include 'pages/form_options/Command_Execute_User.html' %}
+      {% include 'pages/form_options/Command_Force.html' %}
+      {% include 'pages/form_options/PWM_State_Startup.html' %}
+      {% include 'pages/form_options/PWM_State_Shutdown.html' %}
+      {% include 'pages/form_options/On_Off_State_On.html' %}
+      {% include 'pages/form_options/On_Off_State_Startup.html' %}
+      {% include 'pages/form_options/On_Off_State_Shutdown.html' %}
+      {% include 'pages/form_options/On_Off_None_State_Startup.html' %}
+      {% include 'pages/form_options/On_Off_None_State_Shutdown.html' %}
+      {% include 'pages/form_options/Trigger_Functions_Startup.html' %}
+      {% include 'pages/form_options/Current_Draw.html' %}
+
           </div>
 
-          {% elif each_output.output_type in OUTPUTS_PWM %}
+        {% if 'custom_options' in dict_options or 'custom_options_message' in dict_options %}
+          <div class="row small-gutters" style="padding: 0.5em">
+            <div class="col-12">
+              <h5>{{_('Custom Options')}}</h5>
+            </div>
+          {% if 'custom_options_message' in dict_options %}
+            {% include 'pages/form_options/Custom_Options_Message.html' %}
+          {% endif %}
+          {% if 'custom_options' in dict_options %}
+            {% for each_option in dict_options['custom_options'] %}
+              {% include 'pages/form_options/Custom_Options.html' %}
+            {% endfor %}
+          {% endif %}
+          </div>
+        {% endif %}
+
+        {% if 'button_send_duration' in dict_options['options_enabled'] %}
 
           <div class="row">
             <div class="col">
-              <label class='control-label'>{{dict_translation['duty_cycle']['title']}}</label>
+              <label class='control-label'>{{dict_translation['output_amount_duration']['title']}}</label>
               <div>
                 <div class="row small-gutters">
                   <div class="col-6 col-sm-4 col-md-3 small-gutters">
-                  <input class="form-control" id="duty_cycle_on_amt_{{each_output.unique_id}}" name="duty_cycle_on_amt_{{each_output.unique_id}}" title="{{dict_translation['duty_cycle']['phrase']}}" type="number" value="">
+                    <input class="form-control" id="sec_on_amt_{{each_output.unique_id}}" name="sec_on_amt_{{each_output.unique_id}}" title="{{dict_translation['output_amount_duration']['phrase']}}" type="text" value="">
                   </div>
                   <div class="col-6 col-sm-4 col-md-3 small-gutters">
-                  <input class="btn btn-success btn-block duty_cycle_on_amt" id="turn_on" name="{{each_output.unique_id}}/on/pwm/" type="button" value="{{_('Turn On')}}">
+                    <input class="btn btn-success btn-block output_on_amt" id="turn_on" name="{{each_output.unique_id}}/on/sec/" type="button" value="{{_('Send')}}">
                   </div>
                 </div>
               </div>
@@ -299,6 +385,46 @@
           </div>
 
         {% endif %}
+
+        {% if 'button_send_volume' in dict_options['options_enabled'] %}
+
+          <div class="row">
+            <div class="col">
+              <label class='control-label'>{{dict_translation['output_amount_volume']['title']}}</label>
+              <div>
+                <div class="row small-gutters">
+                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
+                    <input class="form-control" id="vol_on_amt_{{each_output.unique_id}}" name="vol_on_amt_{{each_output.unique_id}}" title="{{dict_translation['output_amount_volume']['phrase']}}" type="text" value="">
+                  </div>
+                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
+                    <input class="btn btn-success btn-block output_on_amt" id="turn_on" name="{{each_output.unique_id}}/on/vol/" type="button" value="{{_('Send')}}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        {% endif %}
+
+        {% if 'button_send_duty_cycle' in dict_options['options_enabled'] %}
+
+          <div class="row">
+            <div class="col">
+              <label class='control-label'>{{dict_translation['duty_cycle']['title']}}</label>
+              <div>
+                <div class="row small-gutters">
+                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
+                  <input class="form-control" id="pwm_on_amt_{{each_output.unique_id}}" name="pwm_on_amt_{{each_output.unique_id}}" title="{{dict_translation['duty_cycle']['phrase']}}" type="number" value="">
+                  </div>
+                  <div class="col-6 col-sm-4 col-md-3 small-gutters">
+                  <input class="btn btn-success btn-block output_on_amt" id="turn_on" name="{{each_output.unique_id}}/on/pwm/" type="button" value="{{_('Send')}}">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+      {% endif %}
 
         </div>
 
@@ -330,7 +456,7 @@
 
       <div class="row">
         <div class="col-auto">
-        {{form_base.reorder_type(class_='form-control', value='input')}}
+        {{form_base.reorder_type(class_='form-control', value='output')}}
           <select style="display: none" name="from[]" id="multiselect" class="" size="8" multiple="multiple"></select>
           <div>
             <select name="list_visible_elements" id="multiselect_to" class="form-control" size="8" multiple="multiple">

@@ -1,4 +1,5 @@
 # coding=utf-8
+import copy
 import resource
 
 from mycodo.inputs.base_input import AbstractInput
@@ -17,12 +18,12 @@ INPUT_INFORMATION = {
     'input_name': 'Mycodo RAM',
     'input_name_unique': 'MYCODO_RAM',
     'input_manufacturer': 'Mycodo',
+    'input_library': 'resource.getrusage()',
     'measurements_name': 'Size RAM in Use',
     'measurements_dict': measurements_dict,
 
     'options_enabled': [
-        'period',
-        'log_level_debug'
+        'period'
     ],
     'options_disabled': ['interface'],
 
@@ -33,22 +34,24 @@ INPUT_INFORMATION = {
 class InputModule(AbstractInput):
     """
     A sensor support class that measures ram used by the Mycodo daemon
-
     """
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
-        self._disk_space = None
+
+        self.control = None
 
         if not testing:
-            self.control = DaemonControl()
+            self.initialize_input()
+
+    def initialize_input(self):
+        self.control = DaemonControl()
 
     def get_measurement(self):
         """ Gets the measurement in units by reading resource """
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         try:
-            self.value_set(0, resource.getrusage(
-                resource.RUSAGE_SELF).ru_maxrss / float(1000))
+            self.value_set(0, resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / float(1000))
             return self.return_dict
         except Exception:
             pass

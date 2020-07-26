@@ -1,6 +1,8 @@
 # coding=utf-8
 import subprocess
 
+import copy
+
 from mycodo.inputs.base_input import AbstractInput
 
 # Measurements
@@ -26,12 +28,15 @@ INPUT_INFORMATION = {
     'measurements_dict': measurements_dict,
     'measurements_use_same_timestamp': True,
 
+    'message': 'The internal CPU and GPU temperature of the Raspberry Pi.',
+
     'options_enabled': [
         'measurements_select',
-        'period',
-        'log_level_debug'
+        'period'
     ],
     'options_disabled': ['interface'],
+
+    'dependencies_module': [],
 
     'interfaces': ['RPi']
 }
@@ -55,7 +60,7 @@ class InputModule(AbstractInput):
         # soft, hard = resource.getrlimit(resource.RLIMIT_NOFILE)
         # self.logger.info("LIMIT: Soft: {sft}, Hard: {hrd}".format(sft=soft, hrd=hard))
 
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         self.logger.debug("Acquiring Measurements...")
 
@@ -68,8 +73,7 @@ class InputModule(AbstractInput):
 
         if self.is_enabled(1):
             # GPU temperature
-            temperature_gpu = subprocess.check_output(
-                ('/opt/vc/bin/vcgencmd', 'measure_temp'))
+            temperature_gpu = subprocess.check_output(('/opt/vc/bin/vcgencmd', 'measure_temp'))
             temp_gpu = float(temperature_gpu.split(b'=')[1].split(b"'")[0])
             self.value_set(1, temp_gpu)
             self.logger.debug("GPU Temperature: {}".format(temp_gpu))

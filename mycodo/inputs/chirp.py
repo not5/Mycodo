@@ -1,7 +1,7 @@
 # coding=utf-8
 import time
 
-from smbus2 import SMBus
+import copy
 
 from mycodo.inputs.base_input import AbstractInput
 
@@ -26,15 +26,17 @@ INPUT_INFORMATION = {
     'input_name_unique': 'CHIRP',
     'input_manufacturer': 'Catnip Electronics',
     'input_name': 'Chirp',
+    'input_library': 'smbus2',
     'measurements_name': 'Light/Moisture/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://wemakethings.net/chirp/',
+    'url_product_purchase': 'https://www.tindie.com/products/miceuz/chirp-plant-watering-alarm/',
 
     'options_enabled': [
         'i2c_location',
         'measurements_select',
         'period',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -54,19 +56,25 @@ class InputModule(AbstractInput):
     and light
 
     """
-
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.i2c_address = None
+        self.bus = None
+
         if not testing:
-            self.i2c_address = int(str(input_dev.i2c_location), 16)
-            self.i2c_bus = input_dev.i2c_bus
-            self.bus = SMBus(self.i2c_bus)
-            self.filter_average('lux', init_max=3)
+            self.initialize_input()
+
+    def initialize_input(self):
+        from smbus2 import SMBus
+
+        self.i2c_address = int(str(self.input_dev.i2c_location), 16)
+        self.bus = SMBus(self.input_dev.i2c_bus)
+        self.filter_average('lux', init_max=3)
 
     def get_measurement(self):
         """ Gets the light, moisture, and temperature """
-        self.return_dict = measurements_dict.copy()
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.is_enabled(0):
             self.value_set(0, self.filter_average('lux', measurement=self.light()))

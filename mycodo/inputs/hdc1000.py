@@ -6,6 +6,7 @@ import array
 import fcntl
 import time
 
+import copy
 import io
 
 from mycodo.inputs.base_input import AbstractInput
@@ -37,8 +38,11 @@ INPUT_INFORMATION = {
     'input_name_unique': 'HDC1000',
     'input_manufacturer': 'Texas Instruments',
     'input_name': 'HDC1000',
+    'input_library': 'fcntl/io',
     'measurements_name': 'Humidity/Temperature',
     'measurements_dict': measurements_dict,
+    'url_manufacturer': 'https://www.ti.com/product/HDC1000',
+    'url_datasheet': 'https://www.ti.com/lit/ds/symlink/hdc1000.pdf',
 
     'options_enabled': [
         'i2c_location',
@@ -46,8 +50,7 @@ INPUT_INFORMATION = {
         'period',
         'resolution',
         'resolution_2',
-        'pre_output',
-        'log_level_debug'
+        'pre_output'
     ],
     'options_disabled': ['interface'],
 
@@ -101,55 +104,59 @@ class InputModule(AbstractInput):
     """
     A sensor support class that measures the HDC1000's humidity and temperature
     and calculates the dew point
-
     """
     def __init__(self, input_dev, testing=False):
         super(InputModule, self).__init__(input_dev, testing=testing, name=__name__)
 
+        self.HDC1000_fr = None
+        self.HDC1000_fw = None
+
         if not testing:
-            self.resolution_temperature = input_dev.resolution
-            self.resolution_humidity = input_dev.resolution_2
-            self.i2c_bus = input_dev.i2c_bus
-            self.i2c_address = 0x40  # HDC1000-F Address
+            self.initialize_input()
 
-            self.HDC1000_fr = io.open(
-                "/dev/i2c-" + str(self.i2c_bus), "rb", buffering=0)
-            self.HDC1000_fw = io.open(
-                "/dev/i2c-" + str(self.i2c_bus), "wb", buffering=0)
+    def initialize_input(self):
+        i2c_address = 0x40  # HDC1000-F Address
 
-            # set device address
-            fcntl.ioctl(self.HDC1000_fr, I2C_SLAVE, self.i2c_address)
-            fcntl.ioctl(self.HDC1000_fw, I2C_SLAVE, self.i2c_address)
-            time.sleep(0.015)  # 15ms startup time
+        self.HDC1000_fr = io.open("/dev/i2c-" + str(self.input_dev.i2c_bus), "rb", buffering=0)
+        self.HDC1000_fw = io.open("/dev/i2c-" + str(self.input_dev.i2c_bus), "wb", buffering=0)
 
-            config = HDC1000_CONFIG_ACQUISITION_MODE
+        # set device address
+        fcntl.ioctl(self.HDC1000_fr, I2C_SLAVE, i2c_address)
+        fcntl.ioctl(self.HDC1000_fw, I2C_SLAVE, i2c_address)
+        time.sleep(0.015)  # 15ms startup time
 
-            s = [HDC1000_CONFIGURATION_REGISTER, config >> 8, 0x00]
-            s2 = bytearray(s)
-            self.HDC1000_fw.write(s2)  # sending config register bytes
-            time.sleep(0.015)  # From the data sheet
+        config = HDC1000_CONFIG_ACQUISITION_MODE
 
-            # Set resolutions
-            if self.resolution_temperature == 11:
-                self.set_temperature_resolution(
-                    HDC1000_CONFIG_TEMPERATURE_RESOLUTION_11BIT)
-            elif self.resolution_temperature == 14:
-                self.set_temperature_resolution(
-                    HDC1000_CONFIG_TEMPERATURE_RESOLUTION_14BIT)
+        s = [HDC1000_CONFIGURATION_REGISTER, config >> 8, 0x00]
+        s2 = bytearray(s)
+        self.HDC1000_fw.write(s2)  # sending config register bytes
+        time.sleep(0.015)  # From the data sheet
 
-            if self.resolution_humidity == 8:
-                self.set_humidity_resolution(
-                    HDC1000_CONFIG_HUMIDITY_RESOLUTION_8BIT)
-            elif self.resolution_humidity == 11:
-                self.set_humidity_resolution(
-                    HDC1000_CONFIG_HUMIDITY_RESOLUTION_11BIT)
-            elif self.resolution_humidity == 14:
-                self.set_humidity_resolution(
-                    HDC1000_CONFIG_HUMIDITY_RESOLUTION_14BIT)
+        # Set resolutions
+        if self.input_dev.resolution == 11:
+            self.set_temperature_resolution(
+                HDC1000_CONFIG_TEMPERATURE_RESOLUTION_11BIT)
+        elif self.input_dev.resolution == 14:
+            self.set_temperature_resolution(
+                HDC1000_CONFIG_TEMPERATURE_RESOLUTION_14BIT)
+
+        if self.input_dev.resolution_2 == 8:
+            self.set_humidity_resolution(
+                HDC1000_CONFIG_HUMIDITY_RESOLUTION_8BIT)
+        elif self.input_dev.resolution_2 == 11:
+            self.set_humidity_resolution(
+                HDC1000_CONFIG_HUMIDITY_RESOLUTION_11BIT)
+        elif self.input_dev.resolution_2 == 14:
+            self.set_humidity_resolution(
+                HDC1000_CONFIG_HUMIDITY_RESOLUTION_14BIT)
 
     def get_measurement(self):
         """ Gets the humidity and temperature """
-        self.return_dict = measurements_dict.copy()
+        if not self.HDC1000_fr or not self.HDC1000_fw:
+            self.logger.error("Input not set up")
+            return
+
+        self.return_dict = copy.deepcopy(measurements_dict)
 
         if self.is_enabled(0):
             self.value_set(0, self.read_temperature())
@@ -157,17 +164,11 @@ class InputModule(AbstractInput):
         if self.is_enabled(1):
             self.value_set(1, self.read_humidity())
 
-        if (self.is_enabled(2) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(2, calculate_dewpoint(
-                self.value_get(0), self.value_get(1)))
+        if self.is_enabled(2) and self.is_enabled(0) and self.is_enabled(1):
+            self.value_set(2, calculate_dewpoint(self.value_get(0), self.value_get(1)))
 
-        if (self.is_enabled(3) and
-                self.is_enabled(0) and
-                self.is_enabled(1)):
-            self.value_set(3, calculate_vapor_pressure_deficit(
-                self.value_get(0), self.value_get(1)))
+        if self.is_enabled(3) and self.is_enabled(0) and self.is_enabled(1):
+            self.value_set(3, calculate_vapor_pressure_deficit(self.value_get(0), self.value_get(1)))
 
         return self.return_dict
 

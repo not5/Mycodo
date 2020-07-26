@@ -66,14 +66,22 @@ def list_analog_to_digital_converters():
     return list_adc
 
 
-def parse_input_information():
+def parse_input_information(exclude_custom=False):
     """Parses the variables assigned in each Input and return a dictionary of IDs and values"""
-    def dict_has_value(dict_inp, input_cus, key):
+    def dict_has_value(dict_inp, input_cus, key, force_type=None):
         if (key in input_cus.INPUT_INFORMATION and
                 (input_cus.INPUT_INFORMATION[key] or
                  input_cus.INPUT_INFORMATION[key] == 0)):
-            dict_inp[input_cus.INPUT_INFORMATION['input_name_unique']][key] = \
-                input_cus.INPUT_INFORMATION[key]
+            if force_type == 'list':
+                if isinstance(input_cus.INPUT_INFORMATION[key], list):
+                    dict_inp[input_cus.INPUT_INFORMATION['input_name_unique']][key] = \
+                        input_cus.INPUT_INFORMATION[key]
+                else:
+                    dict_inp[input_cus.INPUT_INFORMATION['input_name_unique']][key] = \
+                        [input_cus.INPUT_INFORMATION[key]]
+            else:
+                dict_inp[input_cus.INPUT_INFORMATION['input_name_unique']][key] = \
+                    input_cus.INPUT_INFORMATION[key]
         return dict_inp
 
     excluded_files = [
@@ -81,7 +89,10 @@ def parse_input_information():
         'examples', 'scripts', 'tmp_inputs', 'sensorutils.py'
     ]
 
-    input_paths = [PATH_INPUTS, PATH_INPUTS_CUSTOM]
+    input_paths = [PATH_INPUTS]
+
+    if not exclude_custom:
+        input_paths.append(PATH_INPUTS_CUSTOM)
 
     dict_inputs = {}
 
@@ -127,12 +138,17 @@ def parse_input_information():
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'listener')
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'message')
 
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'url_datasheet', force_type='list')
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'url_manufacturer', force_type='list')
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'url_product_purchase', force_type='list')
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'url_additional', force_type='list')
+
                 # Dependencies
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'dependencies_module')
 
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'enable_channel_unit_select')
 
-                # Interface
+                # Interfaces
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'interfaces')
 
                 # Nonstandard (I2C, UART, etc.) location
@@ -141,6 +157,7 @@ def parse_input_information():
                 # I2C
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'i2c_location')
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'i2c_address_editable')
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'i2c_address_default')
 
                 # FTDI
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'ftdi_location')
@@ -188,6 +205,10 @@ def parse_input_information():
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'execute_at_creation')
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'test_before_saving')
 
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'custom_options_message')
                 dict_inputs = dict_has_value(dict_inputs, input_custom, 'custom_options')
+
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'custom_actions_message')
+                dict_inputs = dict_has_value(dict_inputs, input_custom, 'custom_actions')
 
     return dict_inputs

@@ -30,7 +30,6 @@ from mycodo.config import INFLUXDB_PORT
 from mycodo.config import INFLUXDB_USER
 from mycodo.config import INSTALL_DIRECTORY
 from mycodo.config import LOG_PATH
-from mycodo.config import OUTPUTS_PWM
 from mycodo.config import PATH_CAMERAS
 from mycodo.config import PATH_NOTE_ATTACHMENTS
 from mycodo.databases.models import Camera
@@ -51,6 +50,7 @@ from mycodo.mycodo_flask.utils.utils_output import get_all_output_states
 from mycodo.utils.image import generate_thermal_image_from_pixels
 from mycodo.utils.influx import influx_time_str_to_milliseconds
 from mycodo.utils.influx import query_string
+from mycodo.utils.outputs import outputs_pwm
 from mycodo.utils.system_pi import assure_path_exists
 from mycodo.utils.system_pi import return_measurement_info
 from mycodo.utils.system_pi import str_is_float
@@ -72,7 +72,7 @@ def home():
         if flask_login.current_user.landing_page == 'live':
             return redirect(url_for('routes_page.page_live'))
         elif flask_login.current_user.landing_page == 'dashboard':
-            return redirect(url_for('routes_page.page_dashboard'))
+            return redirect(url_for('routes_page.page_dashboard_default'))
         return redirect(url_for('routes_page.page_live'))
     return clear_cookie_auth()
 
@@ -98,7 +98,7 @@ def send_note_attachment(filename):
 @blueprint.route('/camera/<camera_unique_id>/<img_type>/<filename>')
 @flask_login.login_required
 def camera_img_return_path(camera_unique_id, img_type, filename):
-    """Return an image from stills or timelapses"""
+    """Return an image from stills or time-lapses"""
     camera = Camera.query.filter(Camera.unique_id == camera_unique_id).first()
     camera_path = assure_path_exists(
         os.path.join(PATH_CAMERAS, '{uid}'.format(uid=camera.unique_id)))
@@ -120,7 +120,7 @@ def camera_img_return_path(camera_unique_id, img_type, filename):
 @blueprint.route('/camera_acquire_image/<image_type>/<camera_unique_id>/<max_age>')
 @flask_login.login_required
 def camera_img_acquire(image_type, camera_unique_id, max_age):
-    """Capture an image and resturn the filename"""
+    """Capture an image and return the filename"""
     if image_type == 'new':
         tmp_filename = None
     elif image_type == 'tmp':
@@ -142,8 +142,8 @@ def camera_img_acquire(image_type, camera_unique_id, max_age):
 @blueprint.route('/camera_latest_timelapse/<camera_unique_id>/<max_age>')
 @flask_login.login_required
 def camera_img_latest_timelapse(camera_unique_id, max_age):
-    """Capture an image and resturn the filename"""
-    _, _, tl_ts, tl_path = utils_general.get_camera_image_info()
+    """Capture an image and/or return a filename"""
+    _, _, tl_ts, tl_path, _ = utils_general.get_camera_image_info()
     if camera_unique_id in tl_path and tl_path[camera_unique_id]:
         camera_path = assure_path_exists(
             os.path.join(PATH_CAMERAS, '{uid}/timelapse'.format(
@@ -316,6 +316,9 @@ def last_data(unique_id, measure_type, measurement_id, period):
         except KeyError:
             logger.debug("No Data returned form influxdb")
             return '', 204
+        except IndexError:
+            logger.debug("No Data returned form influxdb")
+            return '', 204
         except Exception as e:
             logger.exception("URL for 'last_data' raised and error: "
                              "{err}".format(err=e))
@@ -395,7 +398,7 @@ def past_data(unique_id, measure_type, measurement_id, past_seconds):
 
             raw_data = dbcon.query(query_str).raw
 
-            if 'series' in raw_data:
+            if 'series' in raw_data and raw_data['series']:
                 return jsonify(raw_data['series'][0]['values'])
             else:
                 return '', 204
@@ -447,7 +450,7 @@ def generate_thermal_image_from_timestamp(unique_id, timestamp):
             success = False
         else:
             raw_data = dbcon.query(query_str).raw
-            if not raw_data or 'series' not in raw_data:
+            if not raw_data or 'series' not in raw_data or not raw_data['series']:
                 logger.error('No measurements to export in this time period')
                 success = False
             else:
@@ -516,7 +519,7 @@ def export_data(unique_id, measurement_id, start_seconds, end_seconds):
         return redirect(url_for('routes_page.page_export'))
     raw_data = dbcon.query(query_str).raw
 
-    if not raw_data or 'series' not in raw_data:
+    if not raw_data or 'series' not in raw_data or not raw_data['series']:
         flash('No measurements to export in this time period', 'error')
         return redirect(url_for('routes_page.page_export'))
 
@@ -932,26 +935,27 @@ def async_usage_data(device_id, unit, channel, start_seconds, end_seconds):
             return '', 204
 
 
-@blueprint.route('/output_mod/<output_id>/<state>/<out_type>/<amount>')
+@blueprint.route('/output_mod/<output_id>/<state>/<output_type>/<amount>')
 @flask_login.login_required
-def output_mod(output_id, state, out_type, amount):
+def output_mod(output_id, state, output_type, amount):
     """ Manipulate output (using non-unique ID) """
     if not utils_general.user_has_permission('edit_controllers'):
         return 'Insufficient user permissions to manipulate outputs'
 
     daemon = DaemonControl()
-    if (state in ['on', 'off'] and out_type == 'sec' and
+    if (state in ['on', 'off'] and output_type in ['sec', 'vol'] and
             (str_is_float(amount) and float(amount) >= 0)):
-        out_status = daemon.output_on_off(output_id, state, float(amount))
+        out_status = daemon.output_on_off(
+            output_id, state, output_type=output_type, amount=float(amount))
         if out_status[0]:
             return 'ERROR: {}'.format(out_status[1])
         else:
             return 'SUCCESS: {}'.format(out_status[1])
-    elif (state == 'on' and out_type in OUTPUTS_PWM and
+
+    elif (state == 'on' and output_type in outputs_pwm() and
             (str_is_float(amount) and float(amount) >= 0)):
         out_status = daemon.output_on(
-            output_id,
-            duty_cycle=float(amount))
+            output_id, output_type=output_type, duty_cycle=float(amount))
         if out_status[0]:
             return 'ERROR: {}'.format(out_status[1])
         else:
@@ -1084,11 +1088,9 @@ def last_data_pid(pid_id, input_period):
          actual_measurement) = return_measurement_info(
             actual_measurement, actual_conversion)
 
-        setpoint_measurement = None
         setpoint_unit = None
-        setpoint_pid = PID.query.filter(PID.unique_id == pid_id).first()
-        if setpoint_pid and ',' in setpoint_pid.measurement:
-            pid_measurement = setpoint_pid.measurement.split(',')[1]
+        if pid and ',' in pid.measurement:
+            pid_measurement = pid.measurement.split(',')[1]
             setpoint_measurement = DeviceMeasurements.query.filter(
                 DeviceMeasurements.unique_id == pid_measurement).first()
             if setpoint_measurement:
@@ -1107,17 +1109,21 @@ def last_data_pid(pid_id, input_period):
         else:
             pid_value = None
 
-        if setpoint_measurement:
-            setpoint_measurement_display = setpoint_measurement.measurement
-        else:
-            setpoint_measurement_display = None
+        setpoint_band = None
+        if pid.band:
+            try:
+                daemon = DaemonControl()
+                setpoint_band = daemon.pid_get(pid.unique_id, 'setpoint_band')
+            except:
+                logger.debug("Couldn't get setpoint")
 
         live_data = {
             'activated': pid.is_activated,
             'paused': pid.is_paused,
             'held': pid.is_held,
             'setpoint': return_point_timestamp(
-                pid_id, setpoint_unit, input_period, measurement=setpoint_measurement_display),
+                pid_id, setpoint_unit, input_period, channel=0),
+            'setpoint_band': setpoint_band,
             'pid_p_value': p_value,
             'pid_i_value': i_value,
             'pid_d_value': d_value,

@@ -23,17 +23,20 @@
 #
 import datetime
 import importlib.util
+import os
 import threading
 import time
-
-import os
+import timeit
 
 from mycodo.config import PATH_PYTHON_CODE_USER
 from mycodo.config import SQL_DATABASE_MYCODO
 from mycodo.controllers.base_controller import AbstractController
+from mycodo.databases.models import Actions
 from mycodo.databases.models import Conditional
+from mycodo.databases.models import ConditionalConditions
 from mycodo.databases.models import Misc
 from mycodo.databases.models import SMTP
+from mycodo.utils.conditional import save_conditional_code
 from mycodo.utils.database import db_retrieve_table_daemon
 
 MYCODO_DB_PATH = 'sqlite:///' + SQL_DATABASE_MYCODO
@@ -59,11 +62,10 @@ class ConditionalController(AbstractController, threading.Thread):
         self.smtp_max_count = None
         self.email_count = None
         self.allowed_to_send_notice = None
-        self.smtp_wait_timer = None
-        self.timer_period = None
         self.period = None
         self.start_offset = None
         self.log_level_debug = None
+        self.message_include_code = None
         self.conditional_statement = None
         self.smtp_wait_timer = None
         self.timer_period = None
@@ -117,6 +119,7 @@ class ConditionalController(AbstractController, threading.Thread):
         self.period = cond.period
         self.start_offset = cond.start_offset
         self.log_level_debug = cond.log_level_debug
+        self.message_include_code = cond.message_include_code
 
         self.set_log_level_debug(self.log_level_debug)
 
@@ -126,6 +129,15 @@ class ConditionalController(AbstractController, threading.Thread):
 
         self.file_run = '{}/conditional_{}.py'.format(
             PATH_PYTHON_CODE_USER, self.unique_id)
+
+        # If the file to execute doesn't exist, generate it
+        if not os.path.exists(self.file_run):
+            save_conditional_code(
+                [],
+                self.conditional_statement,
+                self.unique_id,
+                db_retrieve_table_daemon(ConditionalConditions, entry='all'),
+                db_retrieve_table_daemon(Actions, entry='all'))
 
         module_name = "mycodo.conditional.{}".format(
             os.path.basename(self.file_run).split('.')[0])
@@ -163,18 +175,33 @@ class ConditionalController(AbstractController, threading.Thread):
             name=cond.name,
             id=self.unique_id)
 
-        self.logger.debug("Conditional Statement (pre-replacement):\n{}".format(self.conditional_statement))
+        self.logger.debug(
+            "Conditional Statement (pre-replacement):\n{}".format(
+                self.conditional_statement))
 
         with open(self.file_run, 'r') as file:
-            self.logger.debug("Conditional Statement (post-replacement):\n{}".format(file.read()))
+            self.logger.debug(
+                "Conditional Statement (post-replacement):\n{}".format(
+                    file.read()))
 
-        message += '\n[Conditional Statement Code Executed]:' \
-                   '\n--------------------' \
-                   '\n{statement}' \
-                   '\n--------------------' \
-                   '\n\n[Messages]:' \
-                   '\n'.format(
-            statement=cond.conditional_statement)
+        if self.message_include_code:
+            message += '\n[Conditional Statement Code Executed]:' \
+                       '\n--------------------' \
+                       '\n{statement}' \
+                       '\n--------------------' \
+                       '\n'.format(
+                statement=cond.conditional_statement)
+
+        message += '\n[Messages]:\n'
 
         self.conditional_run.message = message
         self.conditional_run.conditional_code_run()
+
+    def stop_controller(self):
+        self.thread_shutdown_timer = timeit.default_timer()
+        self.pre_stop()
+        try:
+            self.conditional_run.stop_conditional()
+        except Exception:
+            pass
+        self.running = False
