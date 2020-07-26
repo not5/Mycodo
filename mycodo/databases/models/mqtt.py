@@ -15,6 +15,8 @@ class MQTT(CRUDMixin, db.Model):
     clientid = db.Column(db.Text, default='mycodo')
     keep_alive = db.Column(db.Integer, default=60)
     message_count = db.Column(db.Integer, default=0)
+    topic_prefix = db.Column(db.Text, default='mycodo/'+clientid+'/')
+    enabled = db.Column(db.Integer, default=0)
 
     def __repr__(self):
         return "<{cls}(id={s.id})>".format(s=self, cls=self.__class__.__name__)

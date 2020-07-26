@@ -16,6 +16,19 @@
       <div class="form-group">
         If a port is not specified, the default port (1883) for a MQTT broker will be used. If you require a non-standard port, enter it in the port field.
       </div>
+      <div class="row small-gutters">
+        <div class="col">
+          MQTT Enabled: {{mqtt.enabled}}
+        </div>
+        <div class="col">
+          {% if mqtt.enabled==1 %}
+            {{form_mqtt_broker.disable_mqtt(class_='btn btn-primary')}}
+          {% else %}
+            {{form_mqtt_broker.enable_mqtt(class_='btn btn-primary')}}
+          {% endif %}
+        </div>
+      </div>
+
       <div class="form-group">
         {{form_mqtt_broker.mqtt_hostname.label(class_='control-label')}}
         <div>
@@ -44,6 +57,12 @@
         {{form_mqtt_broker.mqtt_clientid.label(class_='control-label')}}
         <div>
           {{form_mqtt_broker.mqtt_clientid(class_='form-control', value=mqtt.clientid,**{'title':_('Client name for your mycodo instance')})}}
+        </div>
+      </div>
+      <div class="form-group">
+        {{form_mqtt_broker.mqtt_topic_prefix.label(class_='control-label')}}
+        <div>
+          {{form_mqtt_broker.mqtt_topic_prefix(class_='form-control', value=mqtt.topic_prefix,**{'title':_('Prefix for topic that mycodo will send messages to.')})}}
         </div>
       </div>
       <div class="form-group">

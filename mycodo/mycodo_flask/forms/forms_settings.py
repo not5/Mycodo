@@ -80,6 +80,58 @@ class SettingsEmail(FlaskForm):
     )
     save = SubmitField(TRANSLATIONS['save']['title'])
 
+#
+# Settings (MQTT)
+#
+
+class SettingsMqtt(FlaskForm):
+    enable_mqtt = SubmitField(lazy_gettext('Enable MQTT'))
+    disable_mqtt = SubmitField(lazy_gettext('Disable MQTT'))
+    mqtt_hostname = StringField(
+        lazy_gettext('MQTT Broker IP'),
+        render_kw={"placeholder": lazy_gettext('MQTT Broker IP')},
+        validators=[DataRequired()]
+    )
+    mqtt_port = IntegerField(
+        lazy_gettext('MQTT Broker Port'),
+        validators=[Optional()]
+    )
+    mqtt_user = StringField(
+        lazy_gettext('MQTT Broker User'),
+        render_kw={"placeholder": lazy_gettext('MQTT Broker User')},
+        validators=[DataRequired()]
+    )
+    mqtt_password = PasswordField(
+        lazy_gettext('MQTT Broker Password'),
+        render_kw={"placeholder": TRANSLATIONS['password']['title']}
+    )
+    mqtt_clientid = StringField(
+        lazy_gettext('MQTT Client Name'),
+        render_kw={"placeholder": lazy_gettext('MQTT Client Name')},
+        validators=[DataRequired()]
+    )
+    mqtt_topic_prefix = StringField(
+        lazy_gettext('MQTT Topic Prefix'),
+        render_kw={"placeholder": lazy_gettext('MQTT Topic Prefix')},
+        validators=[DataRequired()]
+    )
+    mqtt_keep_alive = IntegerField(
+        lazy_gettext('Keep Alive frequency (seconds)'),
+        render_kw={"placeholder": lazy_gettext('frequency (seconds)')},
+        validators=[validators.NumberRange(
+            min=1,
+            message=lazy_gettext('Cannot send more frequently than one message '
+                                 ' per second.')
+        )],
+        widget=NumberInput()
+    )
+    send_test_mqtt = SubmitField(lazy_gettext('Send Test MQTT message'))
+    send_test_mqtt_topic = StringField(
+        lazy_gettext('Topic to post test to.'),
+        render_kw={"placeholder": lazy_gettext('MQTT Topic')},
+        validators=[Optional()]
+    )
+    save = SubmitField(TRANSLATIONS['save']['title'])
 
 #
 # Settings (General)

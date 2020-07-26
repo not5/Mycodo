@@ -7,6 +7,7 @@ from email import encoders
 from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import paho.mqtt.client as mqtt
 
 import os
 
@@ -131,6 +132,8 @@ def send_email(smtp_host, smtp_protocol, smtp_port, smtp_user, smtp_pass,
         logger.debug("Email send response: {}".format(response_send))
 
         return 0
+    except:
+        pass
 
         # Old code. It remains here to demonstrate how to encoding video for emailing
         # if smtp_ssl:
@@ -173,8 +176,63 @@ def send_email(smtp_host, smtp_protocol, smtp_port, smtp_user, smtp_pass,
         # server.sendmail(msg['From'], msg['To'].split(","), msg.as_string())
         # server.quit()
 
-    except Exception:
-        logger.exception(
-            "Could not send email to {add} with subject {sub}".format(
-                add=email_to, sub=subject))
+#
+# MQTT Notification
+#
+
+def pub_mqtt(mqtt_hostname, mqtt_port, mqtt_user, mqtt_pass,
+               mqtt_keep_alive, mqtt_clientid, mqtt_topic, mqtt_payload):
+    """
+    MQTT Publush a payload to a specific topic message.
+
+    :param mqtt_ip: Broker ip
+    :type mqtt_ip: str
+    :param mqtt_port: Broker's port
+    :type mqtt_port: int
+    :param mqtt_user: User name with permissions to publish to topic
+    :type mqtt_user: str
+    :param mqtt_pass: Password for user
+    :type mqtt_pass: str
+    :param mqtt_client: Client name
+    :type mqtt_client: str
+    :param mqtt_topic: Topic that is published to.
+    :type mqtt_topic: str
+    :param mqtt_payload: Message payload
+    :type mqtt_payload: unicode
+
+    :return: success (0) or failure (1)
+    :rtype: bool
+    """
+    def on_connect(client, mqtt_payload, flags, rc):
+        """ Set up the connection to the MQTT Server """
+        if rc==0:
+            logger.debug("Connected to MQTT Broker (RC: {})".format(rc))
+        else:
+            logger.error("Could not connect to MQTT Broker: {}:{}".format(mqtt_hostname, mqtt_port))
+
+    def on_publish(client, mqtt_payload, mid):
+        logger.debug("MQTT message sent {}".format(mqtt_payload))
+
+    def on_disconnect(client, obj, rc):
+        if rc!=0:
+            logger.debug("Disconnected from MQTT broker {} (RC:{})".format(mqtt_hostname, rc))
+
+    mqttc = mqtt.Client(mqtt_clientid, clean_session=False, protocol=mqtt.MQTTv311, transport="tcp")
+    mqttc.username_pw_set(mqtt_user, mqtt_pass)
+
+    # Define Call Backs
+    mqttc.on_connect = on_connect
+    mqttc.on_publish = on_publish
+
+    try:
+        mqttc.connect(host=mqtt_hostname, port=mqtt_port, keepalive=mqtt_keep_alive)
+    except:
+        logger.error("Could not connect to mqtt host: {}:{}".format(mqtt_hostname, mqtt_port))
         return 1
+    try:
+        mqttc.publish(mqtt_topic, mqtt_payload, 0, True)
+    except:
+        logger.error("Could not publish message ({}) on topic: {}".format(mqtt_payload, mqtt_topic))
+        return 1
+    mqttc.disconnect()
+    return 0

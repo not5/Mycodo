@@ -42,6 +42,7 @@ from mycodo.databases.models import Output
 from mycodo.databases.models import PID
 from mycodo.databases.models import Role
 from mycodo.databases.models import SMTP
+from mycodo.databases.models import MQTT
 from mycodo.databases.models import Unit
 from mycodo.databases.models import User
 from mycodo.databases.models import Widget
@@ -61,6 +62,7 @@ from mycodo.utils.inputs import parse_input_information
 from mycodo.utils.modules import load_module_from_file
 from mycodo.utils.outputs import parse_output_information
 from mycodo.utils.send_data import send_email
+from mycodo.utils.send_data import pub_mqtt
 from mycodo.utils.system_pi import all_conversions
 from mycodo.utils.system_pi import assure_path_exists
 from mycodo.utils.system_pi import cmd_output
@@ -1395,6 +1397,51 @@ def settings_alert_mod(form_mod_alert):
 
     flash_success_errors(error, action, url_for('routes_settings.settings_alerts'))
 
+def settings_mqtt_mod(form_mod_mqtt):
+    """ Modify MQTT settings """
+    action = '{action} {controller}'.format(
+        action=TRANSLATIONS['modify']['title'],
+        controller=gettext("MQTT Settings"))
+    error = []
+
+    try:
+        if form_mod_mqtt.validate():
+            mod_mqtt = MQTT.query.one()
+            if form_mod_mqtt.send_test_mqtt.data:
+                pub_mqtt(
+                    mod_mqtt.hostname, mod_mqtt.port,
+                    mod_mqtt.user, mod_mqtt.passw, mod_mqtt.keep_alive, mod_mqtt.clientid,
+                    form_mod_mqtt.send_test_mqtt_topic.data, "Test")
+                flash(gettext("Test message published to %(topic)s. Check the broker "
+                              "for confirmation of receipt.",
+                              topic=form_mod_mqtt.send_test_mqtt_topic.data),
+                      "success")
+                return redirect(url_for('routes_settings.settings_mqtt'))
+            elif form_mod_mqtt.enable_mqtt.data:
+                mod_mqtt.enabled = 1
+                db.session.commit()
+            elif form_mod_mqtt.disable_mqtt.data:
+                mod_mqtt.enabled = 0
+                db.session.commit()
+            else:
+                mod_mqtt.hostname = form_mod_mqtt.mqtt_hostname.data
+                if form_mod_mqtt.mqtt_port.data:
+                    mod_mqtt.port = form_mod_mqtt.mqtt_port.data
+                else:
+                    mod_mqtt.port = None
+                mod_mqtt.user = form_mod_mqtt.mqtt_user.data
+                if form_mod_mqtt.mqtt_password.data:
+                    mod_mqtt.passw = form_mod_mqtt.mqtt_password.data
+                mod_mqtt.clientid = form_mod_mqtt.mqtt_clientid.data
+                mod_mqtt.topic_prefix = form_mod_mqtt.mqtt_topic_prefix.data
+                mod_mqtt.keep_alive = form_mod_mqtt.mqtt_keep_alive.data
+                db.session.commit()
+        else:
+            flash_form_errors(form_mod_mqtt)
+    except Exception as except_msg:
+        error.append(except_msg)
+
+    flash_success_errors(error, action, url_for('routes_settings.settings_mqtt'))
 
 def settings_diagnostic_delete_inputs():
     action = '{action} {controller}'.format(
