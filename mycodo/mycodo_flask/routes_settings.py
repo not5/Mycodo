@@ -21,6 +21,7 @@ from mycodo.databases.models import Measurement
 from mycodo.databases.models import Misc
 from mycodo.databases.models import Role
 from mycodo.databases.models import SMTP
+from mycodo.databases.models import MQTT
 from mycodo.databases.models import Unit
 from mycodo.databases.models import User
 from mycodo.mycodo_flask.forms import forms_settings
@@ -76,6 +77,29 @@ def settings_alerts():
                            smtp=smtp,
                            form_email_alert=form_email_alert)
 
+
+@blueprint.route('/settings/mqtt', methods=('GET', 'POST'))
+@flask_login.login_required
+def settings_mqtt():
+    """ Display alert settings """
+    if not utils_general.user_has_permission('view_settings'):
+        return redirect(url_for('routes_general.home'))
+
+    mqtt = MQTT.query.first()
+    form_mqtt_broker = forms_settings.SettingsMqtt()
+
+    if request.method == 'POST':
+        if not utils_general.user_has_permission('edit_settings'):
+            return redirect(url_for('routes_general.home'))
+
+        form_name = request.form['form-name']
+        if form_name == 'MqttBroker':
+            utils_settings.settings_mqtt_mod(form_mqtt_broker)
+        return redirect(url_for('routes_settings.settings_mqtt'))
+
+    return render_template('settings/mqtt.html',
+                           mqtt=mqtt,
+                           form_mqtt_broker=form_mqtt_broker)
 
 @blueprint.route('/settings/general', methods=('GET', 'POST'))
 @flask_login.login_required

@@ -19,6 +19,8 @@ TRANSLATIONS = {
         'title': lazy_gettext('Activate')},
     'alert': {
         'title': lazy_gettext('Alert')},
+    'mqtt': {
+        'title': lazy_gettext('MQTT')},
     'average': {
         'title': lazy_gettext('Average')},
     'bus': {

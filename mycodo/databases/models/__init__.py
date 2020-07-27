@@ -60,6 +60,7 @@ from .pid import PID
 from .remote import Remote
 from .role import Role
 from .smtp import SMTP
+from .mqtt import MQTT
 from .user import User
 
 
@@ -155,6 +156,8 @@ def populate_db():
         Misc(id=1).save()
     if not SMTP.query.count():
         SMTP(id=1).save()
+    if not MQTT.query.count():
+        MQTT(id=1).save()
     if not Dashboard.query.count():
         Dashboard(id=1, name='Default').save()
 
