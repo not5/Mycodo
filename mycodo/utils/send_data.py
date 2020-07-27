@@ -229,13 +229,9 @@ def pub_mqtt(mqtt_hostname, mqtt_port, mqtt_user, mqtt_pass,
 
     try:
         mqttc.connect(host=mqtt_hostname, port=mqtt_port, keepalive=mqtt_keep_alive)
-    except:
-        logger.error("Could not connect to mqtt host: {}:{}".format(mqtt_hostname, mqtt_port))
-        return 1
-    try:
-        mqttc.publish(mqtt_topic, mqtt_payload, 0, True)
+        mqttc.publish(mqtt_topic, mqtt_payload)
+        mqttc.disconnect()
     except Exception:
         logger.exception("Could not publish message ({}) on topic: {}".format(mqtt_payload, mqtt_topic))
         return 1
-    mqttc.disconnect()
     return 0
