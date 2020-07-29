@@ -1,3 +1,25 @@
+## 8.7.0 (Unreleased)
+
+This update includes the final refactoring of the output system to accommodate output modules that can operate multiple different types of output types. For instance, a peristaltic pump can be instructed to turn on for a duration or instructed to pump a volume. As a result of the output framework being modified to accommodate this, the duty_cycle parameter was removed from ```output_on_off()``` and ```output_on()``` functions of the ```DaemonControl``` class of mycodo_client.py. As a result, if you were previously using either of these function, you will need to add the parameter ```output_type='pwm'``` and change the ```duty_cycle``` parameter to ```amount```. For example, ```output_on(output_id, duty_cycle=50)``` would need to be changed to ```output_on(output_id, output_type='pwm', amount=50)```, and ```output_on_off(output_id, 'on', duty_cycle=50)``` to ```output_on_off(output_id, 'on', output_type='pwm', amount=50)```.
+
+### Bugfixes
+
+ - Fix issue installing Python modules ([#804](https://github.com/kizniche/mycodo/issues/804))
+ - Fix graph shift memory leak
+ - Fix inability to save PID options when On/Off output selected ([#805](https://github.com/kizniche/mycodo/issues/805))
+
+### Features
+
+ - Add Output: On/Off MQTT Publish
+ - Add Output information links
+ - Add ability to download Mycodo Backups ([#803](https://github.com/kizniche/mycodo/issues/803))
+
+### Miscellaneous
+
+ - Deprecate duty_cycle parameter of output functions
+ - Remove graph Shift X-Axis option
+
+
 ## 8.6.4 (2020-07-25)
 
 ### Bugfixes
@@ -5,7 +27,7 @@
  - Fix issue displaying lines 5-8 on SD1306 LCDs ([#800](https://github.com/kizniche/mycodo/issues/800))
  - Fix Atlas Scientific Pump duration unit issues ([#801](https://github.com/kizniche/mycodo/issues/801))
 
- ### Features
+### Features
 
  - Add Inputs: Ads1115 (Circuit Python library), ADS1015 (Circuit Python library)
  - Add Input: BMP280 (bmp280-python library, includes ability to set forced mode) ([#608](https://github.com/kizniche/mycodo/issues/608))
