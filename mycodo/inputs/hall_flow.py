@@ -123,7 +123,7 @@ class InputModule(AbstractInput):
 
         total_pulses = int(read_flow.pulses())
 
-        if session_total_pulses:
+        if total_pulses:
             self.session_total_volume += float(total_pulses * self.k_value)
 
         read_flow.cancel()
